@@ -12,11 +12,11 @@ import common.Utils;
 public class BinaryContent {
 	
 	public Path srcPath;
-	public static HashMap<Long, Byte> address_bytes_map;
+	public static HashMap<Long, Byte> addressBytesMap;
 	
 	public BinaryContent(String src_path) {
 		srcPath = Paths.get(src_path);
-		address_bytes_map = new HashMap<Long, Byte>();
+		addressBytesMap = new HashMap<Long, Byte>();
 		readBinaryContent();
 	}
 	
@@ -25,7 +25,7 @@ public class BinaryContent {
 		try {
 			byte[] content = Files.readAllBytes(srcPath);
 			for(byte b : content) {
-				address_bytes_map.put(idx, b);
+				addressBytesMap.put(idx, b);
 				idx += 1;
 			}
 		} catch (IOException e) {
@@ -37,8 +37,8 @@ public class BinaryContent {
 		ArrayList<Byte> res = new ArrayList<Byte>();
 		for(int i = length - 1; i >= 0; i--) {
 			long curr = address + i;
-			if(address_bytes_map.containsKey(curr))
-				res.add(address_bytes_map.get(curr));
+			if(addressBytesMap.containsKey(curr))
+				res.add(addressBytesMap.get(curr));
 			else
 				return -1;
 		}
@@ -49,8 +49,8 @@ public class BinaryContent {
 		ArrayList<Byte> res = new ArrayList<Byte>();
 		for(int i = length - 1; i >= 0; i--) {
 			long curr = address + i;
-			if(address_bytes_map.containsKey(curr))
-				res.add(address_bytes_map.get(curr));
+			if(addressBytesMap.containsKey(curr))
+				res.add(addressBytesMap.get(curr));
 			else
 				return "";
 		}
@@ -59,7 +59,7 @@ public class BinaryContent {
 	
 	
 	void read_bytes_all() {
-		int num = address_bytes_map.size();
+		int num = addressBytesMap.size();
 		for(int i = 0; i < num; i++) {
 			int res = read_bytes(i, 1);
 			System.out.println(res);

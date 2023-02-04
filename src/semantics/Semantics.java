@@ -96,7 +96,7 @@ public class Semantics {
 		mov_op(store, dest, src);
 	}
 	
-	void mov_op(Store store, String dest, String src) {
+	static void mov_op(Store store, String dest, String src) {
 	    int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 	    BitVecExpr sym_src = SymEngine.get_sym(store, rip, src, block_id, dest_len);
 	    SymEngine.set_sym(store, rip, dest, sym_src, block_id);
@@ -157,7 +157,7 @@ public class Semantics {
 		push(store, src);
 	}
 	
-	void push(Store store, String src) {
+	static void push(Store store, String src) {
 	    BitVecExpr sym_src = SymEngine.get_sym(store, rip, src, block_id);
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
@@ -188,37 +188,76 @@ public class Semantics {
 	}
 
 
-	void call(Store store, ArrayList<String> arg) {
+	public static void call(Store store, ArrayList<String> arg) {
 	    push(store, Long.toHexString(rip));
 	}
 
 
-	void call_op(Store store, long rip, int block_id) {
+	public static void call_op(Store store, long rip, int block_id) {
 		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Long.toHexString(rip), block_id);
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
-
-
-	Long[] ret(Store store, int block_id) {
-		Long[] result;
-		Long res = null;
+	
+	
+	public static Tuple<BitVecExpr, Long> ret(Store store, int block_id) {
+		Tuple<BitVecExpr, Long> result;
+		BitVecExpr res = null;
 		Long alter_res = null;
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
-		BitVecExpr mem_at_rsp = SymEngine.get_mem_sym(store, sym_rsp);
-		if(mem_at_rsp != null) {
+		res = SymEngine.get_mem_sym(store, sym_rsp);
+		if(res != null) {
 	        SymHelper.remove_memory_content(store, sym_rsp);
 		}
-	    SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);  
-	    if(mem_at_rsp != null) {
+		SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);  
+		if(res != null) {
 	    	if(Config.MEM_ADDR_SIZE == 16) {
-	    		mem_at_rsp = Helper.bv_and(mem_at_rsp, 0x0000ffff);
+	    		res = Helper.bv_and(res, 0x0000ffff);
 	    	}
-	    	if(Helper.is_bit_vec_num(mem_at_rsp))
-	            res = Helper.long_of_sym(mem_at_rsp);
 	    }
-	    if(!store.g_FuncCallStack.isEmpty())
+		if(!store.g_FuncCallStack.isEmpty())
 	        alter_res = store.g_FuncCallStack.remove(store.g_FuncCallStack.size() - 1);
-	    result = new Long[]{res, alter_res};
+	    result = new Tuple<BitVecExpr, Long>(res, alter_res);
+	    return result;
+	}
+
+
+	public static Tuple<BitVecExpr, Long> retn(Store store, String inst, int block_id) {
+		Tuple<BitVecExpr, Long> result;
+		BitVecExpr res = null;
+		Long alter_res = null;
+		if(store.g_FuncCallStack != null) {
+	        alter_res = store.g_FuncCallStack.remove(store.g_FuncCallStack.size() - 1);
+		}
+		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
+		res = SymEngine.get_mem_sym(store, sym_rsp);
+	    if(alter_res != null) {
+	        if(!Helper.is_bit_vec_num(res) || Helper.int_of_sym(res) != alter_res)
+	            res = Helper.gen_bv_num(alter_res, Config.MEM_ADDR_SIZE);
+	        else {
+	            SymHelper.remove_memory_content(store, sym_rsp);
+	            SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);
+	        }
+	    }
+	    else {
+	    	SymHelper.remove_memory_content(store, sym_rsp);
+	        SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);
+	    }
+	    if(inst.startsWith("retn ")) {
+	        String arg = inst.strip().split(" ", 1)[1].strip();
+	        if(Utils.imm_start_pat.matcher(arg).matches()) {
+	        	int imm = Integer.valueOf(arg, 16);
+	        	SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(imm), block_id);
+	        }
+	        else {
+	            Utils.logger.info("Invalid instruction format: " + inst);
+	            System.exit(1);
+	        }
+	    }
+	    if(res != null) {
+	        if(Config.MEM_ADDR_SIZE == 16)
+	            res = Helper.bv_and(res, 0x0000ffff);
+	    }
+	    result = new Tuple<BitVecExpr, Long>(res, alter_res);
 	    return result;
 	}
 
@@ -357,7 +396,7 @@ public class Semantics {
 	}
 
 
-	void cmov(Store store, long curr_rip, String inst, boolean pred, int curr_block_id) {
+	public static void cmov(Store store, long curr_rip, String inst, boolean pred, int curr_block_id) {
 	    block_id = curr_block_id;
 	    String[] inst_split = inst.strip().split(" ", 1);
 	    ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);

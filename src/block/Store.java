@@ -21,6 +21,7 @@ public class Store {
 	public HashMap<BitVecExpr, Node> g_StdoutStore;
 	public ArrayList<Long> g_FuncCallStack;
 	public Lib.MEMORY_RELATED_ERROR_TYPE g_PointerRelatedError;
+	public long g_PRErrorAddress;
 	public long g_HeapAddr;
 	public BitVecExpr g_StdoutAddress;
 	public BitVecExpr g_StdoutHandler;

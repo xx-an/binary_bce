@@ -18,12 +18,12 @@ import block.Store;
 
 public class SemanticsTB {
 	
-	long rip = -1;
-	boolean need_stop = false;
-	Integer boundary = null;
-	boolean still_tb = true;
-	HashMap<String, Integer> mem_len_map = new HashMap<>();
-	HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
+	static long rip = -1;
+	static boolean need_stop = false;
+	static Integer boundary = null;
+	static boolean still_tb = true;
+	static HashMap<String, Integer> mem_len_map = new HashMap<>();
+	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 
 	SemanticsTB() {
 		INSTRUCTION_SEMANTICS_MAP = new HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>>();
@@ -125,7 +125,7 @@ public class SemanticsTB {
 	}
 	
 	
-	ArrayList<String> mov_op(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> mov_op(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    if(SMTHelper.check_source_is_sym(store, rip, dest, sym_names)) {
 	        if(Lib.REG_NAMES.contains(src))
@@ -247,7 +247,7 @@ public class SemanticsTB {
 	}
 	    
 
-	ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
+	static ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "cmov");
 	    if(res == Helper.sym_true())
@@ -282,7 +282,7 @@ public class SemanticsTB {
 	}
 
 
-	TBRetInfo parse_sym_src(Store store, long curr_rip, String curr_inst, ArrayList<String> sym_names) {
+	public static TBRetInfo parse_sym_src(Store store, long curr_rip, String curr_inst, ArrayList<String> sym_names) {
 	    rip = curr_rip;
 	    need_stop = false;
 	    boundary = null;

@@ -20,7 +20,7 @@ public class BinaryInfo {
 	public HashMap<String, Integer> function_addr_table = new HashMap<String, Integer>();
 	public HashMap<String, Integer> sym_name_count = new HashMap<String, Integer>();
 	public HashMap<BitVecExpr, ArrayList<String>> address_sym_table = new HashMap<BitVecExpr, ArrayList<String>>();
-	public HashMap<BitVecExpr, String> dll_func_info = new HashMap<BitVecExpr, String>();
+	public HashMap<Long, String> dllFuncInfo = new HashMap<>();
 	public long data_start_addr = Long.MAX_VALUE;
 	public long data_base_addr = Long.MAX_VALUE;
 	public long data_end_addr = Long.MIN_VALUE;
@@ -221,9 +221,9 @@ public class BinaryInfo {
                         String[] line_split = Utils.remove_multiple_spaces(line).split(" ");
                         String ext_name = line_split[line_split.length - 1];
                         if(ext_name != "<none>") {
-                            Long addr = base_addr + first_chunk + dll_count * 4;
-                            BitVecExpr sym_addr = Helper.gen_spec_sym("mem@" + Long.toHexString(addr), Config.MEM_ADDR_SIZE);
-                            dll_func_info.put(sym_addr, ext_name);
+                        	String extName = "dll_" + ext_name;
+                            long vma = Long.valueOf(line_split[0], 16);
+                            dllFuncInfo.put(vma, extName);
                         }
                         dll_count += 1;
                     }

@@ -8,11 +8,11 @@ import java.util.regex.Pattern;
 
 import common.Utils;
 
-public class NormalizeHelper {
+public class NormalizerHelper {
 	
 	Pattern remote_addr_pat = Pattern.compile("0x2[0-9a-fA-F]{5}");
 	
-	NormalizeHelper() {}
+	NormalizerHelper() {}
 	
 	void disassemble_to_asm(String exec_path, String disasm_path, String disasm_type) throws Exception {
 		File f = new File(disasm_path);

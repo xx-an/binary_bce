@@ -1,12 +1,20 @@
 package common;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Scanner;
 import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import com.microsoft.z3.*;
 import com.microsoft.z3.enumerations.Z3_sort_kind;
@@ -16,6 +24,9 @@ public class Helper {
 	public static int mem_cnt = 0;
 	public static int stdout_mem_cnt = 0;
 	
+	public static Pattern simple_operator_pat = Pattern.compile("(\\+|-|\\*)");
+	public static Pattern remote_addr_pat = Pattern.compile("0x2[0-9a-fA-F]{5}");
+	
 	public static Context ctx = new Context();
 	public static final BitVecExpr STDOUT_ADDR = (BitVecExpr) ctx.mkBVConst("stdout", Lib.DEFAULT_REG_LEN);
 	
@@ -23,16 +34,48 @@ public class Helper {
 	
 	public static HashMap<String, Function<Tuple<BoolExpr, BoolExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP_BOOLEXPR;
 	
+	public static HashMap<String, String> BYTE_LEN_REPS;
+   
+	public static HashMap<Character, String> BYTE_REP_PTR_MAP;
+
+	public static HashMap<Integer, String> BYTELEN_REP_MAP;
+	
 	Helper() {
-		LOGIC_OP_FUNC_MAP = new HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>>();
+		LOGIC_OP_FUNC_MAP = new HashMap<>();
 		LOGIC_OP_FUNC_MAP.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP.put("!=", arg -> not_equal(arg.x, arg.y));
 		
-		LOGIC_OP_FUNC_MAP_BOOLEXPR = new HashMap<String, Function<Tuple<BoolExpr, BoolExpr>, BoolExpr>>();
+		LOGIC_OP_FUNC_MAP_BOOLEXPR = new HashMap<>();
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("!=", arg -> not_equal(arg.x, arg.y));
+		
+		BYTE_LEN_REPS = new HashMap<>();
+		BYTE_LEN_REPS.put("byte", "byte");
+		BYTE_LEN_REPS.put("dword", "dword");
+		BYTE_LEN_REPS.put("fword", "fword");
+		BYTE_LEN_REPS.put("qword", "qword");
+		BYTE_LEN_REPS.put("word", "word");
+		BYTE_LEN_REPS.put("tbyte", "tbyte");
+		BYTE_LEN_REPS.put("tword", "tbyte");
+		BYTE_LEN_REPS.put("xword", "tbyte");
+		BYTE_LEN_REPS.put("xmmword", "xmmword");
+		
+		BYTE_REP_PTR_MAP = new HashMap<>();
+		BYTE_REP_PTR_MAP.put('q', "qword ptr");
+		BYTE_REP_PTR_MAP.put('d', "dword ptr");
+		BYTE_REP_PTR_MAP.put('l', "dword ptr");
+		BYTE_REP_PTR_MAP.put('w', "word ptr");
+		BYTE_REP_PTR_MAP.put('b', "byte ptr");
+		BYTE_REP_PTR_MAP.put('t', "tbyte ptr");
+		
+		BYTELEN_REP_MAP = new HashMap<>();
+		BYTELEN_REP_MAP.put(64, "qword ptr");
+		BYTELEN_REP_MAP.put(32, "dword ptr");
+		BYTELEN_REP_MAP.put(16, "word ptr");
+		BYTELEN_REP_MAP.put(8, "byte ptr");
+		
 	}
 
 	public static void cnt_init() {
@@ -464,8 +507,8 @@ public class Helper {
 	    return res;
 	}
 
-	BoolExpr is_term_address(BitVecExpr address) {
-	    return is_equal(address, ctx.mkBVConst("x", Lib.DEFAULT_REG_LEN));
+	public static boolean is_term_address(BitVecExpr address) {
+	    return address == ctx.mkBVConst("x", Lib.DEFAULT_REG_LEN);
 	}
 
 	boolean is_bv_sym_var(BitVecExpr arg) {
@@ -477,6 +520,38 @@ public class Helper {
 	    if(lhs.getSort() == rhs.getSort()) {
 	        res = (lhs == rhs);
 	    }
+	    return res;
+	}
+	
+	public static HashMap<String, ArrayList<String>> parse_predefined_constraint(Path constraintConfigPath) {
+		HashMap<String, ArrayList<String>> res = new HashMap<>();
+		File file = new File(constraintConfigPath.toString());
+		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+		    String line;
+		    ArrayList<String> constrList = null;
+		    while ((line = br.readLine()) != null) {
+		    	line = line.strip();
+	            if(line != null) {
+	                line = line.replace("\t", " ");
+	                String[] lineSplit = line.strip().split(" ", 1);
+	                String extFuncName = lineSplit[0].strip();
+	                String constraint = lineSplit[1].strip();
+	                if(res.containsKey(extFuncName)) {
+	                	constrList = res.get(extFuncName);
+	                	constrList.add(constraint);
+	                }
+	                else {
+	                	constrList = new ArrayList<>();
+	                	constrList.add(constraint);
+	                	res.put(extFuncName, constrList);
+	                }
+	            }
+		    }
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	    return res;
 	}
 
@@ -545,9 +620,9 @@ public class Helper {
 	        line = line.strip();
 	        if(line != null) {
                 line = line.replace("\t", " ");
-                String[] line_split = line.strip().split(" ", 1);
-                String ext_func_name = line_split[0].strip();
-                String constraint = line_split[1].strip();
+                String[] lineSplit = line.strip().split(" ", 1);
+                String ext_func_name = lineSplit[0].strip();
+                String constraint = lineSplit[1].strip();
                 if(res.containsKey(constraint)) {
                 	ArrayList<String> constraint_list = res.get(ext_func_name);
                 	constraint_list.add(constraint);
@@ -559,6 +634,182 @@ public class Helper {
                 }
 	        }
 		}
+	    return res;
+	}
+
+	public static void disassemble_to_asm(String disasmPath) throws Exception {
+		if(Files.exists(Paths.get(disasmPath))) return;
+		else {
+			throw new Exception("The assembly file has not been generated");
+		}
+	}
+	
+	
+	public static String rmUnusedSpaces(String content) {
+	    String res = content.strip();
+	    res = res.replace("[ ]*\\+[ ]*", "+");
+	    res = res.replace("[ ]*-[ ]*", "-");
+	    res = res.replace("[ ]*\\*[ ]*", "*");
+	    res = res.replace("+-", "-");
+	    return res;
+	}
+	
+	
+	static long evalSimpleFormula(ArrayList<Long> stack, ArrayList<String> opStack) {
+	    long res = stack.get(0);
+	    int opNum = opStack.size();
+	    for(int idx = 0; idx < opNum; idx++) {
+	    	String op = opStack.get(idx);
+	        if(op == "+")
+	            res = res + stack.get(idx + 1);
+	        else if(op == "-") {
+	            res = res - stack.get(idx + 1);
+	        }
+	    }
+	    return res;
+	}
+
+
+	static String reconstructFormulaExpr(ArrayList<String> stack, ArrayList<String> opStack, ArrayList<Integer> idxList, long immVal) {
+	    String res = "";
+	    int stackSize = stack.size();
+	    for(int idx = 0; idx < stackSize; idx++) {
+	    	String val = stack.get(idx);
+	    	if(!idxList.contains(idx)) {
+	            if(idx > 0)
+	                res += opStack.get(idx - 1) + val;
+	            else
+	                res += val;
+	    	}
+	    }
+	    if(res != "")
+	        res += "+" + Long.toHexString(immVal);
+	    else
+	        res = Long.toHexString(immVal);
+	    res = res.replace("+-", "-");
+	    return res;
+	}
+
+
+	public static String reconstructFormula(ArrayList<String> stack, ArrayList<String> opStack) {
+	    String res = "";
+	    int stackSize = stack.size();
+	    for(int idx = 0; idx < stackSize; idx++) {
+	    	String val = stack.get(idx);
+	        if(idx > 0) {
+	            String op = opStack.get(idx - 1);
+	            res += op;
+	            if((op == "+" || op == "-") && Utils.imm_start_pat.matcher(val).matches())
+	                res += Integer.toHexString(Utils.imm_str_to_int(val));
+	            else
+	                res += val;
+	        }
+	        else
+	            res += val;
+	    }
+	    res = res.replace("+-", "-");
+	    return res;
+	}
+
+
+	public static String calcFormulaExpr(ArrayList<String> stack, ArrayList<String> opStack, String content) {
+	    String res = content;
+	    ArrayList<Integer> idxList = new ArrayList<>();
+	    ArrayList<Long> valList = new ArrayList<>();
+	    ArrayList<String> opList = new ArrayList<>();
+	    long val, numVal;
+	    String valStr, op;
+	    int stackSize = stack.size();
+	    for(int idx = 0; idx < stackSize; idx++) {
+	    	valStr = stack.get(idx);
+	    	op = opStack.get(idx - 1);
+	    	if(Utils.imm_pat.matcher(valStr).matches() && (idx == 0 || op == "+" || op == "-")) {
+	    		val = Utils.imm_str_to_int(valStr);
+	    		numVal = val;
+		        if(idx > 0) {
+		            op = opStack.get(idx - 1);
+		            if(valList != null)
+		            	opList.add(op);
+		            else
+		                numVal = (op == "+") ? val : -val;
+		        }
+		        idxList.add(idx);
+		        valList.add(numVal);
+	    	}	    
+	    }
+	    if(valList.size() > 1) {
+	        long immVal = evalSimpleFormula(valList, opList);
+	        res = reconstructFormulaExpr(stack, opStack, idxList, immVal);
+	    }
+	    else
+	        res = reconstructFormula(stack, opStack);
+	    return res;
+	}
+	
+	public static String getIdaPtrRepFromItemType(String itemType) {
+	    String res = null;
+	    if(itemType == "dd" || itemType == "dq" || itemType == "db" || itemType == "dw") {
+	        char suffix = itemType.charAt(itemType.length() - 1);
+	        res = BYTE_REP_PTR_MAP.get(suffix);
+	    }
+	    return res;
+	}
+
+	
+	public static String convertToHexRep(String arg) {
+	    String res = arg;
+	    if(arg.matches("^[0-9a-f]+$|^-[0-9a-f]+$"))
+	        res = Integer.toHexString(Integer.valueOf(arg, 16));
+	    return res;
+	}
+	
+	public static String generateIdaPtrRep(String name, String inst, int length) {
+	    String wordPtrRep = null;
+	    if(name.startsWith("jmp"))
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name == "call")
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name == "mov" || name == "cmp") {
+	        if(length != 0)
+	        	wordPtrRep = BYTELEN_REP_MAP.get(length);
+	    }
+	    else if(name.startsWith("j"))
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name.startsWith("set"))
+	        wordPtrRep = "byte ptr";
+	    else if(name == "subs" || name == "movs" || name == "ucomis")
+	        wordPtrRep = "dword ptr";
+	    else if(name == "movdqu" || name == "movaps" || name == "movdqa" || name == "movups")
+	        wordPtrRep = "xmmword ptr";
+	    else if(name == "movq" && inst.contains("xmm")) {}
+	    else if(name == "movsxd") {
+	        if(length == 16 || length == 32)
+	            wordPtrRep = BYTELEN_REP_MAP.get(length);
+	        else
+	            wordPtrRep = "dword ptr";
+	    }
+	    else if(name == "movss")
+	        wordPtrRep = "dword ptr";
+	    return wordPtrRep;
+	}
+	
+
+	public static String simulateEvalExpr(String content) {
+		ArrayList<String> stack = new ArrayList<String>();
+		ArrayList<String> opStack = new ArrayList<String>();
+	    String line = rmUnusedSpaces(content);
+	    String[] lineSplit = simple_operator_pat.split(line);
+	    String val;
+	    for(String lsi : lineSplit) {
+	        lsi = lsi.strip();
+	        if(simple_operator_pat.matcher(lsi).matches())
+	            opStack.add(lsi);
+	        else {
+	            val = lsi;
+	            stack.add(val);
+	        }
+	    }
+	    String res = calcFormulaExpr(stack, opStack, content);
 	    return res;
 	}
 

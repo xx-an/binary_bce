@@ -6,11 +6,15 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.ArrayList;
@@ -26,7 +30,9 @@ public class Utils {
 	
 	public static final ArrayList<String> UNVISITED_SECTION_LABELS = (ArrayList<String>) List.of("_init", "_fini", "__Libc_csu_init", "__Libc_csu_fini", "frame_dummy", "register_tm_clones", "deregister_tm_clones", "__do_global_dtors_aux");
 	
-	public static final String PROJECT_DIR = new File(".").getParentFile().getParentFile().getParentFile().getAbsolutePath();
+	public static final Path PROJECT_DIR = Paths.get(System.getProperty(".")).getParent().getParent().getParent().toAbsolutePath();
+
+//	 = new File(".").getParentFile().getParentFile().getParentFile().getAbsolutePath();
 	
 	public static final String LOG_NAMES[] = new String[]{"log", "output"};
 	
@@ -38,9 +44,24 @@ public class Utils {
 	public static final Pattern imm_start_pat = Pattern.compile("^0x[0-9a-fA-F]+|^[0-9]+|^-[0-9]+|^-0x[0-9a-fA-F]+");
 	public static final Pattern imm_pat_wo_prefix = Pattern.compile("^[0-9a-fA-F]+$|^-[0-9a-fA-F]+$");
 	
+	public static int MAX_LOOP_COUNT = 5;
+	public static int MAX_VISIT_COUNT = 25;
 	public static int INIT_BLOCK_NO = -1;
 	public static int TB_DEFAULT_BLOCK_NO = -2;
-	public static final String MEM_DATA_SEC_SUFFIX = "mem@";                                   
+	public final static int CMC_EXEC_RES_COUNT = 4;
+	
+	public static final String MEM_DATA_SEC_SUFFIX = "mem@";   
+	public static final String LOG_UNREACHABLE_INDICATOR = "Unreachable instructions:";
+	public static final String SOUNDNESS_EXCEPTION_INDICATOR = "ambiguous operand size";
+			
+	public static final String ASSEMBLY_FILE_NAME = "test.s";
+	public static final String PREDEFINED_CONSTRAINT_FILE = "ext_env.config";
+	
+	public static int MAX_TRACEBACK_COUNT = 50;
+	public static int MAX_INST_ADDR_GAP = 25;
+	
+	public static int MAX_ARGC_NUM = 10;
+	public static int REBUILD_BRANCHES_NUM = 2;
 
 	public static final HashMap<String, String> OPPOSITE_FLAG_MAP = (HashMap<String, String>) Map.of("b", "ae", "be", "a", "l", "ge", "le", "g");
 
@@ -53,12 +74,34 @@ public class Utils {
 	static ScriptEngineManager engine_manager = new ScriptEngineManager();
 	static ScriptEngine script_engine = engine_manager.getEngineByName("js");
 	
-	public static Logger logger = Logger.getLogger("log");
+	public static Logger logger = Logger.getLogger(LOG_NAMES[0]);
+	public static Logger output_logger = Logger.getLogger(LOG_NAMES[1]);
 	
-	public static void setup_logger(String log_path, boolean verbose, Level level) throws SecurityException, IOException {
+	public static void setup_logger(String logName, String log_path, boolean verbose, Level level) throws SecurityException, IOException {
 		FileHandler fh = new FileHandler(log_path);
-		logger.addHandler(fh);
-        logger.setLevel(Level.ALL);
+        if(logName == LOG_NAMES[0]) {
+        	logger.addHandler(fh);
+            logger.setLevel(Level.ALL);
+        }
+        else {
+        	output_logger.addHandler(fh);
+        	output_logger.setLevel(Level.ALL);
+        }
+	}
+	
+	public static void close_logger(String logName) {
+	    if(logName == LOG_NAMES[0]) {
+	    	for(Handler handler : logger.getHandlers()) {
+	            handler.close();
+	            logger.removeHandler(handler);
+	    	}
+	    }
+	    else{
+	    	for(Handler handler : output_logger.getHandlers()) {
+	            handler.close();
+	            output_logger.removeHandler(handler);
+	    	}
+	    }
 	}
 	
 	        
@@ -74,6 +117,16 @@ public class Utils {
 	        res = Integer.parseInt(imm_str);
 	    return res;
 	}
+	
+	
+	public static boolean startsWith(String arg, String[] prefixes) {
+		boolean res = false;
+		for(String prefix : prefixes) {
+			res = res || (arg.startsWith(prefix));
+		}
+		return res;
+	}
+	
 
 	void make_dir(String path) {
 	    File f = new File(path);
@@ -112,7 +165,7 @@ public class Utils {
 			return false;
 	}
 	
-	String get_file_name(String path) {
+	public static String get_file_name(String path) {
 		String file_name = rsplit(path, "/")[1].split(".", 1)[0];
 		return file_name;
 	}
@@ -279,6 +332,11 @@ public class Utils {
 		String inst_name = line.strip().split(" ", 1)[0];
 		return Lib.JMP_INST_WITH_ADDRESS.contains(inst_name);
 	}
+	
+	public static boolean check_jmp_with_jump_instr(String line) {
+		String inst_name = line.strip().split(" ", 1)[0];
+	    return Lib.JMP_INST_WITH_JUMP.contains(inst_name);
+	}
 
 	static int get_mem_sym_length(String sym_name) {
 		int res = 128;
@@ -347,6 +405,52 @@ public class Utils {
 	    return inst_args;
 	}
 	
+	
+	public static String convertImmEndHToHex(String imm) {
+	    String tmp = rsplit(imm, "h")[0].strip();
+	    String res = Integer.toHexString(Integer.valueOf(tmp, 16));
+	    return res;
+	}
+	
+	
+	public static HashMap<String, HashMap<String, Tuple<Integer, String>>> init_ida_struct_info() throws FileNotFoundException {
+		HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable = new HashMap<>();
+	    Path idaInfoPath = Paths.get(PROJECT_DIR.toString(), "ida_struct.info");
+	    String itemName = null;
+	    String offsetStr = null;
+	    String itemType = null;
+	    String structName = null;
+	    int offset;
+	    HashMap<String, Tuple<Integer, String>> structEntry = null;
+	    Tuple<Integer, String> itemInfo = null;
+	    File f = new File(idaInfoPath.toString());
+		Scanner sn = new Scanner(f);
+		while (sn.hasNextLine()) {
+	        String line = sn.nextLine();
+	            line = line.strip();
+	            if(line != null && !line.startsWith("#")) {
+	                String[] lineSplit = line.split(":", 1);
+	                if(lineSplit[1].strip() != null) {
+	                	itemName = lineSplit[0];
+	                	String[] ls = lineSplit[1].strip().split(",", 1);
+	                	offsetStr = ls[0];
+	                	itemType = ls[1];
+	                    offset = Integer.valueOf(offsetStr.strip());
+	                    structEntry = idaStructTable.get(structName);
+	                    itemInfo = new Tuple<>(offset, itemType.strip());
+	                    structEntry.put(itemName, itemInfo);
+	                }
+	                else {
+	                	structName = lineSplit[0];
+	                	structEntry = new HashMap<>();
+	                    idaStructTable.put(structName, structEntry);
+	                }
+	            }
+		}
+	    return idaStructTable;
+	}
+	    		
+	
 	public static Object eval(String expr) {
 		Object result = null;
 		try {
@@ -355,6 +459,19 @@ public class Utils {
 			e.printStackTrace();
 		}
 		return result;	
+	}
+
+	public static ArrayList<String> get_executable_files(String fileDir) {
+		String cmd = "ls -d -1 \"" + fileDir + "/\"* | xargs file | grep -e \"ELF 64-bit LSB shared object\" -e \" PE32 executable \"";
+		String out = execute_command(cmd);
+		String[] outSplit = out.split("\n");
+		ArrayList<String> files = new ArrayList<String>();
+		for(String fileInfo : outSplit) {
+			String filePath = fileInfo.split(":", 1)[0].strip();
+	        if(filePath.strip() != null)
+	            files.add(filePath);
+		}
+		return files;
 	}
 	
 }

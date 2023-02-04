@@ -1,4 +1,4 @@
-package control_flow;
+package controlflow;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -70,7 +70,7 @@ public class ExtHandler {
 	}
 	
 	
-	void set_reg_val(Store store, long rip, String dest, long val, int block_id) {
+	static void set_reg_val(Store store, long rip, String dest, long val, int block_id) {
 	    SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(val, Lib.DEFAULT_REG_LEN), block_id);
 	}
 
@@ -81,13 +81,13 @@ public class ExtHandler {
 	}
 	    
 
-	void insert_termination_symbol(Store store, long rip, int block_id) {
+	static void insert_termination_symbol(Store store, long rip, int block_id) {
 	    BitVecExpr sym_x = Helper.gen_sym_x(Config.MEM_ADDR_SIZE);
 	    SMTHelper.push_val(store, rip, sym_x, block_id);
 	};
 
 
-	void ext__libc_start_main(Store store, long rip, long main_address, int block_id) {
+	static void ext__libc_start_main(Store store, long rip, long main_address, int block_id) {
 	    ArrayList<String> dests = regs_str_to_list("rcx, rdx, rsi, rdi, r8, r9, r10, r11");
 	    set_reg_val(store, rip, "rax", main_address, block_id);
 	    set_regs_sym(store, rip, dests, block_id);
@@ -149,7 +149,7 @@ public class ExtHandler {
 	}
 
 
-	boolean ext_free_mem_call(Store store, long rip, int block_id) {
+	static boolean ext_free_mem_call(Store store, long rip, int block_id) {
 	    boolean succeed = true;
 	    BitVecExpr mem_addr = SymEngine.get_sym(store, rip, "rdi", block_id);
 	    if(store.containsKey(mem_addr))
@@ -161,7 +161,7 @@ public class ExtHandler {
 	}
 
 
-	void ext_func_call(Store store, long rip,int  block_id) {
+	static void ext_func_call(Store store, long rip, int  block_id) {
 	    HashSet<String> dests = Lib.CALLEE_NOT_SAVED_REGS;
 	    set_regs_sym(store, rip, dests, block_id);
 	    clear_flags(store);

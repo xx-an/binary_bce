@@ -18,11 +18,11 @@ import symbolic.SymEngine;
 
 public class SemanticsTBSym {
 
-	long rip = 0;
-	Boolean func_call_point = false;
-	Boolean halt_point = false;
-	HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
-	HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
+	static long rip = 0;
+	static Boolean func_call_point = false;
+	static Boolean halt_point = false;
+	static HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
+	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 	
 	
 	SemanticsTBSym() {
@@ -130,7 +130,7 @@ public class SemanticsTBSym {
 	}
 	
 	
-	ArrayList<String> mov(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> mov(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    if(SMTHelper.check_source_is_sym(store, rip, dest, sym_names)) {
 	        if(Lib.REG_NAMES.contains(src)) {
@@ -325,7 +325,7 @@ public class SemanticsTBSym {
 	}
 	    
 	
-	ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
+	static ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "cmov");
 	    if(res == Helper.sym_false()) { }
@@ -336,7 +336,7 @@ public class SemanticsTBSym {
 	}
 	
 	
-	Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> sym_names) {
+	static Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> sym_names) {
 		ArrayList<String> sym_in_stack = new ArrayList<String>();
 		ArrayList<String> rest = new ArrayList<String>();
 	    for(String sym : sym_names) {
@@ -374,7 +374,7 @@ public class SemanticsTBSym {
 	}
 	
 	
-	boolean jmp_to_external_func(Store store, ArrayList<String> sym_names) {
+	static boolean jmp_to_external_func(Store store, ArrayList<String> sym_names) {
 		Tuple<ArrayList<String>, ArrayList<String>> jmp_op_res = jmp_op(sym_names);
 		ArrayList<String> sym_not_in_stack = jmp_op_res.y;
 	    func_call_point = true;
@@ -400,7 +400,7 @@ public class SemanticsTBSym {
 	}
 	
 	
-	TBRetInfo parse_sym_src(HashMap<Long, String> address_ext_func_map, HashMap<BitVecExpr, String> dll_func_info, HashMap<Long, String> address_inst_map, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
+	public static TBRetInfo parse_sym_src(HashMap<Long, String> address_ext_func_map, HashMap<Long, String> dll_func_info, HashMap<Long, String> address_inst_map, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
 	    rip = curr_rip;
 	    func_call_point = false;
 	    halt_point = false;

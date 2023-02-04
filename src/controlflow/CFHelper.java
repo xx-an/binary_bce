@@ -1,4 +1,4 @@
-package control_flow;
+package controlflow;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +22,7 @@ import block.Node;
 import block.Store;
 import common.Config;
 import common.Lib;
+import common.Lib.MEMORY_RELATED_ERROR_TYPE;
 import common.Triplet;
 import common.Utils;
 import semantics.SMTHelper;
@@ -197,7 +198,7 @@ public class CFHelper {
 	}
 
 
-	Tuple<String, ArrayList<BitVecExpr>> reconstruct_jt_target_addresses(ArrayList<Block> trace_list, int blk_idx, ArrayList<Store> store_list, HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> address_jt_entries_map) {
+	static Tuple<String, ArrayList<BitVecExpr>> reconstruct_jt_target_addresses(ArrayList<Block> trace_list, int blk_idx, ArrayList<Store> store_list, HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> address_jt_entries_map) {
 	    for(int idx = blk_idx + 1; idx < trace_list.size(); idx++) {
 	    	Block blk = trace_list.get(idx);
 	    	long address = blk.address;
@@ -226,7 +227,7 @@ public class CFHelper {
 	}
 
 
-	String get_unified_sym_name(HashMap<BitVecExpr, ArrayList<String>> address_sym_table, long address) {
+	static String get_unified_sym_name(HashMap<BitVecExpr, ArrayList<String>> address_sym_table, long address) {
 	    String res = "";
 	    BitVecExpr bv_address = Helper.gen_bv_num(address, Config.MEM_ADDR_SIZE);
 	    if(address_sym_table.containsKey(bv_address)) {
@@ -237,7 +238,7 @@ public class CFHelper {
 	}
 
 
-	int get_real_length(HashMap<String, Integer> mem_len_map, String arg) {
+	static int get_real_length(HashMap<String, Integer> mem_len_map, String arg) {
 	    int length = Config.MEM_ADDR_SIZE;
 	    if(!Lib.REG_NAMES.contains(arg));
 	        length = mem_len_map.get(arg);
@@ -267,7 +268,7 @@ public class CFHelper {
 	}
 
 
-	BitVecExpr get_inv_arg_val(Store store, long rip, String inv_arg, int block_id, int length) {
+	static BitVecExpr get_inv_arg_val(Store store, long rip, String inv_arg, int block_id, int length) {
 	    BitVecExpr res = null;
 	    if(Lib.REG_NAMES.contains(inv_arg))
 	        res = SymEngine.get_sym(store, rip, inv_arg, block_id, length);
@@ -275,9 +276,80 @@ public class CFHelper {
 	        res = SymEngine.get_sym(store, rip, "[" + inv_arg + "]", block_id, length);
 	    return res;
 	}
+
+    static Store getParentStore(HashMap<Integer, Block> blockSet, Block blk) {
+        Store store = null;
+        if(blockSet.containsKey(blk.parent_id)) {
+        	Block parentBlock = blockSet.get(blk.parent_id);
+            store = parentBlock.store;
+        }
+        else {
+            if(blk.inst.startsWith("cmp")) {
+                store = blk.store;
+            }
+        }
+        return store;
+    }
+    
+    
+    static ArrayList<String> retrieveSymSrcs(Block block) {
+    	HashMap<String, Integer> memLenMap = new HashMap<>();
+        String[] inst_split = block.inst.strip().split(" ", 1);
+        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
+        Store store = block.store;
+        Tuple<ArrayList<String>, Boolean> res = SMTHelper.get_bottom_source(inst_args.get(0), store, store.rip, memLenMap);
+        return res.x;
+    }
+	
+	
+	static HashMap<Integer, ArrayList<String>> retrieveBIDSymInfo(Store p_store, long rip, ArrayList<String> src_names) {
+    	HashMap<Integer, ArrayList<String>> res = new HashMap<Integer, ArrayList<String>>();
+        for(String symName : src_names) {
+            String tmpName = symName;
+            if(Utils.imm_start_pat.matcher(symName).matches()) {
+            	tmpName = "[" + symName + "]";
+            }
+            Integer bID = SymEngine.get_sym_block_id(p_store, rip, tmpName);
+            if(bID != null) {
+            	if(!res.containsKey(bID)) {
+            		ArrayList<String> symInfo = new ArrayList<String>();
+            		symInfo.add(symName);
+            		res.put(bID, symInfo);
+            	}
+            	else {
+            		ArrayList<String> symInfo = res.get(bID);
+            		if(!symInfo.contains(symName))
+            			symInfo.add(symName);
+            	}
+            }
+        }
+        return res;
+    }
+
+
+    // Add new (block_id, sym_name) pair to blockid_sym_list according to current src_names
+    static HashMap<Integer, ArrayList<String>> updateBIDSymInfo(HashMap<Integer, ArrayList<String>> bIDSymMap, Store preStore, long rip, ArrayList<String> srcNames) {
+    	HashMap<Integer, ArrayList<String>> newBIDSymMap = retrieveBIDSymInfo(preStore, rip, srcNames);
+    	for(Integer bID : newBIDSymMap.keySet())
+    	{
+    		ArrayList<String> newSymInfo = newBIDSymMap.get(bID);
+    		if(!bIDSymMap.containsKey(bID)) {
+    			bIDSymMap.put(bID, newSymInfo);
+    		}
+    		else {
+    			ArrayList<String> symInfo = bIDSymMap.get(bID);
+    			for(String symName : newSymInfo) {
+    				if(!symInfo.contains(symName)) {
+    					symInfo.add(symName);
+    				}
+    			}
+    		}
+    	}
+        return bIDSymMap;
+    }
 	    
 
-	void repeated_random_concretization(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, BitVecExpr sym_val, int sym_len, int count, Random random) {
+	static void repeated_random_concretization(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, BitVecExpr sym_val, int sym_len, int count, Random random) {
 	    while(conc_res.get(sym_val).size() < count) {
 	        // rand_val = random.randint(0, 2**sym_len - 1)
 	        int rand_val = random.nextInt(Config.MAX_ARGC_NUM);
@@ -294,7 +366,7 @@ public class CFHelper {
 
 
 
-	void ramdom_concretize_sym(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, int count, Random random) {
+	static void ramdom_concretize_sym(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, int count, Random random) {
 	    for(int idx = 0; idx < sym_vals.size(); idx++) {
 	    	BitVecExpr sym_val = sym_vals.get(idx);
 	        int sym_len = sym_lens.get(idx);
@@ -314,7 +386,7 @@ public class CFHelper {
 
 	            
 
-	HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretize_sym_arg(ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, Constraint constraint) {
+	static HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretize_sym_arg(ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, Constraint constraint) {
 		HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res = new HashMap<BitVecExpr, ArrayList<BitVecExpr>>();
 	    Random random = new Random();
 	    ArrayList<String> sym_val_strs = new ArrayList<String>();
@@ -349,7 +421,7 @@ public class CFHelper {
 	}
 
 
-	void update_sym_addr_valueset_map(HashMap<BitVecExpr, ArrayList<BitVecExpr>> sym_addr_valueset_map, HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretize_sym_args) {
+	static void update_sym_addr_valueset_map(HashMap<BitVecExpr, ArrayList<BitVecExpr>> sym_addr_valueset_map, HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretize_sym_args) {
 	    for(BitVecExpr sym_val : concretize_sym_args.keySet()) {
 	        if(!sym_addr_valueset_map.containsKey(sym_val)) {
 	        	sym_addr_valueset_map.put(sym_val, concretize_sym_args.get(sym_val));
@@ -359,6 +431,53 @@ public class CFHelper {
 	        // else:
 	        //     sym_addr_valueset_map[sym_val].add(conc_val)
 	    }
+	}
+	
+	static ArrayList<String> detect_reg_in_memaddr_rep(String arg) {
+		String reg = "(\\W+)";
+		String[] argSplit = arg.split(reg);
+		ArrayList<String> res = new ArrayList<String>();
+	    for(String asi : argSplit) {
+	        String as = asi.strip();
+	        if(Lib.REG_NAMES.contains(as))
+	            res.add(SMTHelper.get_root_reg(as));
+	    }
+	    return res;
+	}
+	
+	
+	static ArrayList<String> retrieve_source_for_memaddr(String inst, boolean common) {
+		ArrayList<String> symNames = new ArrayList<String>();
+	    if(common) {
+	        String[] instSplit = inst.strip().split(" ", 1);
+	        ArrayList<String> instArgs = Utils.parse_inst_args(instSplit);
+	        for(String arg : instArgs) {
+	            if(arg.endsWith("]")) {
+	                String ar = Utils.extract_content(arg, "[");
+	                symNames = detect_reg_in_memaddr_rep(ar);
+	                break;
+	            }
+	        }
+	    }
+	    else
+	    	symNames.add("rdi");
+	    return symNames;
+	}
+	
+	
+	static String str_of_error_type(MEMORY_RELATED_ERROR_TYPE err) {
+	    String res = "";
+	    if(err == MEMORY_RELATED_ERROR_TYPE.NULL_POINTER_DEREFERENCE)
+	        res = "Null pointer dereference";
+	    else if(err == MEMORY_RELATED_ERROR_TYPE.USE_AFTER_FREE)
+	        res = "Use after free";
+	    else if(err == MEMORY_RELATED_ERROR_TYPE.FREE_AFTER_FREE)
+	        res = "Use after free";
+	    else if(err == MEMORY_RELATED_ERROR_TYPE.BUFFER_OVERFLOW)
+	        res = "Buffer overflow";
+	    else if(err == MEMORY_RELATED_ERROR_TYPE.UNINITIALIZED_CONTENT)
+	        res = "Uninitialized content";
+	    return res;
 	}
 
 
@@ -443,9 +562,17 @@ public class CFHelper {
 	    }
 	    return new Tuple<String, Long>(func_name, new_address);
 	}
+	
+	static Block getParentBlockInfo(HashMap<Integer, Block> blockMap, Block blk) {
+		Block pBlock = null;
+		if(blockMap.containsKey(blk.parent_id)) {
+			pBlock = blockMap.get(blk.parent_id);
+		}
+	    return pBlock;
+	}
 
 
-	boolean check_path_reachability(Constraint constraint) {
+	static boolean check_path_reachability(Constraint constraint) {
 		boolean res = true;
 		ArrayList<BoolExpr> predicates = constraint.get_asserts();
 	    Model m = Helper.check_pred_satisfiable(predicates);
@@ -488,11 +615,11 @@ public class CFHelper {
 	}
 
 
-	static String get_function_name_from_addr_sym_table(HashMap<BitVecExpr, ArrayList<String>> address_sym_table, long address) {
+	static String get_function_name_from_addr_sym_table(HashMap<BitVecExpr, ArrayList<String>> addressSymTable, long address) {
 		String res = "";
 		BitVecExpr bv_addr = Helper.gen_bv_num(address, Config.MEM_ADDR_SIZE);
-	    if(address_sym_table.containsKey(bv_addr)) {
-	    	ArrayList<String> val = address_sym_table.get(bv_addr);
+	    if(addressSymTable.containsKey(bv_addr)) {
+	    	ArrayList<String> val = addressSymTable.get(bv_addr);
 	        if(val.size() > 1)
 	            res = val.get(1);
 	        else
@@ -515,16 +642,54 @@ public class CFHelper {
 	    BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, "rsp", block_id);
 	    SymEngine.set_mem_sym(store, sym_rsp, sym_src, block_id);
 	}
+	
+	static Constraint handlePreConstraint(Store store, long rip, Constraint constraint, int block_id, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<String, ArrayList<String>> extLibAssumptions) {
+		Constraint newConstraint = constraint;
+	    if(gPreConstraint != null) {
+	        BoolExpr predicates = null;
+	        for(String extName : gPreConstraint.keySet()) {
+	        	ArrayList<String> preConstraint = gPreConstraint.get(extName);
+	            for(String pConstraint : preConstraint) {
+	                String constr = Utils.remove_multiple_spaces(pConstraint);
+	                constr = constr.toLowerCase();
+	                if(constr.contains("unchanged")) {
+	                    String statepart = constr.split("=", 1)[0].strip();
+	                    if(extLibAssumptions.containsKey(extName)) {
+	                    	ArrayList<String> assumptions = extLibAssumptions.get(extName);
+	                    	assumptions.add(statepart);
+	                    }
+	                    else {
+	                    	ArrayList<String> assumptions = new ArrayList<String>();
+	                    	assumptions.add(statepart);
+	                    	extLibAssumptions.put(extName, assumptions);
+	                    }
+	                }
+	                else if(extName == "starting_point") {
+	                    BoolExpr pred = parse_predicates(store, rip, block_id, extName, constr);
+	                    if(pred != null) {
+	                        if(predicates != null)
+	                            predicates = Helper.bv_and(predicates, pred);
+	                        else
+	                            predicates = pred;
+	                    }
+	                }
+	            }
+	        }
+	        if(predicates != null)
+	        	newConstraint = new Constraint(constraint, predicates);
+	    }
+	    return newConstraint;
+	}
 	    
 
-	BitVecExpr get_sym_val(Store store, long rip, String src, int block_id) {
+	static BitVecExpr get_sym_val(Store store, long rip, String src, int block_id) {
 	    BitVecExpr res = null;
 	    res = SymEngine.get_sym(store, rip, src.strip(), block_id);
 	    return res;
 	}
 
 
-	String preprocess_constraint(Store store, long rip, int block_id, String ext_name, String constraint) {
+	static String preprocess_constraint(Store store, long rip, int block_id, String ext_name, String constraint) {
 	    String res = null;
 	    if(constraint.contains("fresh heap pointer")) {
 	        // op = re.search(r"[<!=>]+", constraint).group(0)
@@ -540,7 +705,7 @@ public class CFHelper {
 	}
 
 
-	BoolExpr parse_basic_pred(Store store, long rip, int block_id, String logic_op, String left, String right) {
+	static BoolExpr parse_basic_pred(Store store, long rip, int block_id, String logic_op, String left, String right) {
 	    BitVecExpr lhs = get_sym_val(store, rip, left, block_id);
 	    BitVecExpr rhs = get_sym_val(store, rip, right, block_id);
 	    if(lhs == null || rhs == null) return null;
@@ -549,7 +714,7 @@ public class CFHelper {
 	}
 
 
-	BoolExpr parse_single_predicate(Store store, long rip, int block_id, String ext_name, String constr) {
+	static BoolExpr parse_single_predicate(Store store, long rip, int block_id, String ext_name, String constr) {
 		BoolExpr predicates = null;
 	    String constraint = preprocess_constraint(store, rip, block_id, ext_name, constr);
 	    if(constraint != null) {
@@ -590,7 +755,7 @@ public class CFHelper {
 	}
 
 
-	BoolExpr parse_predicates(Store store, long rip, int block_id, String ext_name, String constraint) {
+	static BoolExpr parse_predicates(Store store, long rip, int block_id, String ext_name, String constraint) {
 	    String[] constraint_list = constraint.split("or");
 	    BoolExpr predicates = null;
 	    for(String c : constraint_list) {
@@ -606,11 +771,11 @@ public class CFHelper {
 	}
 
 
-	Constraint insert_new_constraints(Store store, long rip, int block_id, String ext_name, String[] pre_constraint, Constraint constraint) {
+	static Constraint insert_new_constraints(Store store, long rip, int block_id, String ext_name, ArrayList<String> preConstraint, Constraint constraint) {
 	    Constraint new_constraint = constraint;
-	    if(pre_constraint.length > 0) {
+	    if(preConstraint.size() > 0) {
 	        BoolExpr predicates = null;
-	        for(String p_constraint : pre_constraint) {
+	        for(String p_constraint : preConstraint) {
 	            String p_constr = Utils.remove_multiple_spaces(p_constraint);
 	            p_constr = p_constraint.toLowerCase();
 	            BoolExpr pred = parse_predicates(store, rip, block_id, ext_name, p_constraint);

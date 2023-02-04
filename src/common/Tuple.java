@@ -8,5 +8,12 @@ public class Tuple<X, Y> {
         this.x = x; 
         this.y = y; 
     }
-
+	
+	public X getX() {
+		return this.x;
+	}
+	
+	public Y getY() {
+		return this.y;
+	}
 }

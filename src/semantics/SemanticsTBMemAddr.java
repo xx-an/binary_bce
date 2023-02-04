@@ -18,14 +18,14 @@ import symbolic.SymEngine;
 
 public class SemanticsTBMemAddr {
 
-	long rip = 0;
-	boolean func_call_point = false;
-	boolean halt_point = false;
-	boolean concrete_val = false;
-	HashMap<BitVecExpr, ArrayList<String>> address_sym_table = null;
-	HashMap<Long, String> address_inst_map = null;
-	HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
-	HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
+	static long rip = 0;
+	static boolean func_call_point = false;
+	static boolean halt_point = false;
+	static boolean concrete_val = false;
+	static HashMap<BitVecExpr, ArrayList<String>> address_sym_table = null;
+	static HashMap<Long, String> address_inst_map = null;
+	static HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
+	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 	
 	
 	public SemanticsTBMemAddr() {
@@ -63,7 +63,7 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 
-	Boolean addr_points_to_external_lib(BitVecExpr addr) {
+	static Boolean addr_points_to_external_lib(BitVecExpr addr) {
 	    Boolean res = false;
 	    if(address_sym_table.containsKey(addr)) {
 	    	if(Helper.is_bit_vec_num(addr)) {
@@ -130,7 +130,7 @@ public class SemanticsTBMemAddr {
 		return mov(store, sym_names, dest, src);
 	}
 
-	ArrayList<String> mov(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> mov(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    if(!Utils.imm_start_pat.matcher(src).matches()) {
 	        if(Lib.REG_NAMES.contains(src)) {
@@ -321,7 +321,7 @@ public class SemanticsTBMemAddr {
 	}
 	    
 
-	ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
+	static ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "cmov");
 	    if(res == Helper.sym_false()) { }
@@ -332,7 +332,7 @@ public class SemanticsTBMemAddr {
 	}
 
 
-	Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> sym_names) {
+	static Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> sym_names) {
 		ArrayList<String> sym_in_stack = new ArrayList<String>();
 		ArrayList<String> rest = new ArrayList<String>();
 	    for(String sym : sym_names) {
@@ -370,7 +370,7 @@ public class SemanticsTBMemAddr {
 	}
 
 
-	boolean jmp_to_external_func(Store store, ArrayList<String> sym_names) {
+	static boolean jmp_to_external_func(Store store, ArrayList<String> sym_names) {
 		Tuple<ArrayList<String>, ArrayList<String>> jmp_op_res = jmp_op(sym_names);
 		ArrayList<String> sym_not_in_stack = jmp_op_res.y;
 	    func_call_point = true;
@@ -395,7 +395,7 @@ public class SemanticsTBMemAddr {
 	}
 	
 	
-	TBRetInfo parse_sym_src(HashMap<Long, String> address_ext_func_map, HashMap<Long, String> address_inst_tbl, HashMap<BitVecExpr, ArrayList<String>> address_sym_tbl, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
+	public static TBRetInfo parse_sym_src(HashMap<Long, String> address_ext_func_map, HashMap<Long, String> address_inst_tbl, HashMap<BitVecExpr, ArrayList<String>> address_sym_tbl, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
 	    rip = curr_rip;
 	    func_call_point = false;
 	    halt_point = false;

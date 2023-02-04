@@ -1,5 +1,6 @@
 package common;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
@@ -9,9 +10,9 @@ public class Lib {
 	public static final HashMap<String, String> FLAG_CONDITIONS;
 	public static final HashMap<String, Triplet<String, Integer, Integer>> REG_INFO_DICT;
 	public static final HashMap<Integer, Triplet<String, String, String>> AUX_REG_INFO;
-	public static final String TERMINATION_FUNCTIONS[];
+	public static final ArrayList<String> TERMINATION_FUNCTIONS;
 	
-	public static final String REG64_NAME_LIST[] = new String[] {
+	public static final String[] REG64_NAME_LIST = new String[] {
 			"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rsp", "rbp"};
 	
 	public static final HashSet<String> REG64_NAMES;
@@ -21,14 +22,19 @@ public class Lib {
 	public static final HashSet<String> JMP_INST;
 	public static final HashSet<String> JMP_INST_WITHOUT_CALL;
 	public static final HashSet<String> JMP_INST_WITH_ADDRESS;
+	public static final HashSet<String> JMP_INST_WITH_JUMP;
 
 	public static final HashSet<String> CALLEE_SAVED_REGS = new HashSet<>(Arrays.asList("rbx", "rbp", "r12", "r13", "r14", "r15"));
 	
 	public static final HashSet<String> CALLEE_NOT_SAVED_REGS = new HashSet<>(Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"));
 	
-	public static final String RFlags[] = new String[] {"CF", "ZF", "OF", "SF"};
+	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
 	
+	public static final String[] CODE_SEGMENTS = new String[] {".plt.got", ".plt", ".text"};
+	public static final String[] DATA_SEGMENTS = new String[] {".rodata", ".idata", ".data", ".bss"};
+			
+			
 	public static final HashSet<String> GENERAL_INSTRUCTIONS;
 	public static final HashSet<String> INSTS_AFF_FLAGS_WO_CMP_TEST;
 	
@@ -74,7 +80,8 @@ public class Lib {
 	    NULL_POINTER_DEREFERENCE,
 	    USE_AFTER_FREE,
 	    FREE_AFTER_FREE,
-	    BUFFER_OVERFLOW
+	    BUFFER_OVERFLOW,
+	    UNINITIALIZED_CONTENT
 	}
 
 
@@ -218,6 +225,9 @@ public class Lib {
 		JMP_INST_WITH_ADDRESS.add("jmp");
 		JMP_INST_WITH_ADDRESS.add("call");
 		
+		JMP_INST_WITH_JUMP = new HashSet<String>(CONDITIONAL_JMP_INST);
+		JMP_INST_WITH_JUMP.add("jmp");
+		
 		CONDITIONAL_MOV_INST = new HashSet<String>();
 		for(String x : f_conds) {
 			CONDITIONAL_MOV_INST.add("cmov" + x);
@@ -228,7 +238,7 @@ public class Lib {
 			CONDITIONAL_SET_INST.add("set" + x);
 		}
 		
-		TERMINATION_FUNCTIONS = new String[] {
+		String[] t_functions = {
 			    "__stack_chk_fail",
 			    "__overflow",
 			    "err",
@@ -246,6 +256,8 @@ public class Lib {
 			    "obstack_alloc_failed_handler",
 			    "pthread_exit"
 			};
+		TERMINATION_FUNCTIONS = (ArrayList<String>) Arrays.asList(t_functions);
+		
 		
 		String[] general_insts_arr = new String[] {
 				"mov", "lea", "push", "pop", "add", "sub", "xor",

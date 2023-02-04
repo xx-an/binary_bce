@@ -16,7 +16,13 @@ import block.Store;
 public class SymHelper {
 	
 	public static final BitVecExpr STDOUT_ADDR = Helper.gen_spec_sym("stdout", Config.MEM_ADDR_SIZE);
+	public static int cnt;
+	public static int memCnt;
 			
+	public static void cnt_init(){
+	    cnt = 0;
+	    memCnt = 0;
+	}
 	
 	public static Long top_stack_addr(Store store) {
 		Long res = null;

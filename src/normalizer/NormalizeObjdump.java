@@ -12,7 +12,7 @@ import common.Triplet;
 import common.Tuple;
 import common.Utils;
 
-public class NormalizeObjdump implements Normalize {
+public class NormalizeObjdump implements Normalizer {
 	
 	String disasm_path;
 	HashMap<Long, String> address_inst_map = new HashMap<Long, String>();
@@ -29,7 +29,7 @@ public class NormalizeObjdump implements Normalize {
 	Pattern address_inst_pattern = Pattern.compile("^[0-9a-f]+:[0-9a-f\t ]+");
 	
 
-	public NormalizeObjdump(String disasmPath, String exec_path) throws FileNotFoundException {
+	public NormalizeObjdump(String disasmPath) throws FileNotFoundException {
 		disasm_path = disasmPath;
 		func_call_order.add("_start");
 		read_asm_info();
@@ -73,7 +73,7 @@ public class NormalizeObjdump implements Normalize {
                     		inst = inst.split("addr32", 1)[1].strip();
                     	}
                         inst = _format_inst(address, inst);
-                        NormalizeHelper.construct_func_call_map(label, inst, func_addr_call_map);
+                        NormalizerHelper.construct_func_call_map(label, inst, func_addr_call_map);
                         address_inst_map.put(address, inst);
                         valid_address_no += 1;
                     }
@@ -83,8 +83,8 @@ public class NormalizeObjdump implements Normalize {
 		ArrayList<Long> inst_addresses = new ArrayList<Long>(address_inst_map.keySet());
 	    inst_addresses.sort(null);
         int inst_num = inst_addresses.size();
-        NormalizeHelper.replace_addr_w_label(func_addr_call_map, address_func_map, func_call_map);
-        NormalizeHelper.create_func_call_order(func_call_map, func_call_order);
+        NormalizerHelper.replace_addr_w_label(func_addr_call_map, address_func_map, func_call_map);
+        NormalizerHelper.create_func_call_order(func_call_map, func_call_order);
         for(int idx = 0; idx < inst_addresses.size(); idx++) {
         	long address = inst_addresses.get(idx);
         	int n_idx = idx + 1; 
@@ -140,8 +140,8 @@ public class NormalizeObjdump implements Normalize {
     
     String _format_arg(long address, String inst_name, String arg) {
         String res = arg.toLowerCase();
-        res = NormalizeHelper.convert_to_hex_rep(res);
-        res = NormalizeHelper.norm_objdump_arg(inst_name, res);
+        res = NormalizerHelper.convert_to_hex_rep(res);
+        res = NormalizerHelper.norm_objdump_arg(inst_name, res);
         if(Utils.check_jmp_with_address(inst_name)) {
             if(Utils.imm_pat_wo_prefix.matcher(res).matches())
                 res = "0x" + res;

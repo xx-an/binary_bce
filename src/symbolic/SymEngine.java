@@ -120,10 +120,10 @@ public class SymEngine {
 	    }
 	    else if(dest.contains("s:")) {       // fs:rax
 	        int dest_len = Utils.get_sym_length(dest, Lib.DEFAULT_REG_LEN);
-	        String[] dest_split = dest.split(":");
-	        String seg_reg = Utils.rsplit(dest_split[0], " ")[1].strip();
+	        String[] destSplit = dest.split(":");
+	        String seg_reg = Utils.rsplit(destSplit[0], " ")[1].strip();
 	        // seg_reg_val = SymRegister.get_segment_reg_val(store, seg_reg)
-	        String dest_rest = dest_split[1].strip();
+	        String dest_rest = destSplit[1].strip();
 	        BitVecExpr val = null;
 	        if(dest_rest.endsWith("]"))
 	            val = SymMemory.get_effective_address(store, rip, dest_rest, Config.MEM_ADDR_SIZE);
@@ -140,12 +140,12 @@ public class SymEngine {
 	        SymMemory.set_mem_sym(store, address, sym, block_id, dest_len);
 	    }
 	    else if(dest.contains(":")) {     // rax:rdx
-	        String[] dest_split = dest.split(":");
-	        int reg_len = Utils.get_sym_length(dest_split[0], Lib.DEFAULT_REG_LEN);
+	        String[] destSplit = dest.split(":");
+	        int reg_len = Utils.get_sym_length(destSplit[0], Lib.DEFAULT_REG_LEN);
 	        BitVecExpr left = Helper.extract(reg_len + reg_len - 1, reg_len, sym);
 	        BitVecExpr right = Helper.extract(reg_len - 1, 0, sym);
-	        SymRegister.set_register_sym(store, dest_split[0], left, block_id);
-	        SymRegister.set_register_sym(store, dest_split[1], right, block_id);
+	        SymRegister.set_register_sym(store, destSplit[0], left, block_id);
+	        SymRegister.set_register_sym(store, destSplit[1], right, block_id);
 	    }
 	}
 	    
