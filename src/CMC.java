@@ -204,7 +204,7 @@ public class CMC {
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name");
 	    String logDir = line.getOptionValue("log_dir", "benchmark/coreutils-idapro");
-	    String execDir = line.getOptionValue("executable_dir", "benchmark/coreutils-build/src");
+	    String execDir = line.getOptionValue("executable_dir", "benchmark/coreutils-bin");
 	    boolean batch = (line.hasOption("batch")) ? true : false;
 	    boolean verbose = (line.hasOption("verbose")) ? true : false;
 	    if(batch) {
