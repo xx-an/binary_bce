@@ -31,8 +31,8 @@ public class Lib {
 	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
 	
-	public static final String[] CODE_SEGMENTS = new String[] {".plt.got", ".plt", ".text"};
-	public static final String[] DATA_SEGMENTS = new String[] {".rodata", ".idata", ".data", ".bss"};
+	public static String[] CODE_SEGMENTS = new String[] {".plt.got", ".plt", ".text"};
+	public static String[] DATA_SEGMENTS = new String[] {".rodata", ".idata", ".data", ".bss"};
 			
 			
 	public static final HashSet<String> GENERAL_INSTRUCTIONS;
@@ -256,7 +256,7 @@ public class Lib {
 			    "obstack_alloc_failed_handler",
 			    "pthread_exit"
 			};
-		TERMINATION_FUNCTIONS = (ArrayList<String>) Arrays.asList(t_functions);
+		TERMINATION_FUNCTIONS = new ArrayList<String>(Arrays.asList(t_functions));
 		
 		
 		String[] general_insts_arr = new String[] {

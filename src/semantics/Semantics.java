@@ -243,9 +243,9 @@ public class Semantics {
 	        SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);
 	    }
 	    if(inst.startsWith("retn ")) {
-	        String arg = inst.strip().split(" ", 1)[1].strip();
+	        String arg = inst.strip().split(" ", 2)[1].strip();
 	        if(Utils.imm_start_pat.matcher(arg).matches()) {
-	        	int imm = Integer.valueOf(arg, 16);
+	        	int imm = Integer.decode(arg);
 	        	SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(imm), block_id);
 	        }
 	        else {
@@ -398,7 +398,7 @@ public class Semantics {
 
 	public static void cmov(Store store, long curr_rip, String inst, boolean pred, int curr_block_id) {
 	    block_id = curr_block_id;
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	    String dest = inst_args.get(0);
 	    if(pred)
@@ -595,9 +595,9 @@ public class Semantics {
 	    block_id = curr_block_id;
 	    String inst = curr_inst;
 	    if(inst.startsWith("lock ")) {
-	        inst = inst.split(" ", 1)[1];
+	        inst = inst.split(" ", 2)[1];
 	    }
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
 	    	Consumer<Tuple<Store, ArrayList<String>>> inst_op = INSTRUCTION_SEMANTICS_MAP.get(inst_name);

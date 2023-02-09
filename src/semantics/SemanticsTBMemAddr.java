@@ -403,9 +403,9 @@ public class SemanticsTBMemAddr {
 	    address_inst_map = address_inst_tbl;
 	    address_sym_table = address_sym_tbl;
 	    if(inst.startsWith("lock ")) {
-	        inst = inst.split(" ", 1)[1];
+	        inst = inst.split(" ", 2)[1];
 	    }
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    ArrayList<String> src_names = sym_names;
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
@@ -427,7 +427,7 @@ public class SemanticsTBMemAddr {
 	        concrete_val = ret_info.concrete_val;
 	    }
 	    else if(Utils.check_jmp_with_address(inst)) {
-	        String jump_address_str = inst.split(" ", 1)[1].strip();
+	        String jump_address_str = inst.split(" ", 2)[1].strip();
 	        BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
 	        Long new_address = Helper.long_of_sym(n_address);
 	        if(address_ext_func_map.containsKey(new_address)) {

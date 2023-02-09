@@ -289,8 +289,8 @@ public class SemanticsTB {
 	    still_tb = true;
 	    String inst = curr_inst;
 	    if(inst.startsWith("lock "))
-	        inst = inst.split(" ", 1)[1];
-	    String[] inst_split = inst.strip().split(" ", 1);
+	        inst = inst.split(" ", 2)[1];
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    ArrayList<String> src_names = sym_names;
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {

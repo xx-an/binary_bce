@@ -33,7 +33,7 @@ public class SymMemory {
 	    else if(Utils.imm_pat.matcher(str_val).matches())
 	    	res = Helper.gen_bv_num(Utils.imm_str_to_int(str_val), length);
 	    else if(str_val.contains(":")) {
-	    	String[] s_split = str_val.split(":", 1);
+	    	String[] s_split = str_val.split(":", 2);
 	    	BitVecExpr new_addr = get_effective_address(store, store.rip, s_split[1].strip(), length);
 	    	res = store.get_seg_val(s_split[0], new_addr);
 	    }
@@ -117,7 +117,7 @@ public class SymMemory {
 	        	lsi = sym_pat.matcher(line).group();
 	            op_stack.add(lsi);
 	        }
-	        line = line.split(lsi, 1)[1].strip();
+	        line = line.split(lsi, 2)[1].strip();
 	    }
 	    BitVecExpr res = eval_simple_formula(stack, op_stack);
 	    return res;
@@ -142,7 +142,7 @@ public class SymMemory {
 	        	as = sym_pat.matcher(arg).group(0).strip();
 	            op_stack.add(as);
 	        }
-	        arg = arg.split(as, 1)[1].strip();
+	        arg = arg.split(as, 2)[1].strip();
 	    }
 	    BitVecExpr res = eval_simple_formula(stack, op_stack);
 	    return res;
@@ -171,7 +171,7 @@ public class SymMemory {
 	        }
 	    }
 	    else if(src.contains("s:")) {
-	        String[] src_split = src.split(":", 1);
+	        String[] src_split = src.split(":", 2);
 	        BitVecExpr seg_addr = get_sym_val(src_split[0].strip(), store, length);
 	        BitVecExpr new_addr = get_effective_address(store, rip, src_split[1].strip(), length);
 	        res = Helper.bv_add(seg_addr, new_addr);

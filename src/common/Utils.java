@@ -2,16 +2,12 @@ package common;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
 import java.util.logging.Handler;
@@ -28,16 +24,13 @@ import javax.script.ScriptException;
 
 public class Utils {
 	
-	public static final ArrayList<String> UNVISITED_SECTION_LABELS = (ArrayList<String>) List.of("_init", "_fini", "__Libc_csu_init", "__Libc_csu_fini", "frame_dummy", "register_tm_clones", "deregister_tm_clones", "__do_global_dtors_aux");
+	public static final List<String> UNVISITED_SECTION_LABELS = List.of("_init", "_fini", "__Libc_csu_init", "__Libc_csu_fini", "frame_dummy", "register_tm_clones", "deregister_tm_clones", "__do_global_dtors_aux");
 	
-	public static final Path PROJECT_DIR = Paths.get(System.getProperty(".")).getParent().getParent().getParent().toAbsolutePath();
-
-//	 = new File(".").getParentFile().getParentFile().getParentFile().getAbsolutePath();
+	public static final Path PROJECT_DIR = Paths.get("").toAbsolutePath().getParent();
 	
 	public static final String LOG_NAMES[] = new String[]{"log", "output"};
 	
-	public static final HashMap<String, String> delimits = 
-			(HashMap<String, String>) Map.of("(",")", "[", "]", "{", "}");
+	public static final Map<String, String> delimits = Map.of("(",")", "[", "]", "{", "}");
 	
 	public static final Pattern float_pat = Pattern.compile("^[0-9.]+$|^-[0-9.]+$");
 	public static final Pattern imm_pat = Pattern.compile("^0x[0-9a-fA-F]+$|^[0-9]+$|^-[0-9]+$|^-0x[0-9a-fA-F]+$");
@@ -63,7 +56,7 @@ public class Utils {
 	public static int MAX_ARGC_NUM = 10;
 	public static int REBUILD_BRANCHES_NUM = 2;
 
-	public static final HashMap<String, String> OPPOSITE_FLAG_MAP = (HashMap<String, String>) Map.of("b", "ae", "be", "a", "l", "ge", "le", "g");
+	public static final Map<String, String> OPPOSITE_FLAG_MAP = Map.of("b", "ae", "be", "a", "l", "ge", "le", "g");
 
 	public static Function<String, String> id_op;
 	
@@ -152,7 +145,7 @@ public class Utils {
 	
 	public static String extract_content(String expr, String left_delimit) {
 	    String right_delimit = delimits.get(left_delimit);
-	    String res = expr.split(left_delimit, 1)[1];
+	    String res = expr.split(left_delimit, 2)[1];
 	    res = rsplit(res, right_delimit)[0].strip();
 	    return res;
 	}
@@ -166,7 +159,7 @@ public class Utils {
 	}
 	
 	public static String get_file_name(String path) {
-		String file_name = rsplit(path, "/")[1].split(".", 1)[0];
+		String file_name = rsplit(path, "/")[1].split(".", 2)[0];
 		return file_name;
 	}
 
@@ -236,7 +229,7 @@ public class Utils {
 			String out = "";
 			String tmp = "";
 			while((tmp = stdInput.readLine()) != null) {
-				out += tmp;
+				out += tmp + "\n";
 			}
 			return out.trim();
 		} catch (IOException e) {
@@ -267,7 +260,7 @@ public class Utils {
 	    for(Byte bs : bytes) {
 	    	sb.append(String.format("%02x", bs));
 	    }
-	    return Integer.valueOf(sb.toString(), 16);
+	    return Integer.decode(sb.toString());
 	}
 
 
@@ -278,7 +271,7 @@ public class Utils {
 	    
 
 	public static String remove_multiple_spaces(String line) {
-		return String.join(" ", line.trim().replaceAll(" +", " "));
+		return String.join(" ", line.trim().split("\\s+"));
 	}
 
 
@@ -313,28 +306,28 @@ public class Utils {
 	}
 	
 	public static boolean check_branch_inst(String inst) {
-		String inst_name = inst.strip().split(" ", 1)[0];
+		String inst_name = inst.strip().split(" ", 2)[0];
 		return Lib.JMP_INST.contains(inst_name) || inst.endsWith(" ret");
 	}
 	    
 	public static boolean check_branch_inst_wo_call(String inst) {
-		String inst_name = inst.strip().split(" ", 1)[0];
+		String inst_name = inst.strip().split(" ", 2)[0];
 		return Lib.JMP_INST_WITHOUT_CALL.contains(inst_name) || inst.endsWith(" ret");
 	}
 	    
 	public static boolean check_not_single_branch_inst(String inst) {
-		String inst_name = inst.strip().split(" ", 1)[0];
+		String inst_name = inst.strip().split(" ", 2)[0];
 		return Lib.CONDITIONAL_JMP_INST.contains(inst_name);
 	}
 	    
 
 	public static boolean check_jmp_with_address(String line) {
-		String inst_name = line.strip().split(" ", 1)[0];
+		String inst_name = line.strip().split(" ", 2)[0];
 		return Lib.JMP_INST_WITH_ADDRESS.contains(inst_name);
 	}
 	
 	public static boolean check_jmp_with_jump_instr(String line) {
-		String inst_name = line.strip().split(" ", 1)[0];
+		String inst_name = line.strip().split(" ", 2)[0];
 	    return Lib.JMP_INST_WITH_JUMP.contains(inst_name);
 	}
 
@@ -406,50 +399,6 @@ public class Utils {
 	}
 	
 	
-	public static String convertImmEndHToHex(String imm) {
-	    String tmp = rsplit(imm, "h")[0].strip();
-	    String res = Integer.toHexString(Integer.valueOf(tmp, 16));
-	    return res;
-	}
-	
-	
-	public static HashMap<String, HashMap<String, Tuple<Integer, String>>> init_ida_struct_info() throws FileNotFoundException {
-		HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable = new HashMap<>();
-	    Path idaInfoPath = Paths.get(PROJECT_DIR.toString(), "ida_struct.info");
-	    String itemName = null;
-	    String offsetStr = null;
-	    String itemType = null;
-	    String structName = null;
-	    int offset;
-	    HashMap<String, Tuple<Integer, String>> structEntry = null;
-	    Tuple<Integer, String> itemInfo = null;
-	    File f = new File(idaInfoPath.toString());
-		Scanner sn = new Scanner(f);
-		while (sn.hasNextLine()) {
-	        String line = sn.nextLine();
-	            line = line.strip();
-	            if(line != null && !line.startsWith("#")) {
-	                String[] lineSplit = line.split(":", 1);
-	                if(lineSplit[1].strip() != null) {
-	                	itemName = lineSplit[0];
-	                	String[] ls = lineSplit[1].strip().split(",", 1);
-	                	offsetStr = ls[0];
-	                	itemType = ls[1];
-	                    offset = Integer.valueOf(offsetStr.strip());
-	                    structEntry = idaStructTable.get(structName);
-	                    itemInfo = new Tuple<>(offset, itemType.strip());
-	                    structEntry.put(itemName, itemInfo);
-	                }
-	                else {
-	                	structName = lineSplit[0];
-	                	structEntry = new HashMap<>();
-	                    idaStructTable.put(structName, structEntry);
-	                }
-	            }
-		}
-	    return idaStructTable;
-	}
-	    		
 	
 	public static Object eval(String expr) {
 		Object result = null;
@@ -467,7 +416,7 @@ public class Utils {
 		String[] outSplit = out.split("\n");
 		ArrayList<String> files = new ArrayList<String>();
 		for(String fileInfo : outSplit) {
-			String filePath = fileInfo.split(":", 1)[0].strip();
+			String filePath = fileInfo.split(":", 2)[0].strip();
 	        if(filePath.strip() != null)
 	            files.add(filePath);
 		}

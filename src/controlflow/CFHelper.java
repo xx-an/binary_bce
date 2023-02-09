@@ -36,7 +36,7 @@ public class CFHelper {
 
 	static Integer gen_cjmp_idx_upperbound(String inst_name, int boundary) {
 	    Integer res = null;
-	    String jmp_condition = inst_name.split("j", 1)[1].strip();
+	    String jmp_condition = inst_name.split("j", 2)[1].strip();
 	    if(jmp_condition.startsWith("n")) {
 	        String rest = jmp_condition.split("n")[1];
 	        if(Utils.OPPOSITE_FLAG_MAP.containsKey(rest))
@@ -59,7 +59,7 @@ public class CFHelper {
 	    	Block blk = trace_list.get(idx);
 	        String inst = blk.inst;
 	        if(Utils.check_not_single_branch_inst(inst)) {
-	            res = gen_cjmp_idx_upperbound(inst.split(" ", 1)[0], boundary);
+	            res = gen_cjmp_idx_upperbound(inst.split(" ", 2)[0], boundary);
 	            break;
 	        }
 	    }
@@ -108,7 +108,7 @@ public class CFHelper {
 	        Block blk = trace_list.get(n_idx);
 	        String inst = blk.inst;
 	        if(inst.startsWith("mov")) {
-	            res = check_jt_assign_inst(inst.split(" ", 1)[1].strip());
+	            res = check_jt_assign_inst(inst.split(" ", 2)[1].strip());
 	            if(res) break;
 	        }
 	    }
@@ -120,7 +120,7 @@ public class CFHelper {
 	static Triplet<ArrayList<BitVecExpr>, String, Integer> get_distinct_jt_entries(Block blk, BitVecExpr src_sym, int jt_idx_upperbound, HashMap<Integer, Block> block_set) {
 		ArrayList<BitVecExpr> res = new ArrayList<BitVecExpr>();
 	    String inst = blk.inst;
-	    String[] inst_arg_split = inst.split(" ", 1)[1].strip().split(",");
+	    String[] inst_arg_split = inst.split(" ", 2)[1].strip().split(",");
 	    String inst_dest = inst_arg_split[0];
 	    String inst_src = inst_arg_split[1].strip();
 	    int src_len = Utils.get_sym_length(inst_src);
@@ -183,7 +183,7 @@ public class CFHelper {
 	    long rip = store.get_rip();
 	    int dest_len = Utils.get_sym_length(inst_dest);
 	    ArrayList<Store> store_list = new ArrayList<Store>();
-	    String inst_name = inst.split(" ", 1)[0];
+	    String inst_name = inst.split(" ", 2)[0];
 	    for(BitVecExpr mem_val : distinct_entries) {
 	        Store new_store = new Store(store, rip);
 	        if(inst_name == "mov")
@@ -204,7 +204,7 @@ public class CFHelper {
 	    	long address = blk.address;
 	    	String inst = blk.inst;
 	    	long rip = blk.store.get_rip();
-	        String[] inst_split = inst.split(" ", 1);
+	        String[] inst_split = inst.split(" ", 2);
 	        String inst_name = inst_split[0];
 	        if(Utils.check_jmp_with_address(inst_name)) {
 	            String inst_dest = inst_split[1].strip();
@@ -232,7 +232,7 @@ public class CFHelper {
 	    BitVecExpr bv_address = Helper.gen_bv_num(address, Config.MEM_ADDR_SIZE);
 	    if(address_sym_table.containsKey(bv_address)) {
 	        String sym_name = address_sym_table.get(bv_address).get(0);
-	        res = sym_name.split("@", 1)[0].strip();
+	        res = sym_name.split("@", 2)[0].strip();
 	    }
 	    return res;
 	}
@@ -294,7 +294,7 @@ public class CFHelper {
     
     static ArrayList<String> retrieveSymSrcs(Block block) {
     	HashMap<String, Integer> memLenMap = new HashMap<>();
-        String[] inst_split = block.inst.strip().split(" ", 1);
+        String[] inst_split = block.inst.strip().split(" ", 2);
         ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
         Store store = block.store;
         Tuple<ArrayList<String>, Boolean> res = SMTHelper.get_bottom_source(inst_args.get(0), store, store.rip, memLenMap);
@@ -449,7 +449,7 @@ public class CFHelper {
 	static ArrayList<String> retrieve_source_for_memaddr(String inst, boolean common) {
 		ArrayList<String> symNames = new ArrayList<String>();
 	    if(common) {
-	        String[] instSplit = inst.strip().split(" ", 1);
+	        String[] instSplit = inst.strip().split(" ", 2);
 	        ArrayList<String> instArgs = Utils.parse_inst_args(instSplit);
 	        for(String arg : instArgs) {
 	            if(arg.endsWith("]")) {
@@ -517,7 +517,7 @@ public class CFHelper {
 	    String func_name = null;
 	    Store store = func_call_blk.store;
 	    long rip = store.rip;
-	    String jump_address_str = func_call_blk.inst.split(" ", 1)[1].strip();
+	    String jump_address_str = func_call_blk.inst.split(" ", 2)[1].strip();
 	    BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
 	    long new_address = Helper.long_of_sym(n_address);
 	    if(address_inst_map.containsKey(new_address))
@@ -550,7 +550,7 @@ public class CFHelper {
 	    String func_name = null;
 	    Store store = func_call_blk.store;
 	    long rip = store.rip;
-	    String jump_address_str = func_call_blk.inst.split(" ", 1)[1].strip();
+	    String jump_address_str = func_call_blk.inst.split(" ", 2)[1].strip();
 	    BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
 	    long new_address = Helper.long_of_sym(n_address);
 	    if(address_inst_map.containsKey(new_address))
@@ -653,7 +653,7 @@ public class CFHelper {
 	                String constr = Utils.remove_multiple_spaces(pConstraint);
 	                constr = constr.toLowerCase();
 	                if(constr.contains("unchanged")) {
-	                    String statepart = constr.split("=", 1)[0].strip();
+	                    String statepart = constr.split("=", 2)[0].strip();
 	                    if(extLibAssumptions.containsKey(extName)) {
 	                    	ArrayList<String> assumptions = extLibAssumptions.get(extName);
 	                    	assumptions.add(statepart);
@@ -727,7 +727,7 @@ public class CFHelper {
 	        	ArrayList<String> operands = new ArrayList<String>();
 	            String rest = constraint;
 	            for(String logic_op : logic_ops) {
-	            	String[] tmp = rest.split(logic_op, 1);
+	            	String[] tmp = rest.split(logic_op, 2);
 	            	String lhs = tmp[0];
 	            	rest = tmp[1];
 	                operands.add(lhs.strip());

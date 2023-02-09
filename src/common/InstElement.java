@@ -9,7 +9,7 @@ public class InstElement {
 	public ArrayList<String> inst_args;
 	
 	public InstElement(String inst) {
-		String[] inst_split = inst.strip().split(" ", 1);
+		String[] inst_split = inst.strip().split(" ", 2);
 		inst_name = inst_split[0].strip();
 		inst_args = Utils.extract_inst_args(inst_split);
 	}

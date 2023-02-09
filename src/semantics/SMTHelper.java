@@ -154,7 +154,7 @@ public class SMTHelper {
 
 
 	public static BoolExpr parse_predicate(Store store, String inst, boolean val, String prefix) {
-	    String cond = inst.split(" ", 1)[0].split(prefix, 1)[1];
+	    String cond = inst.split(" ", 2)[0].split(prefix, 2)[1];
 	    String expr = Lib.FLAG_CONDITIONS.get(cond);
 	    BoolExpr res = parse_pred_expr(store, expr);
 	    if(res == null)
@@ -166,7 +166,7 @@ public class SMTHelper {
 	
 	
 	public static BoolExpr parse_predicate(Store store, String inst, BoolExpr val, String prefix) {
-	    String cond = inst.split(" ", 1)[0].split(prefix, 1)[1];
+	    String cond = inst.split(" ", 2)[0].split(prefix, 2)[1];
 	    String expr = Lib.FLAG_CONDITIONS.get(cond);
 	    BoolExpr res = parse_pred_expr(store, expr);
 	    if(res == null)
@@ -188,7 +188,7 @@ public class SMTHelper {
 
 
 	boolean is_inst_aff_flag(Store store, long rip, String inst) {
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(Lib.INSTS_AFF_FLAGS_WO_CMP_TEST.contains(inst_name))
 	        return true;
@@ -201,7 +201,7 @@ public class SMTHelper {
 
 
 	void add_aux_memory(Store store, long rip, String inst) {
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(Lib.INSTS_AFF_FLAGS_WO_CMP_TEST.contains(inst_name)) {
 	    	ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
@@ -324,7 +324,7 @@ public class SMTHelper {
 	static boolean check_sym_is_stack_addr(String sym) {
 	    boolean res = false;
 	    if(sym.matches("[1-9][0-9]*")) {
-	        long addr = Long.valueOf(sym);
+	        long addr = Long.decode(sym);
 	        if(addr > Config.MAX_HEAP_ADDR)
 	            res = true;
 	    }

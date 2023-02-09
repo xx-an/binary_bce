@@ -5,7 +5,7 @@ import java.util.ArrayList;
 public class Block {
 	static int cnt = -1;
 	
-	public int parent_id = -1;
+	public Integer parent_id = -1;
 	public int block_id = -1;
 	public long address = -1;
 	public String inst = null;
@@ -13,7 +13,7 @@ public class Block {
 	public Constraint constraint = null;
 	ArrayList<Integer> children_blk_list;
 	
-	public Block(Integer parent_no, Long address, String inst, Store store, Constraint constraint) {
+	public Block(Integer parent_no, long address, String inst, Store store, Constraint constraint) {
 		this.parent_id = parent_no;
 		this.address = address;
 		this.inst = inst;

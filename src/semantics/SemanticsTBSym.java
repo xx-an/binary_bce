@@ -405,9 +405,9 @@ public class SemanticsTBSym {
 	    func_call_point = false;
 	    halt_point = false;
 	    if(inst.startsWith("lock ")) {
-	        inst = inst.split(" ", 1)[1];
+	        inst = inst.split(" ", 2)[1];
 	    }
-	    String[] inst_split = inst.strip().split(" ", 1);
+	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    ArrayList<String> src_names = sym_names;
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
@@ -429,7 +429,7 @@ public class SemanticsTBSym {
 	        mem_len_map = ret_info.mem_len_map;
 	    }
 	    else if(Utils.check_jmp_with_address(inst)) {
-	        String jump_address_str = inst.split(" ", 1)[1].strip();
+	        String jump_address_str = inst.split(" ", 2)[1].strip();
 	        BitVecExpr new_addr = SMTHelper.get_jump_address(store, rip, jump_address_str);
 	        Long new_address = null;
 	        if(Helper.is_bit_vec_num(new_addr)) {

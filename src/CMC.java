@@ -1,3 +1,4 @@
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,7 +17,8 @@ import common.Helper;
 import common.Utils;
 import controlflow.ControlFlow;
 import normalizer.Normalizer;
-import normalizer.NormalizerFactory;
+import normalizer.NormFactory;
+import normalizer.NormHelper;
 
 public class CMC {
 	
@@ -61,7 +63,7 @@ public class CMC {
     
 
 	static void set_logger(String normPath, String normType, boolean verbose) throws SecurityException, IOException {
-	    for(String logName : Utils.LOG_NAMES) {
+	   for(String logName : Utils.LOG_NAMES) {
 	        String loggerPath = normPath.replace("." + normType, "." + logName);
 	        Utils.setup_logger(logName, loggerPath, verbose, Level.WARNING);
 	    }
@@ -92,8 +94,8 @@ public class CMC {
 	static void cmc_main(String execPath, String disasmPath, String disasmType, boolean verbose) throws Exception {
 	    set_logger(disasmPath, disasmType, verbose);
 	    GlobalVar.get_binary_info(execPath);
-	    Helper.disassemble_to_asm(disasmPath);
-	    NormalizerFactory normFactory = new NormalizerFactory(disasmPath, disasmType);
+	    NormHelper.disassemble_to_asm(disasmPath);
+	    NormFactory normFactory = new NormFactory(disasmPath, disasmType);
 	    Normalizer norm = normFactory.get_disasm();
 	    long startTime = System.nanoTime();
 	    ControlFlow cfg = constructCF(norm);
@@ -143,6 +145,7 @@ public class CMC {
 	
 	
 	public static void main(String[] args) throws Exception {
+		
 		Options options = new Options();
 
         Option batchOpt = new Option("b", "batch", false, "Run the concolic model checkeer in batch mode");
@@ -199,12 +202,12 @@ public class CMC {
         CommandLineParser parser = new DefaultParser();
         CommandLine line = parser.parse(options, args);
 	    
-	    Utils.MAX_VISIT_COUNT = Integer.valueOf(line.getOptionValue("cmc_bound", "25"));
-	    Config.MEM_ADDR_SIZE = Integer.valueOf(line.getOptionValue("memory_addr_size", "32"));
+	    Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
+	    Config.MEM_ADDR_SIZE = Integer.decode(line.getOptionValue("memory_addr_size", "32"));
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
-	    String fileName = line.getOptionValue("file_name");
-	    String logDir = line.getOptionValue("log_dir", "benchmark/coreutils-idapro");
-	    String execDir = line.getOptionValue("executable_dir", "benchmark/coreutils-bin");
+	    String fileName = line.getOptionValue("file_name", "basename.exe");
+	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
+	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("executable_dir", "benchmark/coreutils-bin")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
 	    boolean verbose = (line.hasOption("verbose")) ? true : false;
 	    if(batch) {

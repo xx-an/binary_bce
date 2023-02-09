@@ -1,7 +1,11 @@
 package controlflow;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Scanner;
 
 import com.microsoft.z3.BitVecExpr;
 
@@ -121,6 +125,33 @@ public class ExtHandler {
 	    clear_flags(store);
 	    store.g_HeapAddr = heap_addr;
 	}
+	
+	
+	HashMap<String, ArrayList<String>> parse_predefined_constraint(String constraint_config_file) throws FileNotFoundException {
+		HashMap<String, ArrayList<String>> res = new HashMap<String, ArrayList<String>>();
+		File f = new File(constraint_config_file);
+		Scanner sn = new Scanner(f);
+		while (sn.hasNextLine()) {
+	        String line = sn.nextLine();
+	        line = line.strip();
+	        if(line != null) {
+                line = line.replace("\t", " ");
+                String[] lineSplit = line.strip().split(" ", 2);
+                String ext_func_name = lineSplit[0].strip();
+                String constraint = lineSplit[1].strip();
+                if(res.containsKey(constraint)) {
+                	ArrayList<String> constraint_list = res.get(ext_func_name);
+                	constraint_list.add(constraint);
+                }
+                else {
+                	ArrayList<String> constraint_list = new ArrayList<String>();
+                	constraint_list.add(constraint);
+                	res.put(ext_func_name, constraint_list);
+                }
+	        }
+		}
+	    return res;
+	}	
 	    
 
 	static void ext_alloc_mem_call(Store store, long rip, String ext_func_name, int block_id) {

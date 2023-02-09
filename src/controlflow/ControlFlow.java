@@ -64,7 +64,7 @@ public class ControlFlow {
         this.startAddress = startAddress;
         this.addressInstMap = addressInstMap;
         this.addressNextMap = addressNextMap;
-        dummyBlock = new Block(null, null, "", null, null);
+        dummyBlock = new Block(-1, 0, "", null, null);
         this.mainAddress = mainAddress;
         this.gPreConstraint = gPreConstraint;
         retCallAddressMap = new HashMap<>();
@@ -98,7 +98,7 @@ public class ControlFlow {
             Store store = curr.store;
             Constraint constraint = curr.constraint;
             if(inst != null && inst.startsWith("bnd "))
-                inst = inst.strip().split(" ", 1)[1];
+                inst = inst.strip().split(" ", 2)[1];
             if(Utils.check_branch_inst(inst))
                 construct_branch(curr, address, inst, store, constraint);
             else
@@ -166,7 +166,7 @@ public class ControlFlow {
             build_ret_branch(block, address, inst, store, constraint);
         }
         else {
-            String jumpAddrStr = inst.split(" ", 1)[1].strip();
+            String jumpAddrStr = inst.split(" ", 2)[1].strip();
             BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr);
             Long newAddress = null;
 	        if(Helper.is_bit_vec_num(nAddress)) {
@@ -238,7 +238,7 @@ public class ControlFlow {
         long rip = store.rip;
         Constraint newConstraint = constraint;
         ArrayList<String> inv_names = extLibAssumptions.get(ext_func_address);
-        String extName = extFuncName.split("@", 1)[0].strip();
+        String extName = extFuncName.split("@", 2)[0].strip();
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
         if(extFuncName.startsWith("__libc_start_main")) {
             Semantics.call_op(store, rip, block.block_id);
@@ -298,7 +298,7 @@ public class ControlFlow {
             }
             else {
             	ArrayList<String> srcNames = new ArrayList<>();
-            	srcNames.add(inst.split(" ", 1)[1].strip());
+            	srcNames.add(inst.split(" ", 2)[1].strip());
             	Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tbInfo = TraceBack.tracebackIndirectJumps(blockMap, block, srcNames, memLenMap, trace_list);
             	res = tbInfo.x;
             	if(res == Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {
@@ -556,7 +556,7 @@ public class ControlFlow {
 
 
     void _update_external_assumptions(Store store, long rip, String inst, ArrayList<String> srcNames) {
-        String jumpAddrStr = inst.split(" ", 1)[1].strip();
+        String jumpAddrStr = inst.split(" ", 2)[1].strip();
         BitVecExpr newAddress = SMTHelper.get_jump_address(store, rip, jumpAddrStr);
         extLibAssumptions.put(newAddress.toString(), srcNames);
         if(!extMemPreserv.contains(newAddress)) {
@@ -585,7 +585,7 @@ public class ControlFlow {
         long rip = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
         Integer block_id = null;
         if(inst.startsWith("bnd ")) {
-            inst = inst.strip().split(" ", 1)[1];
+            inst = inst.strip().split(" ", 2)[1];
         }
         if(inst.startsWith("cmov")) {
             block_id = _add_new_block_w_cmov_inst(parent_blk, address, inst, store, constraint, rip);
@@ -620,7 +620,7 @@ public class ControlFlow {
     Integer addNewBlock(Block parent_blk, long address, String inst, Store store, Constraint constraint, boolean needsUpdateStore) {
     	Integer block_id = null;
         if(inst.startsWith("bnd ")) {
-            inst = inst.strip().split(" ", 1)[1];
+            inst = inst.strip().split(" ", 2)[1];
         }
         int parent_id = (parent_blk != null) ? parent_blk.block_id : null;
         Block block = new Block(parent_id, address, inst.strip(), store, constraint);
@@ -747,7 +747,7 @@ public class ControlFlow {
             String preInst = addressInstMap.get(preAddress);
             if(preInst.startsWith("call")) {
                 Block blk = addressBlockMap.get(preAddress);
-                BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, address, preInst.split(" ", 1)[1].strip());
+                BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, address, preInst.split(" ", 2)[1].strip());
                 if(Helper.is_bit_vec_num(jmpTarget)) {
                     target = Helper.long_of_sym(jmpTarget);
                 }
