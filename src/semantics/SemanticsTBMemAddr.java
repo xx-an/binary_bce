@@ -15,6 +15,7 @@ import common.Triplet;
 import common.Tuple;
 import common.Utils;
 import symbolic.SymEngine;
+import symbolic.SymHelper;
 
 public class SemanticsTBMemAddr {
 
@@ -59,7 +60,7 @@ public class SemanticsTBMemAddr {
 	
 	public ArrayList<String> add_src_to_syms(ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
-	    src_names.add(SMTHelper.get_root_reg(src));
+	    src_names.add(SymHelper.get_root_reg(src));
 	    return src_names;
 	}
 
@@ -99,7 +100,7 @@ public class SemanticsTBMemAddr {
 	            }
 	        }
 	        else {
-	            src_names.add(SMTHelper.get_root_reg(src));
+	            src_names.add(SymHelper.get_root_reg(src));
 	        }
 	    }
 	    return src_names;
@@ -140,12 +141,12 @@ public class SemanticsTBMemAddr {
 	                dest_reg = addr.toString();
 	            }
 	            else {
-	                dest_reg = SMTHelper.get_root_reg(dest);
+	                dest_reg = SymHelper.get_root_reg(dest);
 	            }
 	            if(src_names.contains(dest_reg)) {
 	                src_names.remove(dest_reg);
 	            }
-	            src_names.add(SMTHelper.get_root_reg(src));
+	            src_names.add(SymHelper.get_root_reg(src));
 	        }
 	        else if(src.endsWith("]")) {
 	            SMTHelper.remove_reg_from_sym_srcs(dest, src_names);
@@ -211,7 +212,6 @@ public class SemanticsTBMemAddr {
 
 	ArrayList<String> pop(Store store, ArrayList<String> sym_names, String dest) {
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
-//	    sym_rsp = str(SymEngine.get_sym(store, rip, "rsp", Utils.TB_DEFAULT_BLOCK_NO))
 		ArrayList<String> src_names = sym_names;
 	    SMTHelper.remove_reg_from_sym_srcs(dest, src_names);
 	    src_names.add(sym_rsp.toString());

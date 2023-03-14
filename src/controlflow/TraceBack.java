@@ -44,7 +44,7 @@ public class TraceBack {
 				ArrayList<String> symInfo = bIDSymMap.get(bID);
 				if(symInfo.size() == 1) {
 					String symName = symInfo.get(0);
-					if((symName == "rdi" || symName == "rsi") && bID < 12)
+					if((symName.equals("rdi") || symName.equals("rsi")) && bID < 12)
 			            res = true;
 				}
 			}

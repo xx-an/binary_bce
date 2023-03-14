@@ -79,9 +79,9 @@ public class ControlFlow {
         cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
         Constraint constraint = null;
         SymHelper.cnt_init();
+        CFHelper.cfg_init_parameter(store, symTable);
         CFHelper.start_init(store, startAddress, Utils.INIT_BLOCK_NO);
         constraint = CFHelper.handlePreConstraint(store, store.rip, constraint, Utils.INIT_BLOCK_NO, gPreConstraint, extLibAssumptions);
-        CFHelper.cfg_init_parameter(store, symTable);
         build_cfg(startAddress, store, constraint);
         pp_unreachable_instrs();
     }
@@ -362,7 +362,7 @@ public class ControlFlow {
         Integer blockID = null;
         BitVecExpr newAddress = null;
 		Long alter_address = null;
-        if(inst == "ret" || inst == "retf") {
+        if(inst.equals("ret") || inst.equals("retf")) {
         	Tuple<BitVecExpr, Long> addrInfo = Semantics.ret(store, block.block_id);
         	newAddress = addrInfo.x;
         	alter_address = addrInfo.y;

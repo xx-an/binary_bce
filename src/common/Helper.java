@@ -25,7 +25,7 @@ public class Helper {
 	public static int stdout_mem_cnt = 0;
 	
 	public static Context ctx = new Context();
-	public static final BitVecExpr STDOUT_ADDR = (BitVecExpr) ctx.mkBVConst("stdout", Lib.DEFAULT_REG_LEN);
+	public static final BitVecExpr STDOUT_ADDR = (BitVecExpr) ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
 	
 	public static HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP;
 	
@@ -250,9 +250,9 @@ public class Helper {
 	
 	BitVecExpr sym_op(String op, BitVecExpr x, BitVecExpr y) {
 		BitVecExpr res = null;
-	    if(op == "-")
+	    if(op.equals("-"))
 	        res = ctx.mkBVSub(x, y);
-	    else if(op == "+")
+	    else if(op.equals("+"))
 	        res = ctx.mkBVAdd(x, y);
 	    return (BitVecExpr) res.simplify();
 	}
@@ -423,7 +423,7 @@ public class Helper {
 
 
 	BitVecExpr truncate_to_size(String dest, BitVecExpr sym) {
-		int dest_len = Utils.get_sym_length(dest, Lib.DEFAULT_REG_LEN);
+		int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 		return (BitVecExpr) extract(dest_len - 1, 0, sym).simplify();
 	}
 
@@ -464,17 +464,17 @@ public class Helper {
 
 	BitVecExpr update_sym_expr(BitVecExpr expr, BitVecExpr new_expr, String rel) {
 		BitVecExpr res = expr;
-	    if(rel == "or")
+	    if(rel.equals("or"))
 	    	res = (BitVecExpr) ctx.mkBVOR(expr, new_expr).simplify();
-	    else if(rel == "and")
+	    else if(rel.equals("and"))
 	    	res = (BitVecExpr) ctx.mkBVAND(expr, new_expr).simplify();
-	    else if(rel == "r")
+	    else if(rel.equals("r"))
 	        res = new_expr;
 	    return res;
 	}
 
 	public static boolean is_term_address(BitVecExpr address) {
-	    return address == ctx.mkBVConst("x", Lib.DEFAULT_REG_LEN);
+	    return address == ctx.mkBVConst("x", Config.MEM_ADDR_SIZE);
 	}
 
 	boolean is_bv_sym_var(BitVecExpr arg) {

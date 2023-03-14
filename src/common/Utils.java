@@ -345,10 +345,10 @@ public class Utils {
 		int res = length;
 		if(Lib.REG64_NAMES.contains(sym_name)) res = 64;
 		else if(Lib.REG_INFO_DICT.containsKey(sym_name))
-			res = Lib.REG_INFO_DICT.get(sym_name).z;
+			res = Lib.REG_INFO_DICT.get(sym_name).y;
 		else if(sym_name.endsWith("]") || sym_name.contains(" ptr " ))
 	        res = get_mem_sym_length(sym_name);
-		// rax:rdx
+		// sym_name: "rax:rdx"
 		else if(sym_name.contains(":")) {
 			String[] regs = sym_name.split(":");
 	        int left_len = get_sym_length(regs[0], length / 2);

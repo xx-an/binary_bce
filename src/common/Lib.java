@@ -5,15 +5,16 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
 
 public class Lib {
 	public static final HashMap<String, String> FLAG_CONDITIONS;
-	public static final HashMap<String, Triplet<String, Integer, Integer>> REG_INFO_DICT;
+	public static final HashMap<String, Tuple<Integer, Integer>> REG_INFO_DICT;
 	public static final HashMap<Integer, Triplet<String, String, String>> AUX_REG_INFO;
-	public static final ArrayList<String> TERMINATION_FUNCTIONS;
+	public static final List<String> TERMINATION_FUNCTIONS;
 	
-	public static final String[] REG64_NAME_LIST = new String[] {
-			"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rsp", "rbp"};
+	public static final List<String> REG64_NAME_LIST = Arrays.asList(new String[] {
+			"rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15", "rsp", "rbp"});
 	
 	public static final HashSet<String> REG64_NAMES;
 	public static final HashSet<String> REG_NAMES;
@@ -24,9 +25,9 @@ public class Lib {
 	public static final HashSet<String> JMP_INST_WITH_ADDRESS;
 	public static final HashSet<String> JMP_INST_WITH_JUMP;
 
-	public static final HashSet<String> CALLEE_SAVED_REGS = new HashSet<>(Arrays.asList("rbx", "rbp", "r12", "r13", "r14", "r15"));
+	public static final List<String> CALLEE_SAVED_REGS = Arrays.asList("rbx", "rbp", "r12", "r13", "r14", "r15");
 	
-	public static final HashSet<String> CALLEE_NOT_SAVED_REGS = new HashSet<>(Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"));
+	public static final List<String> CALLEE_NOT_SAVED_REGS = Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11");
 	
 	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
@@ -37,9 +38,6 @@ public class Lib {
 			
 	public static final HashSet<String> GENERAL_INSTRUCTIONS;
 	public static final HashSet<String> INSTS_AFF_FLAGS_WO_CMP_TEST;
-	
-	public static final int DEFAULT_REG_LEN = 64;
-	public static final int C_INT_LEN = 32;
 	
 	public static final String REG = "register";
 	public static final String MEM = "memory";
@@ -141,59 +139,60 @@ public class Lib {
 		FLAG_CONDITIONS.put("s",  "SF==1");
 		FLAG_CONDITIONS.put("z",  "ZF==1");
 		
-		REG_INFO_DICT = new HashMap<String, Triplet<String, Integer, Integer>>();
-		REG_INFO_DICT.put("ah", new Triplet<String, Integer, Integer>("rax", 8, 8));
-		REG_INFO_DICT.put("bh", new Triplet<String, Integer, Integer>("rbx", 8, 8));
-		REG_INFO_DICT.put("ch", new Triplet<String, Integer, Integer>("rcx", 8, 8));
-		REG_INFO_DICT.put("dh", new Triplet<String, Integer, Integer>("rdx", 8, 8));
-		REG_INFO_DICT.put("eax", new Triplet<String, Integer, Integer>("rax", 0, 32));
-		REG_INFO_DICT.put("ax", new Triplet<String, Integer, Integer>("rax", 0, 16));
-		REG_INFO_DICT.put("al", new Triplet<String, Integer, Integer>("rax", 0, 8));
-		REG_INFO_DICT.put("ebx", new Triplet<String, Integer, Integer>("rbx", 0, 32));
-		REG_INFO_DICT.put("bx", new Triplet<String, Integer, Integer>("rbx", 0, 16));
-		REG_INFO_DICT.put("bl", new Triplet<String, Integer, Integer>("rbx", 0, 8));
-		REG_INFO_DICT.put("ecx", new Triplet<String, Integer, Integer>("rcx", 0, 32));
-		REG_INFO_DICT.put("cx", new Triplet<String, Integer, Integer>("rcx", 0, 16));
-		REG_INFO_DICT.put("cl", new Triplet<String, Integer, Integer>("rcx", 0, 8));
-		REG_INFO_DICT.put("edx", new Triplet<String, Integer, Integer>("rdx", 0, 32));
-		REG_INFO_DICT.put("dx", new Triplet<String, Integer, Integer>("rdx", 0, 16));
-		REG_INFO_DICT.put("dl", new Triplet<String, Integer, Integer>("rdx", 0, 8));
-		REG_INFO_DICT.put("esi", new Triplet<String, Integer, Integer>("rsi", 0, 32));
-		REG_INFO_DICT.put("si", new Triplet<String, Integer, Integer>("rsi", 0, 16));
-		REG_INFO_DICT.put("sil", new Triplet<String, Integer, Integer>("rsi", 0, 8));
-		REG_INFO_DICT.put("edi", new Triplet<String, Integer, Integer>("rdi", 0, 32));
-		REG_INFO_DICT.put("di", new Triplet<String, Integer, Integer>("rdi", 0, 16));
-		REG_INFO_DICT.put("dil", new Triplet<String, Integer, Integer>("rdi", 0, 8));
-		REG_INFO_DICT.put("ebp", new Triplet<String, Integer, Integer>("rbp", 0, 32));
-		REG_INFO_DICT.put("bp", new Triplet<String, Integer, Integer>("rbp", 0, 16));
-		REG_INFO_DICT.put("bpl", new Triplet<String, Integer, Integer>("rbp", 0, 8));
-		REG_INFO_DICT.put("esp", new Triplet<String, Integer, Integer>("rsp", 0, 32));
-		REG_INFO_DICT.put("sp", new Triplet<String, Integer, Integer>("rsp", 0, 16));
-		REG_INFO_DICT.put("spl", new Triplet<String, Integer, Integer>("rsp", 0, 8));
-		REG_INFO_DICT.put("r8d", new Triplet<String, Integer, Integer>("r8", 0, 32));
-		REG_INFO_DICT.put("r8w", new Triplet<String, Integer, Integer>("r8", 0, 16));
-		REG_INFO_DICT.put("r8b", new Triplet<String, Integer, Integer>("r8", 0, 8));
-		REG_INFO_DICT.put("r9d", new Triplet<String, Integer, Integer>("r9", 0, 32));
-		REG_INFO_DICT.put("r9w", new Triplet<String, Integer, Integer>("r9", 0, 16));
-		REG_INFO_DICT.put("r9b", new Triplet<String, Integer, Integer>("r9", 0, 8));
-		REG_INFO_DICT.put("r10d", new Triplet<String, Integer, Integer>("r10", 0, 32));
-		REG_INFO_DICT.put("r10w", new Triplet<String, Integer, Integer>("r10", 0, 16));
-		REG_INFO_DICT.put("r10b", new Triplet<String, Integer, Integer>("r10", 0, 8));
-		REG_INFO_DICT.put("r11d", new Triplet<String, Integer, Integer>("r11", 0, 32));
-		REG_INFO_DICT.put("r11w", new Triplet<String, Integer, Integer>("r11", 0, 16));
-		REG_INFO_DICT.put("r11b", new Triplet<String, Integer, Integer>("r11", 0, 8));
-		REG_INFO_DICT.put("r12d", new Triplet<String, Integer, Integer>("r12", 0, 32));
-		REG_INFO_DICT.put("r12w", new Triplet<String, Integer, Integer>("r12", 0, 16));
-		REG_INFO_DICT.put("r12b", new Triplet<String, Integer, Integer>("r12", 0, 8));
-		REG_INFO_DICT.put("r13d", new Triplet<String, Integer, Integer>("r13", 0, 32));
-		REG_INFO_DICT.put("r13w", new Triplet<String, Integer, Integer>("r13", 0, 16));
-		REG_INFO_DICT.put("r13b", new Triplet<String, Integer, Integer>("r13", 0, 8));
-		REG_INFO_DICT.put("r14d", new Triplet<String, Integer, Integer>("r14", 0, 32));
-		REG_INFO_DICT.put("r14w", new Triplet<String, Integer, Integer>("r14", 0, 16));
-		REG_INFO_DICT.put("r14b", new Triplet<String, Integer, Integer>("r14", 0, 8));
-		REG_INFO_DICT.put("r15d", new Triplet<String, Integer, Integer>("r15", 0, 32));
-		REG_INFO_DICT.put("r15w", new Triplet<String, Integer, Integer>("r15", 0, 16));
-		REG_INFO_DICT.put("r15b", new Triplet<String, Integer, Integer>("r15", 0, 8));
+		
+		REG_INFO_DICT = new HashMap<String, Tuple<Integer, Integer>>();
+		REG_INFO_DICT.put("eax", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("ax", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("ah", new Tuple<Integer, Integer>(8, 8));
+		REG_INFO_DICT.put("al", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("ebx", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("bx", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("bh", new Tuple<Integer, Integer>(8, 8));
+		REG_INFO_DICT.put("bl", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("ecx", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("cx", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("ch", new Tuple<Integer, Integer>(8, 8));
+		REG_INFO_DICT.put("cl", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("edx", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("dx", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("dh", new Tuple<Integer, Integer>(8, 8));
+		REG_INFO_DICT.put("dl", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("esi", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("si", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("sil", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("edi", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("di", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("dil", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("ebp", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("bp", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("bpl", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("esp", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("sp", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("spl", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r8d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r8w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r8b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r9d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r9w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r9b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r10d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r10w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r10b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r11d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r11w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r11b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r12d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r12w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r12b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r13d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r13w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r13b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r14d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r14w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r14b", new Tuple<Integer, Integer>(0, 8));
+		REG_INFO_DICT.put("r15d", new Tuple<Integer, Integer>(0, 32));
+		REG_INFO_DICT.put("r15w", new Tuple<Integer, Integer>(0, 16));
+		REG_INFO_DICT.put("r15b", new Tuple<Integer, Integer>(0, 8));
 		
 		AUX_REG_INFO = new HashMap<Integer, Triplet<String, String, String>>();
 		AUX_REG_INFO.put(8, new Triplet<String, String, String>("al", "ah", "ax"));
@@ -201,7 +200,7 @@ public class Lib {
 		AUX_REG_INFO.put(32, new Triplet<String, String, String>("eax", "edx", "edx:eax"));
 		AUX_REG_INFO.put(64, new Triplet<String, String, String>("rax", "rdx", "rdx:rax"));
 		
-		REG64_NAMES = new HashSet<String>(Arrays.asList(REG64_NAME_LIST));
+		REG64_NAMES = new HashSet<String>(REG64_NAME_LIST);
 		
 		REG_NAMES = new HashSet<String>(REG64_NAMES);
 		REG_NAMES.addAll(REG_INFO_DICT.keySet());
@@ -256,7 +255,7 @@ public class Lib {
 			    "obstack_alloc_failed_handler",
 			    "pthread_exit"
 			};
-		TERMINATION_FUNCTIONS = new ArrayList<String>(Arrays.asList(t_functions));
+		TERMINATION_FUNCTIONS = Arrays.asList(t_functions);
 		
 		
 		String[] general_insts_arr = new String[] {

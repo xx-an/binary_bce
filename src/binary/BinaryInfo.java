@@ -66,8 +66,15 @@ public class BinaryInfo {
 	    String[] lines = binary_header.split("\n");
 	    for(String line : lines) {
 	    	line = line.strip();
-	    	if(line.contains("file format"))
+	    	if(line.contains("file format")) {
 	    		file_type = line.split("file format ", 2)[1].strip();
+	    		if(file_type.equals("pei-i386")) {
+	    			Config.MEM_ADDR_SIZE = 32;
+	    		}
+	    		else {
+                    Config.MEM_ADDR_SIZE = 64;
+	    		}
+	    	}
 	    	else if(line != null && line.startsWith("start address "))
                 entry_address = Long.decode(Utils.rsplit(line, " ")[1]);
 	    }   
@@ -91,17 +98,17 @@ public class BinaryInfo {
                 int section_offset = Integer.decode(line_split[5]);
                 section_address_map.put(section_name, section_address);
                 sym_table.put(section_name, Helper.gen_bv_num(section_address, Config.MEM_ADDR_SIZE));
-                if(section_name == ".data") {
+                if(section_name.equals(".data")) {
                     data_start_addr = section_address;
                     data_base_addr = section_address - section_offset;
                     data_end_addr = section_address + section_size + 1;
                 }
-                else if(section_name == ".rodata") {
+                else if(section_name.equals(".rodata")) {
                     rodata_start_addr = section_address;
                     rodata_base_addr = section_address - section_offset;
                     rodata_end_addr = section_address + section_size + 1;
                 }
-                else if(section_name == ".text") {
+                else if(section_name.equals(".text")) {
                     text_start_addr = section_address;
                     text_base_addr = section_address - section_offset;
                     text_end_addr = section_address + section_size + 1;
@@ -121,7 +128,7 @@ public class BinaryInfo {
                     int sym_val = Integer.decode(line_split[0]);
                     String sym_type = line_split[line_split.length-4];
                     String sym_name = line_split[line_split.length-1];
-                    if(sym_type == "F")
+                    if(sym_type.equals("F"))
                         if(!sym_name.contains("@") && !Utils.UNVISITED_SECTION_LABELS.contains(sym_name))
                            function_addr_table.put(sym_name, sym_val);
                     sym_name = correctify_sym_name(sym_name);
@@ -163,7 +170,7 @@ public class BinaryInfo {
 		}
 	}
 //				if(line_split.length != 4) {
-//					if(line_split[line_split.length - 2] == "+") {
+//					if(line_split[line_split.length - 2].equals("+") {
 //						String[] line_split_sub = Arrays.copyOf(line_split, line_split.length - 2);
 //						_parse_reloc(line_split_sub);
 //					}
@@ -225,7 +232,7 @@ public class BinaryInfo {
                     if(!line.startsWith("vma:  ")) {
                         String[] line_split = Utils.remove_multiple_spaces(line).split(" ");
                         String ext_name = line_split[line_split.length - 1];
-                        if(ext_name != "<none>") {
+                        if(!ext_name.equals("<none>")) {
                         	String extName = "dll_" + ext_name;
                             long vma = Long.valueOf(line_split[0], 16);
                             dllFuncInfo.put(vma, extName);
@@ -258,15 +265,15 @@ public class BinaryInfo {
                 }
                 else if(line.startsWith("PE File Base Relocation"))
                     vma_addr_parsed = false;
-                else if(line.endsWith("bit words")) {
-                    if(Utils.imm_pat.matcher(line).matches()) {
-                        String[] line_split = line.split(" ", 2);
-                        if(line_split[1] == "bit words") {
-                            int addr_size = Integer.decode(line_split[0]);
-                            Config.MEM_ADDR_SIZE = addr_size;
-                        }
-                    }
-                }
+//                else if(line.endsWith("bit words")) {
+//                    if(Utils.imm_pat.matcher(line).matches()) {
+//                        String[] line_split = line.split(" ", 2);
+//                        if(line_split[1].equals("bit words") {
+//                            int addr_size = Integer.decode(line_split[0]);
+//                            Config.MEM_ADDR_SIZE = addr_size;
+//                        }
+//                    }
+//                }
         	}
             else
                 parse_start = false;

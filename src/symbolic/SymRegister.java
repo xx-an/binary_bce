@@ -3,8 +3,10 @@ package symbolic;
 import com.microsoft.z3.BitVecExpr;
 
 import common.Lib;
+import common.Config;
 import common.Helper;
 import common.Triplet;
+import common.Tuple;
 import block.Store;
 
 public class SymRegister {
@@ -22,10 +24,10 @@ public class SymRegister {
 	public static BitVecExpr get_register_sym(Store store, String name) {
 	    BitVecExpr sym = null;
 	    if(Lib.REG_INFO_DICT.containsKey(name)) {
-	    	Triplet<String, Integer, Integer> t_info = Lib.REG_INFO_DICT.get(name);
-	    	String p_name = t_info.x;
-	    	int start_idx = t_info.y;
-	    	int length = t_info.z;
+	    	String p_name = SymHelper.get_root_reg(name);
+	    	Tuple<Integer, Integer> t_info = Lib.REG_INFO_DICT.get(name);
+	    	int start_idx = t_info.x;
+	    	int length = t_info.y;
 	        BitVecExpr p_sym = store.get_val(p_name);
 	        if(p_sym == Helper.bottom(p_sym.getSortSize()))
 	            sym = Helper.bottom(length);
@@ -36,7 +38,7 @@ public class SymRegister {
 	        sym = store.get_val(name);
 	    }
 	    else {
-	        sym = Helper.bottom(Lib.DEFAULT_REG_LEN);
+	        sym = Helper.bottom(Config.MEM_ADDR_SIZE);
 	    }
 	    return sym;
 	}
@@ -45,8 +47,7 @@ public class SymRegister {
 	public static Integer get_reg_sym_block_id(Store store, String name) {
 	    Integer res = null;
 	    if(Lib.REG_INFO_DICT.containsKey(name)) {
-	    	Triplet<String, Integer, Integer> t_info = Lib.REG_INFO_DICT.get(name);
-	    	String p_name = t_info.x;
+	    	String p_name = SymHelper.get_root_reg(name);
 	    	res = store.get_block_id(p_name);
 	    }
 	    else if(Lib.REG64_NAMES.contains(name))
@@ -71,10 +72,10 @@ public class SymRegister {
 
 	public static void set_register_sym(Store store, String name, BitVecExpr sym, int block_id) {
 		if(Lib.REG_INFO_DICT.containsKey(name)) {
-			Triplet<String, Integer, Integer> t_info = Lib.REG_INFO_DICT.get(name);
-	    	String p_name = t_info.x;
-	    	int start_idx = t_info.y;
-	    	int length = t_info.z;
+			String p_name = SymHelper.get_root_reg(name);
+			Tuple<Integer, Integer> t_info = Lib.REG_INFO_DICT.get(name);
+	    	int start_idx = t_info.x;
+	    	int length = t_info.y;
 	    	BitVecExpr p_sym = store.get_val(p_name);
 	    	store.set_val(p_name, bitwise_extend_parent(p_sym, sym, start_idx, length), block_id);
 		}

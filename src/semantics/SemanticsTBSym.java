@@ -15,6 +15,7 @@ import common.Triplet;
 import common.Tuple;
 import common.Utils;
 import symbolic.SymEngine;
+import symbolic.SymHelper;
 
 public class SemanticsTBSym {
 
@@ -80,7 +81,7 @@ public class SemanticsTBSym {
 	            }
 	        }
 	        else {
-	            src_names.add(SMTHelper.get_root_reg(src));
+	            src_names.add(SymHelper.get_root_reg(src));
 	        }
 	    }
 	    else {
@@ -140,12 +141,12 @@ public class SemanticsTBSym {
 	                dest_reg = addr.toString();
 	            }
 	            else {
-	                dest_reg = SMTHelper.get_root_reg(dest);
+	                dest_reg = SymHelper.get_root_reg(dest);
 	            }
 	            if(src_names.contains(dest_reg)) {
 	                src_names.remove(dest_reg);
 	            }
-	            src_names.add(SMTHelper.get_root_reg(src));
+	            src_names.add(SymHelper.get_root_reg(src));
 	        }
 	        else if(src.endsWith("]")) {
 	            SMTHelper.remove_reg_from_sym_srcs(dest, src_names);

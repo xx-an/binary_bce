@@ -12,6 +12,7 @@ import common.Tuple;
 import common.Utils;
 import block.Store;
 import symbolic.SymEngine;
+import symbolic.SymHelper;
 
 
 public class SMTHelper {
@@ -33,12 +34,12 @@ public class SMTHelper {
 		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
 		BitVecExpr dest_sym = dest_src_sym.x;
 		BitVecExpr src_sym = dest_src_sym.y;
-	    if(op == "+") {
+	    if(op.equals("+")) {
 	    	BoolExpr case1 = Helper.bv_and(Helper.is_neg(dest_sym), Helper.is_neg(src_sym), Helper.is_pos(res));
 	    	BoolExpr case2 = Helper.bv_and(Helper.is_pos(dest_sym), Helper.is_pos(src_sym), Helper.is_neg(res));
 	    	set_flag_val(store, "OF", Helper.bv_or(case1, case2));
 	    }
-	    else if(op == "-") {
+	    else if(op.equals("-")) {
 	    	BoolExpr case1 = Helper.bv_and(Helper.is_neg(dest_sym), Helper.is_pos(src_sym), Helper.is_pos(res));
 	    	BoolExpr case2 = Helper.bv_and(Helper.is_pos(dest_sym), Helper.is_neg(src_sym), Helper.is_neg(res));
 	        set_flag_val(store, "OF", Helper.bv_or(case1, case2));
@@ -49,9 +50,9 @@ public class SMTHelper {
 
 
 	static void set_CF_flag(Store store, long rip, String dest, String src, int block_id, String op) {
-	    if(op == "+")
+	    if(op.equals("+"))
 	        _set_add_CF_flag(store, rip, dest, src, block_id);
-	    else if(op == "-")
+	    else if(op.equals("-"))
 	        _set_sub_CF_flag(store, rip, dest, src, block_id);
 	    else
 	    	store.set_flag_val("CF", Helper.sym_false());
@@ -179,8 +180,9 @@ public class SMTHelper {
 
 	Long top_stack(Store store, long rip) {
 		Long result = null;
-	    BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, "rsp", Utils.INIT_BLOCK_NO);
-	    BitVecExpr res = SymEngine.get_mem_sym(store, sym_rsp);
+		String spName = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
+	    BitVecExpr symSP = SymEngine.get_sym(store, rip, spName, Utils.INIT_BLOCK_NO);
+	    BitVecExpr res = SymEngine.get_mem_sym(store, symSP);
 	    if(res != null && Helper.is_bit_vec_num(res))
 	    	result = Helper.long_of_sym(res);
 	    return result;
@@ -192,7 +194,7 @@ public class SMTHelper {
 	    String inst_name = inst_split[0];
 	    if(Lib.INSTS_AFF_FLAGS_WO_CMP_TEST.contains(inst_name))
 	        return true;
-	    else if(inst_name == "cmp" ||  inst_name == "test") {
+	    else if(inst_name.equals("cmp") ||  inst_name.equals("test")) {
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	        _add_aux_memory(store, rip, inst_args);
 	    }
@@ -261,7 +263,7 @@ public class SMTHelper {
 	        if(Lib.REG_NAMES.contains(ls)) {
 	            BitVecExpr val = SymEngine.get_sym(store, rip, ls, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
 	            if(!Helper.is_bit_vec_num(val)) {
-	            	String root_reg = get_root_reg(ls);
+	            	String root_reg = SymHelper.get_root_reg(ls);
 	                res.add(root_reg);
 	                is_reg_bottom = true;
 	            }
@@ -291,20 +293,10 @@ public class SMTHelper {
 	}
 
 
-	public static String get_root_reg(String src) {
-	    String res = null;
-	    if(Lib.REG64_NAMES.contains(src))
-	        res = src;
-	    else if(Lib.REG_INFO_DICT.containsKey(src))
-	        res = Lib.REG_INFO_DICT.get(src).x;
-	    return res;
-	}
-
-
 	static boolean check_source_is_sym(Store store, long rip, String src, ArrayList<String> syms) {
 	    boolean res = false;
 	    if(Lib.REG_INFO_DICT.containsKey(src)) {
-	    	String root_src = get_root_reg(src);
+	    	String root_src = SymHelper.get_root_reg(src);
 	    	res = syms.contains(root_src);
 	    }
 	    else if(Lib.REG_NAMES.contains(src))
@@ -356,7 +348,7 @@ public class SMTHelper {
 
 
 	static void remove_reg_from_sym_srcs(String reg, ArrayList<String> src_names) {
-	    String src_reg = get_root_reg(reg);
+	    String src_reg = SymHelper.get_root_reg(reg);
 	    if(src_names.contains(src_reg))
 	    	src_names.remove(src_reg);
 	}
@@ -364,7 +356,7 @@ public class SMTHelper {
 
 	static void add_new_reg_src(ArrayList<String> sym_names, String dest, String src) {
 	    remove_reg_from_sym_srcs(dest, sym_names);
-	    String root_reg = get_root_reg(src);
+	    String root_reg = SymHelper.get_root_reg(src);
 	    if(!sym_names.contains(root_reg))
 	    	sym_names.add(root_reg);
 	}
@@ -373,7 +365,7 @@ public class SMTHelper {
 	static void add_src_to_syms(Store store, ArrayList<String> sym_names, String src) {
 	    BitVecExpr sym_src = SymEngine.get_register_sym(store, src);
 	    if(!Helper.is_bit_vec_num(sym_src)) {
-	    	String root_reg = get_root_reg(src);
+	    	String root_reg = SymHelper.get_root_reg(src);
 	    	if(!sym_names.contains(root_reg))
 	    		sym_names.add(root_reg);
 	    }

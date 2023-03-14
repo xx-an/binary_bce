@@ -33,10 +33,11 @@ public class CMC {
 		CHECK_RESULTS = new String[] {"", "$\\\\times$"};
 	}
 	
-	static ControlFlow constructCF(Normalizer norm) {
-		mainAddress = GlobalVar.binary_info.main_address;
-		symTable = GlobalVar.binary_info.sym_table;
-		addressSymTable = GlobalVar.binary_info.address_sym_table;
+	static ControlFlow constructCF(Normalizer norm, String execPath) {
+		GlobalVar globalVar = new GlobalVar(execPath);
+		mainAddress = globalVar.binary_info.main_address;
+		symTable = globalVar.binary_info.sym_table;
+		addressSymTable = globalVar.binary_info.address_sym_table;
 		addressInstMap = norm.getAddressInstMap();
 		addressLableMap = norm.getAddressLabelMap();
 		for(long address : addressLableMap.keySet()) {
@@ -51,12 +52,12 @@ public class CMC {
 			}
 		}
 	    String funcName = "_start";
-	    long startAddress = GlobalVar.binary_info.entry_address;
+	    long startAddress = globalVar.binary_info.entry_address;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
 	    // print(GlobalVar.binary_info.dll_func_info)
 	    // print(disasm_asm.valid_address_no)
-	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, GlobalVar.binary_info.dllFuncInfo);
+	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, globalVar.binary_info.dllFuncInfo);
 	    return cfg;
 	}
 	
@@ -93,12 +94,11 @@ public class CMC {
 	
 	static void cmc_main(String execPath, String disasmPath, String disasmType, boolean verbose) throws Exception {
 	    set_logger(disasmPath, disasmType, verbose);
-	    GlobalVar.get_binary_info(execPath);
 	    NormHelper.disassemble_to_asm(disasmPath);
 	    NormFactory normFactory = new NormFactory(disasmPath, disasmType);
 	    Normalizer norm = normFactory.get_disasm();
 	    long startTime = System.nanoTime();
-	    ControlFlow cfg = constructCF(norm);
+	    ControlFlow cfg = constructCF(norm, execPath);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
 	    write_results(cfg);
 	    Utils.output_logger.info("Execution time (s) : " + Long.toString(duration));

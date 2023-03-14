@@ -119,7 +119,6 @@ public class Semantics {
 	void pop(Store store, String dest) {
 		int dest_len = Utils.get_sym_length(dest);
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
-//				SymEngine.get_sym(store, rip, "rsp", block_id);
 		BitVecExpr res = SymEngine.get_mem_sym(store, sym_rsp);
 	    if(res == null)
 	        res = Helper.gen_sym(Config.MEM_ADDR_SIZE);
@@ -429,9 +428,9 @@ public class Semantics {
 	        if(rcx_is_0 == Helper.sym_true())
 	            break;
 	        BoolExpr sym_zf = SMTHelper.get_flag_direct(store, "ZF");
-	        if((inst_name == "repz" || inst_name == "repe") && sym_zf == Helper.sym_false())
+	        if((inst_name.equals("repz") || inst_name.equals("repe")) && sym_zf == Helper.sym_false())
 	            break;
-	        else if((inst_name == "repnz" || inst_name == "repne") && sym_zf == Helper.sym_true())
+	        else if((inst_name.equals("repnz") || inst_name.equals("repne")) && sym_zf == Helper.sym_true())
 	            break;
 	    }
 	}
@@ -604,7 +603,7 @@ public class Semantics {
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	        inst_op.accept(new Tuple<Store, ArrayList<String>>(store, inst_args));
 	    }
-	    else if(inst_name == "nop" || inst_name == "hlt") {}
+	    else if(inst_name.equals("nop") || inst_name.equals("hlt")) {}
 	    else if(inst_name.startsWith("set")) {
 	    	ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	    	set_op(store, inst, inst_args.get(0));

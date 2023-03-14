@@ -26,9 +26,10 @@ public class SymHelper {
 	
 	public static Long top_stack_addr(Store store) {
 		Long res = null;
-		BitVecExpr rsp_val = store.get_val("rsp");
-	    if(rsp_val != null && (rsp_val instanceof BitVecNum)) {
-	        res = ((BitVecNum) rsp_val).getLong();
+		String spName = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
+		BitVecExpr spVal = store.get_val(spName);
+	    if(spVal != null && (spVal instanceof BitVecNum)) {
+	        res = ((BitVecNum) spVal).getLong();
 	    }
 	    return res;
 	}
@@ -37,6 +38,22 @@ public class SymHelper {
 	static void reset_mem_content_pollute(Store store, int block_id) {
     	store.g_MemPolluted = block_id;
     }
+	
+	
+	public static String get_root_reg(String src) {
+	    String res = null;
+	    if(Lib.REG64_NAMES.contains(src))
+	        res = src;
+	    else if(Config.MEM_ADDR_SIZE == 64) {
+	    	if(Config.REGS_PARENT64_MAP.containsKey(src))
+	    		res = Config.REGS_PARENT64_MAP.get(src);
+	    }
+	    else if(Config.MEM_ADDR_SIZE == 32) {
+	    	if(Config.REGS_PARENT32_MAP.containsKey(src))
+	    		res = Config.REGS_PARENT32_MAP.get(src);
+	    }
+	    return res;
+	}
 
 
 	void pollute_all_mem_content(Store store, int block_id) {
@@ -46,7 +63,7 @@ public class SymHelper {
 	        if(!(addr instanceof BitVecNum)) {
 	        	BitVecExpr val = store.get_val(addr);
 	            if(Helper.is_bit_vec_num(val)) {
-	            	store.set_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
+	            	store.set_mem_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
 	            }
 	        }
 	        else {
@@ -54,7 +71,7 @@ public class SymHelper {
 	            if(int_addr >= Config.MIN_HEAP_ADDR && int_addr < Config.MAX_HEAP_ADDR) {
 	            	BitVecExpr val = store.get_val(addr);
 		            if(Helper.is_bit_vec_num(val)) {
-		            	store.set_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
+		            	store.set_mem_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
 		            }
 	            }
 	        }
@@ -67,14 +84,14 @@ public class SymHelper {
 	        if(!Helper.is_bit_vec_num(addr)) {
 	        	BitVecExpr val = store.get_val(addr);
 	            if(Helper.is_bit_vec_num(val)) {
-	            	store.set_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
+	            	store.set_mem_val(addr, Helper.gen_sym(val.getSortSize()), block_id);
 	            }
 	        }
 	    }
 	}
 	
 	public static void remove_memory_content(Store store, BitVecExpr mem_address) {
-		store.remove_val(mem_address);
+		store.remove_mem_val(mem_address);
 	}
 
 

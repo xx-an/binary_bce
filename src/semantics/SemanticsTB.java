@@ -13,6 +13,7 @@ import common.Lib;
 import common.Tuple;
 import common.Utils;
 import symbolic.SymEngine;
+import symbolic.SymHelper;
 import common.Triplet;
 import block.Store;
 
@@ -81,7 +82,7 @@ public class SemanticsTB {
 	            }
 	        }
 	        else
-	            src_names.add(SMTHelper.get_root_reg(src));
+	            src_names.add(SymHelper.get_root_reg(src));
 	    }
 	    else {
 	        if(src.contains(":")) {
@@ -298,7 +299,7 @@ public class SemanticsTB {
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	        src_names = inst_op.apply(new Triplet(store, sym_names, inst_args));
 	    }
-	    else if(inst_name == "nop" || inst_name == "hlt") {}
+	    else if(inst_name.equals("nop") || inst_name.equals("hlt")) {}
 	    else if(inst_name.startsWith("cmov")) {
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	        src_names = cmov(store, sym_names, inst, inst_args.get(0), inst_args.get(1));

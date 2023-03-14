@@ -14,7 +14,7 @@ public class NormFactory {
 
 
     public Normalizer get_disasm() throws FileNotFoundException {
-        if(this.disasmType == "idapro")
+        if(this.disasmType.equals("idapro"))
             return new NormIDAPro(asmPath);
         return null;
     }

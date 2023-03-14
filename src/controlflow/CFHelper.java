@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -186,7 +187,7 @@ public class CFHelper {
 	    String inst_name = inst.split(" ", 2)[0];
 	    for(BitVecExpr mem_val : distinct_entries) {
 	        Store new_store = new Store(store, rip);
-	        if(inst_name == "mov")
+	        if(inst_name.equals("mov"))
 	            SymEngine.set_sym(new_store, rip, inst_dest, mem_val, blk.block_id);
 	        else if(inst_name.contains("s"))
 	            Semantics.mov_op(new_store, inst_dest, dest_len, mem_val, src_len, true);
@@ -440,7 +441,7 @@ public class CFHelper {
 	    for(String asi : argSplit) {
 	        String as = asi.strip();
 	        if(Lib.REG_NAMES.contains(as))
-	            res.add(SMTHelper.get_root_reg(as));
+	            res.add(SymHelper.get_root_reg(as));
 	    }
 	    return res;
 	}
@@ -533,15 +534,24 @@ public class CFHelper {
 
 
 	static void cfg_init_parameter(Store store, HashMap<String, BitVecExpr> sym_table) {
+		int length = Config.MEM_ADDR_SIZE;
 	    if(sym_table.containsKey(Lib.STDIN)) {
 	        BitVecExpr stdin_address = sym_table.get(Lib.STDIN);
 	        store.g_StdinAddress = stdin_address;
 	        store.g_StdinHandler = SymEngine.get_memory_val(store, stdin_address, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
 	    }
+	    else {
+	        store.g_StdinAddress = Helper.gen_sym(length);
+	        store.g_StdinHandler = Helper.gen_sym(length);
+	    }
 	    if(sym_table.containsKey(Lib.STDOUT)) {
 	    	BitVecExpr stdout_address = sym_table.get(Lib.STDOUT);
 	    	store.g_StdoutAddress = stdout_address;
 	        store.g_StdoutHandler = SymEngine.get_memory_val(store, stdout_address, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
+	    }
+	    else {
+	    	store.g_StdoutAddress = Helper.gen_sym(length);
+	        store.g_StdoutHandler = Helper.gen_sym(length);
 	    }
 	}
 
@@ -630,17 +640,18 @@ public class CFHelper {
 	 
 
 	static void start_init(Store store, long rip, int block_id) {
-		HashSet<String> dests = Lib.REG64_NAMES;
-	    ExtHandler.set_regs_sym(store, rip, dests, block_id);
+		List<String> dests = Config.ADDR_SIZE_REGS_MAP.get(Config.MEM_ADDR_SIZE);
+		ExtHandler.set_regs_sym(store, rip, dests, block_id);
 	    String sp_name = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
 	    long stack_frame_pointer = Config.INIT_STACK_FRAME_POINTER.get(Config.MEM_ADDR_SIZE);
 	    SymEngine.set_sym(store, rip, sp_name, Helper.gen_bv_num(stack_frame_pointer, Config.MEM_ADDR_SIZE), block_id);
 	    ExtHandler.set_segment_regs_sym(store, rip);
-	    // Utils.logger.debug("The following registers are set to symbolic value: " + str(dests))
 	    ExtHandler.clear_flags(store);
 	    BitVecExpr sym_src = Helper.gen_sym(Config.MEM_ADDR_SIZE);
-	    BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, "rsp", block_id);
-	    SymEngine.set_mem_sym(store, sym_rsp, sym_src, block_id);
+	    BitVecExpr sym_sp = SymEngine.get_sym(store, rip, Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), block_id);
+	    SymEngine.set_mem_sym(store, sym_sp, sym_src, block_id);
+	    ExtHandler.insert_termination_symbol(store, rip, block_id);
+	    ExtHandler.insert_termination_symbol(store, rip, block_id);
 	}
 	
 	static Constraint handlePreConstraint(Store store, long rip, Constraint constraint, int block_id, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<String, ArrayList<String>> extLibAssumptions) {
@@ -664,7 +675,7 @@ public class CFHelper {
 	                    	extLibAssumptions.put(extName, assumptions);
 	                    }
 	                }
-	                else if(extName == "starting_point") {
+	                else if(extName.equals("starting_point")) {
 	                    BoolExpr pred = parse_predicates(store, rip, block_id, extName, constr);
 	                    if(pred != null) {
 	                        if(predicates != null)

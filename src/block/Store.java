@@ -119,18 +119,23 @@ public class Store {
 	}
 	
 	public void set_val(String reg_name, BitVecExpr val, int block_id) {
-		Node node = g_RegStore.get(reg_name);
-		node.expr = val;
-		node.block_id = block_id;
+		Node node = new Node(val, block_id);
+		g_RegStore.put(reg_name, node);
 	}
 	
-	public void set_val(BitVecExpr addr, BitVecExpr val, int block_id) {
-		Node node = g_MemStore.get(addr);
-		node.expr = val;
-		node.block_id = block_id;
+	public void set_mem_val(BitVecExpr addr, BitVecExpr val, int block_id) {
+		if(g_MemStore.containsKey(addr)) {
+			Node node = g_MemStore.get(addr);
+			node.expr = val;
+			node.block_id = block_id;
+		}
+		else {
+			Node node = new Node(val, block_id);
+			g_MemStore.put(addr, node);
+		}
 	}
 	
-	public void remove_val(BitVecExpr addr) {
+	public void remove_mem_val(BitVecExpr addr) {
 		g_MemStore.remove(addr);
 	}
 	
@@ -224,7 +229,7 @@ public class Store {
     		Node v = g_RegStore.getOrDefault(ki, null);
     		Node v_old = s_old.getOrDefault(ki, null);
     		if(v_old != null) {
-                if(ki != "rsp" && ki != "rbp") {
+    			if(!ki.endsWith("sp") && !ki.endsWith("bp")) {
                 	BitVecExpr new_expr = Helper.merge_sym(v_old.expr, v.expr, address_inst_map);
                 	v.update_expr(new_expr);
                 }
@@ -276,7 +281,7 @@ public class Store {
         	Node v = g_RegStore.get(ki);
         	Node v_old = reg_old.getOrDefault(ki, null);
         	if(v_old != null) {
-                if(ki != "rsp" && ki != "rbp") {
+                if(!ki.endsWith("sp") && !ki.endsWith("bp")) {
                     if(!Helper.bitvec_eq(v_old.expr, v.expr)) {
                         return false;
                     }

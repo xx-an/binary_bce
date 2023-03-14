@@ -55,7 +55,7 @@ public class NormHelper {
 	void disassemble_to_asm(String exec_path, String disasm_path, String disasm_type) throws Exception {
 		File f = new File(disasm_path);
 	    if(f.exists()) return;
-	    if(disasm_type == "objdump") {
+	    if(disasm_type.equals("objdump")) {
 	        String cmd = "objdump -M intel -d " + exec_path + " > " + disasm_path;
 	        Utils.execute_command(cmd);
 	    }
@@ -156,7 +156,7 @@ public class NormHelper {
 	
 	boolean check_section_start(String line, String disassembler) {
 		boolean result = false;
-		if(disassembler == "objdump")
+		if(disassembler.equals("objdump"))
 	        result = line.startsWith("Disassembly of section");
 	    return result;
 	}
@@ -264,7 +264,7 @@ public class NormHelper {
 
 	public static String norm_objdump_arg(String name, String arg) {
 	    String res = arg;
-	    if(name == "fdivrp" && arg == "st")
+	    if(name.equals("fdivrp") && arg.equals("st"))
 	        res = "st(0)";
 	    return res;
 	}
@@ -355,9 +355,9 @@ public class NormHelper {
 	    int opNum = opStack.size();
 	    for(int idx = 0; idx < opNum; idx++) {
 	    	String op = opStack.get(idx);
-	        if(op == "+")
+	        if(op.equals("+"))
 	            res = res + stack.get(idx + 1);
-	        else if(op == "-") {
+	        else if(op.equals("-")) {
 	            res = res - stack.get(idx + 1);
 	        }
 	    }
@@ -394,7 +394,7 @@ public class NormHelper {
 	        if(idx > 0) {
 	            String op = opStack.get(idx - 1);
 	            res += op;
-	            if((op == "+" || op == "-") && Utils.imm_start_pat.matcher(val).matches())
+	            if((op.equals("+") || op.equals("-")) && Utils.imm_start_pat.matcher(val).matches())
 	                res += Integer.toHexString(Utils.imm_str_to_int(val));
 	            else
 	                res += val;
@@ -418,7 +418,7 @@ public class NormHelper {
 	    for(int idx = 0; idx < stackSize; idx++) {
 	    	valStr = stack.get(idx);
 	    	op = opStack.get(idx - 1);
-	    	if(Utils.imm_pat.matcher(valStr).matches() && (idx == 0 || op == "+" || op == "-")) {
+	    	if(Utils.imm_pat.matcher(valStr).matches() && (idx == 0 || op.equals("+") || op.equals("-"))) {
 	    		val = Utils.imm_str_to_int(valStr);
 	    		numVal = val;
 		        if(idx > 0) {
@@ -426,7 +426,7 @@ public class NormHelper {
 		            if(valList != null)
 		            	opList.add(op);
 		            else
-		                numVal = (op == "+") ? val : -val;
+		                numVal = (op.equals("+")) ? val : -val;
 		        }
 		        idxList.add(idx);
 		        valList.add(numVal);
@@ -443,7 +443,7 @@ public class NormHelper {
 	
 	public static String getIdaPtrRepFromItemType(String itemType) {
 	    String res = null;
-	    if(itemType == "dd" || itemType == "dq" || itemType == "db" || itemType == "dw") {
+	    if(itemType.equals("dd") || itemType.equals("dq") || itemType.equals("db") || itemType.equals("dw")) {
 	        char suffix = itemType.charAt(itemType.length() - 1);
 	        res = BYTE_REP_PTR_MAP.get(suffix);
 	    }
@@ -462,9 +462,9 @@ public class NormHelper {
 	    String wordPtrRep = null;
 	    if(name.startsWith("jmp"))
 	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
-	    else if(name == "call")
+	    else if(name.equals("call"))
 	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
-	    else if(name == "mov" || name == "cmp") {
+	    else if(name.equals("mov") || name.equals("cmp")) {
 	        if(length != 0)
 	        	wordPtrRep = BYTELEN_REP_MAP.get(length);
 	    }
@@ -472,18 +472,18 @@ public class NormHelper {
 	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
 	    else if(name.startsWith("set"))
 	        wordPtrRep = "byte ptr";
-	    else if(name == "subs" || name == "movs" || name == "ucomis")
+	    else if(name.equals("subs") || name.equals("movs") || name.equals("ucomis"))
 	        wordPtrRep = "dword ptr";
-	    else if(name == "movdqu" || name == "movaps" || name == "movdqa" || name == "movups")
+	    else if(name.equals("movdqu") || name.equals("movaps") || name.equals("movdqa") || name.equals("movups"))
 	        wordPtrRep = "xmmword ptr";
-	    else if(name == "movq" && inst.contains("xmm")) {}
-	    else if(name == "movsxd") {
+	    else if(name.equals("movq") && inst.contains("xmm")) {}
+	    else if(name.equals("movsxd")) {
 	        if(length == 16 || length == 32)
 	            wordPtrRep = BYTELEN_REP_MAP.get(length);
 	        else
 	            wordPtrRep = "dword ptr";
 	    }
-	    else if(name == "movss")
+	    else if(name.equals("movss"))
 	        wordPtrRep = "dword ptr";
 	    return wordPtrRep;
 	}

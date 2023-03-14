@@ -65,7 +65,7 @@ public class SymEngine {
 	            val = SymMemory.get_effective_address(store, rip, src_split_1, Config.MEM_ADDR_SIZE);
 	        }
 	        else
-	            val = get_sym(store, rip, src_split_1, block_id, Lib.DEFAULT_REG_LEN);
+	            val = get_sym(store, rip, src_split_1, block_id, Config.MEM_ADDR_SIZE);
 	        BitVecExpr address = val;
 	        res = SymMemory.get_seg_memory_val(store, address, seg_reg, length);
 	    }
@@ -113,13 +113,13 @@ public class SymEngine {
 
 	public static void set_sym(Store store, long rip, String dest, BitVecExpr sym, int block_id) {
 	    if(Lib.REG_NAMES.contains(dest)) {        // rax
-	        int dest_len = Utils.get_sym_length(dest, Lib.DEFAULT_REG_LEN);
+	        int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 	        if(sym.getSortSize() > dest_len)
 	            sym = Helper.extract(dest_len - 1, 0, sym);
 	        SymRegister.set_register_sym(store, dest, sym, block_id);
 	    }
 	    else if(dest.contains("s:")) {       // fs:rax
-	        int dest_len = Utils.get_sym_length(dest, Lib.DEFAULT_REG_LEN);
+	        int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 	        String[] destSplit = dest.split(":");
 	        String seg_reg = Utils.rsplit(destSplit[0], " ")[1].strip();
 	        // seg_reg_val = SymRegister.get_segment_reg_val(store, seg_reg)
@@ -128,7 +128,7 @@ public class SymEngine {
 	        if(dest_rest.endsWith("]"))
 	            val = SymMemory.get_effective_address(store, rip, dest_rest, Config.MEM_ADDR_SIZE);
 	        else {
-	            int rest_len = Utils.get_sym_length(dest_rest, Lib.DEFAULT_REG_LEN);
+	            int rest_len = Utils.get_sym_length(dest_rest, Config.MEM_ADDR_SIZE);
 	            val = get_sym(store, rip, dest_rest, block_id, rest_len);
 	        }
 	        BitVecExpr address = val;
@@ -141,7 +141,7 @@ public class SymEngine {
 	    }
 	    else if(dest.contains(":")) {     // rax:rdx
 	        String[] destSplit = dest.split(":");
-	        int reg_len = Utils.get_sym_length(destSplit[0], Lib.DEFAULT_REG_LEN);
+	        int reg_len = Utils.get_sym_length(destSplit[0], Config.MEM_ADDR_SIZE);
 	        BitVecExpr left = Helper.extract(reg_len + reg_len - 1, reg_len, sym);
 	        BitVecExpr right = Helper.extract(reg_len - 1, 0, sym);
 	        SymRegister.set_register_sym(store, destSplit[0], left, block_id);
@@ -205,7 +205,7 @@ public class SymEngine {
 
 
 	public static BitVecExpr extension(Store store, long rip, String src, int block_id, int dest_len, boolean sign) {
-	    int src_len = Utils.get_sym_length(src, Lib.DEFAULT_REG_LEN);
+	    int src_len = Utils.get_sym_length(src, Config.MEM_ADDR_SIZE);
 	    BitVecExpr sym_src = get_sym(store, rip, src, block_id, src_len);
 	    BitVecExpr res = extension_sym(sym_src, dest_len, src_len, sign);
 	    return res;

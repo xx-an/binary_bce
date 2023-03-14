@@ -69,7 +69,7 @@ public class SymMemory {
 		ArrayList<Integer> to_remove_idx = new ArrayList<Integer>();
 		for(int idx = 0; idx < op_stack.size(); idx++) {
 			String op = op_stack.get(idx);
-			if(op == "*") {
+			if(op.equals("*")) {
 	            res = Helper.bv_mult(stack.get(idx), stack.get(idx + 1));
 	            stack.set(idx, res);
 	            to_remove_idx.add(idx);
@@ -88,9 +88,9 @@ public class SymMemory {
 	    BitVecExpr res = stack.get(0);
 	    for(int idx = 0; idx < op_stack.size(); idx++) {
 	    	String op = op_stack.get(idx);
-	    	if(op == "+")
+	    	if(op.equals("+"))
 	            res = Helper.bv_add(res, stack.get(idx+1));
-	        else if(op == "-")
+	        else if(op.equals("-"))
 	        	res = Helper.bv_sub(res, stack.get(idx+1));
 	    }
 	    return res;
@@ -217,13 +217,13 @@ public class SymMemory {
 	        if(byte_len < prev_len) {
 	        	BitVecExpr rest_sym = Helper.extract_bytes(prev_len, byte_len, prev_sym);
 	        	BitVecExpr curr_sym = Helper.concat(rest_sym, sym);
-	        	store.set_val(address, curr_sym, block_id);
+	        	store.set_mem_val(address, curr_sym, block_id);
 	        }
 	        else
-	        	store.set_val(address, sym, block_id);
+	        	store.set_mem_val(address, sym, block_id);
 	    }
 	    else 
-	    	store.set_val(address, sym, block_id);
+	    	store.set_mem_val(address, sym, block_id);
 	}
 
 	static BitVecExpr is_mem_addr_in_stdout(Store store, BitVecExpr address) {
@@ -247,8 +247,8 @@ public class SymMemory {
 	        if(tmp !=  null)
 	            set_mem_sym_val(store, tmp, sym, block_id, length, Lib.STDOUT);
 	        else {
-	        	store.set_val(address, sym, block_id);
-	            Utils.logger.info("\nWarning) { Potential buffer overflow with symbolic memory address " + address.toString());
+	        	store.set_mem_val(address, sym, block_id);
+	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
 	            store.g_NeedTraceBack = true;
 	        }
 	    }
@@ -306,11 +306,11 @@ public class SymMemory {
 	        	res = Helper.gen_bv_num(val, length);
 	        else
 	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Long.toHexString(int_address), length);
-	        store.set_val(address, res, Utils.INIT_BLOCK_NO);
+	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }
 	    else {
 	        res = Helper.gen_mem_sym(length);
-	        store.set_val(address, res, block_id);
+	        store.set_mem_val(address, res, block_id);
 	    }
 	    return res;
 	}

@@ -5,6 +5,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Scanner;
 
 import com.microsoft.z3.BitVecExpr;
@@ -38,7 +39,7 @@ public class ExtHandler {
 	}
 
 
-	static void set_regs_sym(Store store, long rip, HashSet<String> dests, int block_id) {
+	static void set_regs_sym(Store store, long rip, List<String> dests, int block_id) {
 		for(String dest : dests) {
 			int length = Utils.get_sym_length(dest);
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(length), block_id);
@@ -62,7 +63,7 @@ public class ExtHandler {
 	static void set_segment_regs_sym(Store store, long rip) {
 		HashSet<String> dest_list = Lib.SEG_REGS;
 	    for(String dest : dest_list) {
-	        if(dest == "ds")
+	        if(dest.equals("ds"))
 	            SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(Config.SEGMENT_REG_INIT_VAL, Config.MEM_ADDR_SIZE), 0);
 	        else
 	            SymEngine.set_sym(store, rip, dest, Helper.gen_seg_reg_sym(dest, Config.MEM_ADDR_SIZE), 0);
@@ -70,12 +71,12 @@ public class ExtHandler {
 	}
 
 	void set_reg_val(Store store, long rip, String dest, int val, int block_id) {
-	    SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(val, Lib.DEFAULT_REG_LEN), block_id);
+	    SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(val, Config.MEM_ADDR_SIZE), block_id);
 	}
 	
 	
 	static void set_reg_val(Store store, long rip, String dest, long val, int block_id) {
-	    SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(val, Lib.DEFAULT_REG_LEN), block_id);
+	    SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(val, Config.MEM_ADDR_SIZE), block_id);
 	}
 
 
@@ -157,7 +158,7 @@ public class ExtHandler {
 	static void ext_alloc_mem_call(Store store, long rip, String ext_func_name, int block_id) {
 	    long heap_addr = store.get_heap_addr();
 //	    Utils.logger.info(heap_addr)
-	    BitVecExpr bv_mem_size = (ext_func_name == "malloc" || ext_func_name == "calloc") ? SymEngine.get_sym(store, rip, "rdi", block_id) : SymEngine.get_sym(store, rip, "rsi", block_id);
+	    BitVecExpr bv_mem_size = (ext_func_name.equals("malloc") || ext_func_name.equals("calloc")) ? SymEngine.get_sym(store, rip, "rdi", block_id) : SymEngine.get_sym(store, rip, "rsi", block_id);
 	    BitVecExpr mem_addr = Helper.gen_bv_num(heap_addr, Config.MEM_ADDR_SIZE);
 	    SymEngine.set_sym(store, rip, "rax", mem_addr, block_id);
 	    int mem_size = 0;
@@ -169,7 +170,7 @@ public class ExtHandler {
 	    	Utils.logger.info("The allocation size for " + ext_func_name + " function cannot be zero");
 	    	System.exit(0);
 	    }
-	    BitVecExpr mem_val = (ext_func_name != "calloc") ? Helper.bottom(mem_size) : Helper.gen_bv_num(0, mem_size);
+	    BitVecExpr mem_val = (!ext_func_name.equals("calloc")) ? Helper.bottom(mem_size) : Helper.gen_bv_num(0, mem_size);
 	    heap_addr += mem_size;
 	    Config.MAX_HEAP_ADDR = (Config.MAX_HEAP_ADDR < heap_addr) ? heap_addr : Config.MAX_HEAP_ADDR;
 	    SymEngine.set_mem_sym(store, mem_addr, mem_val, mem_size);
@@ -193,7 +194,7 @@ public class ExtHandler {
 
 
 	static void ext_func_call(Store store, long rip, int  block_id) {
-	    HashSet<String> dests = Lib.CALLEE_NOT_SAVED_REGS;
+	    List<String> dests = Lib.CALLEE_NOT_SAVED_REGS;
 	    set_regs_sym(store, rip, dests, block_id);
 	    clear_flags(store);
 	}

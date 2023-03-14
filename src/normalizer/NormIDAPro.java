@@ -174,7 +174,7 @@ public class NormIDAPro implements Normalizer {
         String[] varSplit = varStr.split(" ", 2);
         String varName = varSplit[0];
         String varValue;
-        if(varName == "LOAD") {}
+        if(varName.equals("LOAD")) {}
         else if(varStr.contains(" db ") || varStr.contains(" dq ") || varStr.contains(" dw ") || varStr.contains(" dd ") || varStr.contains(" dt ")) {
             String varSuffix = varSplit[1].strip().split(" ", 2)[0].strip();
             char suffix = varSuffix.charAt(varSuffix.length() - 1);
@@ -550,7 +550,7 @@ public class NormIDAPro implements Normalizer {
 
     String removeLeaPtrRep(String instName, String arg) {
         String res = arg;
-        if(instName == "lea") {
+        if(instName.equals("lea")) {
             if(arg.endsWith("]")) {
                 res = "[" + arg.split("[", 2)[1].strip();
             }
@@ -563,11 +563,11 @@ public class NormIDAPro implements Normalizer {
         if(!arg.contains(" ptr ") || addedPtrRepMap.containsKey(address)) {
             String ptrRep = NormHelper.generateIdaPtrRep(instName, inst, length);
             if(ptrRep == null) {
-                if(instName != "lea" && !addedPtrRepMap.containsKey(address)) {
+                if(!instName.equals("lea") && !addedPtrRepMap.containsKey(address)) {
                     if(arg.endsWith("]") && !arg.contains(" ptr ") || arg.contains("s:")) {
                         if(length != 0)
                             ptrRep = NormHelper.BYTELEN_REP_MAP.get(length);
-                        else if(instName == "movsx" || instName == "movzx") {
+                        else if(instName.equals("movsx") || instName.equals("movzx")) {
                             ptrRep = "word ptr";
                         }
                         else
@@ -624,7 +624,7 @@ public class NormIDAPro implements Normalizer {
         if(!NormHelper.BYTE_LEN_REPS.containsKey(typeSpec)) {
             if(idaStructTable.containsKey(typeSpec))
                 varIdaStructTypeMap.put(varName, typeSpec);
-            else if(typeSpec == "LARGE_INTEGER" || typeSpec == "_LARGE_INTEGER") {
+            else if(typeSpec.equals("LARGE_INTEGER") || typeSpec.equals("_LARGE_INTEGER")) {
                 varPtrRepMap.put(varName, ptrRep);
             }
             else {
@@ -674,7 +674,7 @@ public class NormIDAPro implements Normalizer {
             String variable, var;
             for(int idx = 0; idx < cNum; idx++) {
             	String ci = contentSplit[idx];
-                if(ci == "offset") {
+                if(ci.equals("offset")) {
                     if(cNum > idx + 1) {
                         variable = contentSplit[idx + 1];
                         original = "offset " + variable;
