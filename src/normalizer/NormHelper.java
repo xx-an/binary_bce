@@ -18,6 +18,7 @@ import common.Utils;
 
 public class NormHelper {
 	
+	public static Pattern simple_op_split_pat = Pattern.compile("((?<=\\+)|(?=\\+)|(?<=-)|(?=-)|(?<=\\*)|(?=\\*))");
 	public static Pattern simple_operator_pat = Pattern.compile("(\\+|-|\\*)");
 	public static Pattern remote_addr_pat = Pattern.compile("0x2[0-9a-fA-F]{5}");
 	
@@ -25,7 +26,7 @@ public class NormHelper {
 	public static HashMap<Character, String> BYTE_REP_PTR_MAP;
 	public static HashMap<Integer, String> BYTELEN_REP_MAP;
 	
-	NormHelper() {
+	static {
 		BYTE_LEN_REPS = new HashMap<>();
 		BYTE_LEN_REPS.put("byte", "byte");
 		BYTE_LEN_REPS.put("dword", "dword");
@@ -67,7 +68,7 @@ public class NormHelper {
 
 	public static String convertImmEndHToHex(String imm) {
 	    String tmp = Utils.rsplit(imm, "h")[0].strip();
-	    String res = Integer.toHexString(Integer.decode(tmp));
+	    String res = Long.toHexString(Long.valueOf(tmp, 16));
 	    return res;
 	}
 	
@@ -235,7 +236,7 @@ public class NormHelper {
 	String rewrite_absolute_address_to_relative(String arg, int rip) {
 	    String res = arg;
 	    if(arg.endsWith("]") && !arg.contains("s:")) {
-	        String[] arg_split = arg.strip().split("[");
+	        String[] arg_split = arg.strip().split("\\[");
 	        String arg_content = arg_split[1].split("]")[0].strip();
 	        if(Pattern.matches("^0x[0-9a-f]+$|^-0x[0-9a-f]+$", arg_content)) {
 	            int relative_address = Integer.decode(arg_content) - rip;
@@ -412,22 +413,26 @@ public class NormHelper {
 	    ArrayList<Integer> idxList = new ArrayList<>();
 	    ArrayList<Long> valList = new ArrayList<>();
 	    ArrayList<String> opList = new ArrayList<>();
-	    long val, numVal;
+	    long val, numVal = 0;
 	    String valStr, op;
 	    int stackSize = stack.size();
 	    for(int idx = 0; idx < stackSize; idx++) {
 	    	valStr = stack.get(idx);
-	    	op = opStack.get(idx - 1);
-	    	if(Utils.imm_pat.matcher(valStr).matches() && (idx == 0 || op.equals("+") || op.equals("-"))) {
-	    		val = Utils.imm_str_to_int(valStr);
-	    		numVal = val;
-		        if(idx > 0) {
-		            op = opStack.get(idx - 1);
-		            if(valList != null)
-		            	opList.add(op);
-		            else
-		                numVal = (op.equals("+")) ? val : -val;
-		        }
+	    	if(Utils.imm_pat.matcher(valStr).matches()) {
+	    		if(idx > 0) {
+			    	op = opStack.get(idx - 1);
+			    	if(op.equals("+") || op.equals("-")) {
+			    		val = Utils.imm_str_to_int(valStr);
+			    		numVal = val;
+			            if(valList != null)
+			            	opList.add(op);
+			            else
+			                numVal = (op.equals("+")) ? val : -val;
+			    	}
+	    		}
+	    		else {
+	    			numVal = Utils.imm_str_to_int(valStr);
+	    		}
 		        idxList.add(idx);
 		        valList.add(numVal);
 	    	}	    
@@ -454,7 +459,7 @@ public class NormHelper {
 	public static String convertToHexRep(String arg) {
 	    String res = arg;
 	    if(arg.matches("^[0-9a-f]+$|^-[0-9a-f]+$"))
-	        res = Integer.toHexString(Integer.valueOf(arg, 16));
+	        res = Long.toHexString(Long.valueOf(arg, 16));
 	    return res;
 	}
 	
@@ -493,7 +498,7 @@ public class NormHelper {
 		ArrayList<String> stack = new ArrayList<String>();
 		ArrayList<String> opStack = new ArrayList<String>();
 	    String line = rmUnusedSpaces(content);
-	    String[] lineSplit = simple_operator_pat.split(line);
+	    String[] lineSplit = simple_op_split_pat.split(line);
 	    String val;
 	    for(String lsi : lineSplit) {
 	        lsi = lsi.strip();

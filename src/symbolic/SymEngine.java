@@ -22,7 +22,7 @@ public class SymEngine {
 	static HashSet<String> OPS_NEED_EXTENSION = new HashSet<String>();
 	static HashMap<String, Function<Triplet<BitVecExpr, BitVecExpr, Integer>, BitVecExpr>> SYM_BIN_OP_MAP = new HashMap<String, Function<Triplet<BitVecExpr, BitVecExpr, Integer>, BitVecExpr>>();
 	
-	SymEngine() {
+	static {
 		OPS_NEED_EXTENSION.add("<<");
 		OPS_NEED_EXTENSION.add(">>");
 		OPS_NEED_EXTENSION.add(">>>");

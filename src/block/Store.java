@@ -47,6 +47,7 @@ public class Store {
 			g_RegStore = (HashMap<String, Node>) store.g_RegStore.clone();
 			g_MemStore = (HashMap<BitVecExpr, Node>) store.g_MemStore.clone();
 			g_StdoutStore = (HashMap<BitVecExpr, Node>) store.g_StdoutStore.clone();
+			g_SegStore = (HashMap<String, HashMap<BitVecExpr, BitVecExpr>>) store.g_SegStore.clone();
 			for(String ss : Lib.SEG_STATE_NAMES) {
 				g_SegStore.put(ss, (HashMap<BitVecExpr, BitVecExpr>) store.g_SegStore.get(ss).clone());
 			}

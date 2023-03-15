@@ -293,12 +293,12 @@ public class SymMemory {
 	    	Integer val = null;
 	        long int_address = Helper.long_of_sym(address);
 	        if(SymHelper.addr_in_rodata_section(int_address)) {
-	            long rodata_base_addr = GlobalVar.binary_info.rodata_base_addr;
-	            val = GlobalVar.binary_content.read_bytes(int_address - rodata_base_addr, length / 8);
+	            long rodata_base_addr = GlobalVar.binaryInfo.rodata_base_addr;
+	            val = GlobalVar.binaryContent.read_bytes(int_address - rodata_base_addr, length / 8);
 	        }
 	        else if(SymHelper.addr_in_data_section(int_address)) {
-	            long data_base_addr = GlobalVar.binary_info.data_base_addr;
-	            val = GlobalVar.binary_content.read_bytes(int_address - data_base_addr, length / 8);
+	            long data_base_addr = GlobalVar.binaryInfo.data_base_addr;
+	            val = GlobalVar.binaryContent.read_bytes(int_address - data_base_addr, length / 8);
 	        }
 	        else
 	            read_mem_error_report(store, int_address);

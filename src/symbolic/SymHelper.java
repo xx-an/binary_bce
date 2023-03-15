@@ -96,12 +96,12 @@ public class SymHelper {
 
 
 	public static boolean addr_in_rodata_section(long int_addr) {
-	    return GlobalVar.binary_info.rodata_start_addr <= int_addr && int_addr < GlobalVar.binary_info.rodata_end_addr;
+	    return GlobalVar.binaryInfo.rodata_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.rodata_end_addr;
 	}
 
 
 	public static boolean addr_in_data_section(long int_addr) {
-	    return GlobalVar.binary_info.data_start_addr <= int_addr && int_addr < GlobalVar.binary_info.data_end_addr;
+	    return GlobalVar.binaryInfo.data_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.data_end_addr;
 	}
 
 

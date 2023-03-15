@@ -582,7 +582,7 @@ public class ControlFlow {
         
 
     int add_new_block(Block parent_blk, long address, String inst, Store store, Constraint constraint) {
-        long rip = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+    	long rip = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
         Integer block_id = null;
         if(inst.startsWith("bnd ")) {
             inst = inst.strip().split(" ", 2)[1];
@@ -622,7 +622,7 @@ public class ControlFlow {
         if(inst.startsWith("bnd ")) {
             inst = inst.strip().split(" ", 2)[1];
         }
-        int parent_id = (parent_blk != null) ? parent_blk.block_id : null;
+        Integer parent_id = (parent_blk != null) ? parent_blk.block_id : null;
         Block block = new Block(parent_id, address, inst.strip(), store, constraint);
         block_id = block.block_id;
         blockMap.put(block_id, block);

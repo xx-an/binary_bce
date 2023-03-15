@@ -28,7 +28,6 @@ public class NormIDAPro implements Normalizer {
 	
 	HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable;
 	
-	
 	ArrayList<String> funcCallOrder;
 	HashMap<String, ArrayList<Long>> func_addr_call_map = new HashMap<>(); 
 	HashMap<String, ArrayList<String>> func_call_map = new HashMap<>(); 
@@ -96,7 +95,7 @@ public class NormIDAPro implements Normalizer {
 		}
 		for(String line : lines) {
             if(locatedAtDataSegments(line)) {
-                if(varExprPat.matcher(line).matches()) {
+                if(varExprPat.matcher(line).find()) {
                     String varName = retrieveVarName(line);
                     globalDataName.add(varName);
                 }
@@ -105,12 +104,12 @@ public class NormIDAPro implements Normalizer {
 		for(String line : lines) {
             if(line.contains(" extrn "))
                 storeExtFuncInfo(line);
-            else if(varExprPat.matcher(line).matches()) {
+            else if(varExprPat.matcher(line).find()) {
                 readVariableValue(line);
             }
             else if(locatedAtCodeSegments(line)) {
                 if(!line.contains("UnwindMapEntry")) {
-                    if(addrInstPat.matcher(line).matches()) {
+                    if(addrInstPat.matcher(line).find()) {
                     	Tuple<Long, String> lineInfo = parseLine(line);
                     	long address = lineInfo.x;
                     	String inst = lineInfo.y;
@@ -169,7 +168,7 @@ public class NormIDAPro implements Normalizer {
         line = line.split(";", 2)[0].strip();
         String[] lineSplit = line.split(" ", 2);
         String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
-        long address = Long.decode(addressStr);
+        long address = Long.valueOf(addressStr, 16);
         String varStr = lineSplit[1].strip();
         String[] varSplit = varStr.split(" ", 2);
         String varName = varSplit[0];
@@ -232,7 +231,7 @@ public class NormIDAPro implements Normalizer {
             String[] lineSplit = line1.split(" ", 2);
             if(lineSplit.length == 2) {
                 String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
-                address = Long.decode(addressStr);
+                address = Long.valueOf(addressStr, 16);
                 inst = lineSplit[1].strip();
             }
         }
@@ -269,6 +268,7 @@ public class NormIDAPro implements Normalizer {
     	InstElement instElem = new InstElement (inst);
     	ArrayList<String> instArgs = new ArrayList<>();
     	String arg;
+//    	System.out.println(inst);
     	for(String s : instElem.inst_args) {
     		arg = formatArg(address, instElem.inst_name, s);
     		instArgs.add(arg);
@@ -297,7 +297,7 @@ public class NormIDAPro implements Normalizer {
             else if(symbol.startsWith("loc_")) {
                 String remaining = symbol.split("loc_", 2)[1].strip();
                 if(immPat.matcher(remaining).matches()) {
-                    res = Integer.toHexString(Integer.decode(remaining));
+                    res = Integer.toHexString(Integer.valueOf(remaining, 16));
                 }
             }
         }
@@ -322,7 +322,7 @@ public class NormIDAPro implements Normalizer {
         for(int idx = 0; idx < stackSize; idx++) {
         	String lsi = stack.get(idx);
             if(!(Lib.REG_NAMES.contains(lsi) || Utils.imm_pat.matcher(lsi).matches())) {
-                stack.add(idx, replaceSymbol(instName, lsi));
+            	stack.set(idx, replaceSymbol(instName, lsi));
             }
         }
         res = NormHelper.reconstructFormula(stack, opStack);
@@ -334,7 +334,7 @@ public class NormIDAPro implements Normalizer {
         ArrayList<String> stack = new ArrayList<>();
         ArrayList<String> opStack = new ArrayList<>();
         String line = NormHelper.rmUnusedSpaces(content);
-        String[] lineSplit = NormHelper.simple_operator_pat.split(line);
+        String[] lineSplit = NormHelper.simple_op_split_pat.split(line);
         for(String lsi : lineSplit) {
             if(NormHelper.simple_operator_pat.matcher(lsi).matches()) {
                 opStack.add(lsi);
@@ -351,7 +351,7 @@ public class NormIDAPro implements Normalizer {
         String res = arg;
         currPtrRep = null;
         if(arg.endsWith("]")) {
-            String[] argSplit = arg.split("[", 2);
+            String[] argSplit = arg.split("\\[", 2);
             String prefix = argSplit[0].strip();
             String memAddrStr = Utils.rsplit(argSplit[1].strip(), "]")[0].strip();
             String memAddr = replaceEachExpr(instName, memAddrStr);
@@ -405,7 +405,7 @@ public class NormIDAPro implements Normalizer {
     String movSegmentRep(String arg) {
         String res = arg;
         if(arg.endsWith("]") && arg.contains(":")) {
-            String[] argSplit = arg.split("[", 2);
+            String[] argSplit = arg.split("\\[", 2);
             String prefix = argSplit[0].strip();
             String memAddr = Utils.rsplit(argSplit[1].strip(), "]")[0].strip();
             if(memAddr.contains(":")) {
@@ -421,7 +421,7 @@ public class NormIDAPro implements Normalizer {
         String res = arg;
         String content;
         if(arg.endsWith("]")) {
-            String[] argSplit = arg.split("[", 2);
+            String[] argSplit = arg.split("\\[", 2);
             String prefix = argSplit[0];
             String memAddr = Utils.rsplit(argSplit[1].strip(), "]")[0].strip();
             memAddr = NormHelper.simulateEvalExpr(memAddr);
@@ -439,8 +439,9 @@ public class NormIDAPro implements Normalizer {
             content = handleOffsetOperation(arg);
             res = NormHelper.simulateEvalExpr(content);
         }
-        else
+        else {
             res = NormHelper.simulateEvalExpr(arg);
+        }
         return res;
     }
         
@@ -489,7 +490,7 @@ public class NormIDAPro implements Normalizer {
     String replaceTailHexwSuffixH(String inst) {
         String res = inst;
         Matcher m = subtractHexPat.matcher(inst);
-        if(m.matches()) {
+        if(m.find()) {
             String hexStr = m.group(0);
             String newHexRep = NormHelper.convertImmEndHToHex(hexStr);
             res = inst.replace(hexStr, newHexRep);
@@ -513,7 +514,7 @@ public class NormIDAPro implements Normalizer {
 
 
     String postprocessFormatInst(long address, String inst, String instName, ArrayList<String> instArgs) {
-        Integer length = null;
+        int length = 0;
         int instNum = instArgs.size();
         String arg;
         for(int idx = 0; idx < instNum; idx++) {
@@ -552,7 +553,7 @@ public class NormIDAPro implements Normalizer {
         String res = arg;
         if(instName.equals("lea")) {
             if(arg.endsWith("]")) {
-                res = "[" + arg.split("[", 2)[1].strip();
+                res = "[" + arg.split("\\[", 2)[1].strip();
             }
         }
         return res;
@@ -580,7 +581,7 @@ public class NormIDAPro implements Normalizer {
                 if(arg.contains("s:"))
                 	instArgs.set(idx, ptrRep + " " + arg);
                 else
-                	instArgs.set(idx, ptrRep + " [" + arg.split("[", 2)[1].strip());
+                	instArgs.set(idx, ptrRep + " [" + arg.split("\\[", 2)[1].strip());
             }
         }
     }
@@ -637,7 +638,7 @@ public class NormIDAPro implements Normalizer {
             varPtrRepMap.put(varName, ptrRep);
         varValue = varValueSplit[varValueSplit.length - 1].strip();
         if(varValue.endsWith("h")) {
-        	long value = Integer.decode(Utils.rsplit(varValue, "h")[0].strip());
+        	long value = Integer.valueOf(Utils.rsplit(varValue, "h")[0].strip(), 16);
             varValueMap.put(varName, value);
         }
         else if(Utils.imm_pat.matcher(varValue).matches()) {

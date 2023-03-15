@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -720,7 +721,8 @@ public class CFHelper {
 	    BitVecExpr lhs = get_sym_val(store, rip, left, block_id);
 	    BitVecExpr rhs = get_sym_val(store, rip, right, block_id);
 	    if(lhs == null || rhs == null) return null;
-	    BoolExpr pred = Helper.LOGIC_OP_FUNC_MAP.get(logic_op).apply(new Tuple<>(lhs, rhs));
+	    Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr> func = Helper.LOGIC_OP_FUNC_MAP.get(logic_op);
+	    BoolExpr pred = func.apply(new Tuple<BitVecExpr, BitVecExpr>(lhs, rhs));
 	    return pred;
 	}
 

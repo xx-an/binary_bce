@@ -9,6 +9,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.microsoft.z3.BitVecExpr;
+
+import binary.BinaryContent;
+import binary.BinaryInfo;
+
 import org.apache.commons.cli.*;
 
 import common.Config;
@@ -34,10 +38,9 @@ public class CMC {
 	}
 	
 	static ControlFlow constructCF(Normalizer norm, String execPath) {
-		GlobalVar globalVar = new GlobalVar(execPath);
-		mainAddress = globalVar.binary_info.main_address;
-		symTable = globalVar.binary_info.sym_table;
-		addressSymTable = globalVar.binary_info.address_sym_table;
+		mainAddress = GlobalVar.binaryInfo.main_address;
+		symTable = GlobalVar.binaryInfo.sym_table;
+		addressSymTable = GlobalVar.binaryInfo.address_sym_table;
 		addressInstMap = norm.getAddressInstMap();
 		addressLableMap = norm.getAddressLabelMap();
 		for(long address : addressLableMap.keySet()) {
@@ -52,12 +55,12 @@ public class CMC {
 			}
 		}
 	    String funcName = "_start";
-	    long startAddress = globalVar.binary_info.entry_address;
+	    long startAddress = GlobalVar.binaryInfo.entry_address;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
 	    // print(GlobalVar.binary_info.dll_func_info)
 	    // print(disasm_asm.valid_address_no)
-	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, globalVar.binary_info.dllFuncInfo);
+	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, GlobalVar.binaryInfo.dllFuncInfo);
 	    return cfg;
 	}
 	
@@ -97,7 +100,8 @@ public class CMC {
 	    NormHelper.disassemble_to_asm(disasmPath);
 	    NormFactory normFactory = new NormFactory(disasmPath, disasmType);
 	    Normalizer norm = normFactory.get_disasm();
-	    long startTime = System.nanoTime();
+	    GlobalVar.getBinaryInfo(execPath);
+		long startTime = System.nanoTime();
 	    ControlFlow cfg = constructCF(norm, execPath);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
 	    write_results(cfg);

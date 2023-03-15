@@ -373,7 +373,7 @@ public class SMTHelper {
 
 
 	public static BitVecExpr sym_bin_op_na_flags(Store store, long rip, String op, String dest, String src, int block_id) {
-	    BitVecExpr res = SymEngine.sym_bin_op(store, rip, op, dest, src, block_id);
+		BitVecExpr res = SymEngine.sym_bin_op(store, rip, op, dest, src, block_id);
 	    SymEngine.set_sym(store, rip, dest, res, block_id);
 	    return res;
 	}

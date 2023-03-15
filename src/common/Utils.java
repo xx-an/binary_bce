@@ -145,7 +145,8 @@ public class Utils {
 	
 	public static String extract_content(String expr, String left_delimit) {
 	    String right_delimit = delimits.get(left_delimit);
-	    String res = expr.split(left_delimit, 2)[1];
+	    String res = expr.split("\\" + left_delimit, 2)[1];
+	    right_delimit = "\\" + right_delimit;
 	    res = rsplit(res, right_delimit)[0].strip();
 	    return res;
 	}

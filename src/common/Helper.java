@@ -27,21 +27,22 @@ public class Helper {
 	public static Context ctx = new Context();
 	public static final BitVecExpr STDOUT_ADDR = (BitVecExpr) ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
 	
-	public static HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP;
+	public static HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP = new HashMap<>();
 	
-	public static HashMap<String, Function<Tuple<BoolExpr, BoolExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP_BOOLEXPR;
+	public static HashMap<String, Function<Tuple<BoolExpr, BoolExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP_BOOLEXPR = new HashMap<>();
 	
-	Helper() {
-		LOGIC_OP_FUNC_MAP = new HashMap<>();
+	static {
 		LOGIC_OP_FUNC_MAP.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP.put("!=", arg -> not_equal(arg.x, arg.y));
+		LOGIC_OP_FUNC_MAP.put("<", arg -> is_less(arg.x, arg.y));
+		LOGIC_OP_FUNC_MAP.put(">", arg -> is_greater(arg.x, arg.y));
+		LOGIC_OP_FUNC_MAP.put("<=", arg -> is_le(arg.x, arg.y));
+		LOGIC_OP_FUNC_MAP.put(">=", arg -> is_ge(arg.x, arg.y));
 		
-		LOGIC_OP_FUNC_MAP_BOOLEXPR = new HashMap<>();
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("!=", arg -> not_equal(arg.x, arg.y));
-		
 	}
 
 	public static void cnt_init() {
@@ -134,6 +135,18 @@ public class Helper {
 	
 	public static BoolExpr is_less(BitVecExpr x, BitVecExpr y) {
 		return ctx.mkBVSLT(x, y);
+	}
+	
+	public static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
+		return ctx.mkBVSGT(x, y);
+	}
+	
+	public static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
+		return ctx.mkBVSLE(x, y);
+	}
+	
+	public static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
+		return ctx.mkBVSGE(x, y);
 	}
 	
 	
@@ -267,7 +280,7 @@ public class Helper {
 		return not_equal(x, bv_y);
 	}
 	
-	BoolExpr not_equal(BoolExpr x, BoolExpr y) {
+	public static BoolExpr not_equal(BoolExpr x, BoolExpr y) {
 		return (BoolExpr) ctx.mkNot(ctx.mkEq(x, y)).simplify();
 	}
 
@@ -556,9 +569,9 @@ public class Helper {
 	        int rhs_num = ((BitVecNum) rhs).getInt();
 	        if(!address_inst_map.containsKey(rhs_num)) {
 	            if(!bvnum_eq(lhs, rhs)) {
-	                if(lhs_num >= GlobalVar.binary_info.rodata_start_addr && lhs_num < GlobalVar.binary_info.rodata_end_addr)
+	                if(lhs_num >= GlobalVar.binaryInfo.rodata_start_addr && lhs_num < GlobalVar.binaryInfo.rodata_end_addr)
 	                    res = gen_sym(rhs.getSortSize());
-	                else if(rhs_num < GlobalVar.binary_info.rodata_start_addr || rhs_num >= GlobalVar.binary_info.rodata_end_addr)
+	                else if(rhs_num < GlobalVar.binaryInfo.rodata_start_addr || rhs_num >= GlobalVar.binaryInfo.rodata_end_addr)
 	                    res = gen_sym(rhs.getSortSize());
 	            }
 	        }
