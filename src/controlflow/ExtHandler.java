@@ -1,12 +1,14 @@
 package controlflow;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Scanner;
 
 import com.microsoft.z3.BitVecExpr;
 
@@ -131,25 +133,29 @@ public class ExtHandler {
 	HashMap<String, ArrayList<String>> parse_predefined_constraint(String constraint_config_file) throws FileNotFoundException {
 		HashMap<String, ArrayList<String>> res = new HashMap<String, ArrayList<String>>();
 		File f = new File(constraint_config_file);
-		Scanner sn = new Scanner(f);
-		while (sn.hasNextLine()) {
-	        String line = sn.nextLine();
-	        line = line.strip();
-	        if(line != null) {
-                line = line.replace("\t", " ");
-                String[] lineSplit = line.strip().split(" ", 2);
-                String ext_func_name = lineSplit[0].strip();
-                String constraint = lineSplit[1].strip();
-                if(res.containsKey(constraint)) {
-                	ArrayList<String> constraint_list = res.get(ext_func_name);
-                	constraint_list.add(constraint);
-                }
-                else {
-                	ArrayList<String> constraint_list = new ArrayList<String>();
-                	constraint_list.add(constraint);
-                	res.put(ext_func_name, constraint_list);
-                }
-	        }
+		try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+    	    String line;
+    	    while ((line = br.readLine()) != null) {
+    	    	line = line.strip();
+    	    	if(line != null) {
+                    line = line.replace("\t", " ");
+                    String[] lineSplit = line.strip().split(" ", 2);
+                    String ext_func_name = lineSplit[0].strip();
+                    String constraint = lineSplit[1].strip();
+                    if(res.containsKey(constraint)) {
+                    	ArrayList<String> constraint_list = res.get(ext_func_name);
+                    	constraint_list.add(constraint);
+                    }
+                    else {
+                    	ArrayList<String> constraint_list = new ArrayList<String>();
+                    	constraint_list.add(constraint);
+                    	res.put(ext_func_name, constraint_list);
+                    }
+    	        }
+    	    }
+    	} 
+    	catch (IOException e) {
+			e.printStackTrace();
 		}
 	    return res;
 	}	

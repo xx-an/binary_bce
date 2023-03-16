@@ -2,6 +2,8 @@ package semantics;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.microsoft.z3.*;
 
@@ -126,7 +128,10 @@ public class SMTHelper {
 	}
 
 	static BoolExpr parse_condition(Store store, String cond) {
-	    String logic_op = Utils.search("[<!=>]+", cond);
+		Pattern pat = Pattern.compile("[<!=>]+");
+	    Matcher m = pat.matcher(cond);
+	    if(!m.find()) return null;
+		String logic_op = m.group();
 	    String[] cond_split = cond.split(logic_op);
 	    BoolExpr lhs = store.get_flag_val(cond_split[0].strip());
 	    String rhs_str = cond_split[1].strip();
@@ -139,8 +144,9 @@ public class SMTHelper {
 
 	// expr: ZF==1 || SF<>OF
 	static BoolExpr parse_pred_expr(Store store, String expr) {
+//		System.out.println(expr);
 		BoolExpr result = Helper.sym_false();
-	    String[] or_conds = expr.split(" || ");
+	    String[] or_conds = expr.split(" \\|\\| ");
 	    for(String s : or_conds) {
 	    	String[] and_conds = s.split(" && ");
 	    	BoolExpr res = Helper.sym_true();
@@ -381,8 +387,8 @@ public class SMTHelper {
 
 	public static void push_val(Store store, long rip, BitVecExpr sym_val, int block_id) {
 		int operand_size = sym_val.getSortSize();
-		BitVecExpr sym_rsp = sym_bin_op_na_flags(store, rip, "-", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), String.valueOf(operand_size/8), block_id);
-		SymEngine.set_mem_sym(store, sym_rsp, sym_val, block_id);
+		BitVecExpr symSP = sym_bin_op_na_flags(store, rip, "-", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), String.valueOf(operand_size/8), block_id);
+		SymEngine.set_mem_sym(store, symSP, sym_val, block_id);
 	}
 	
 	public static BitVecExpr get_sym_rsp(Store store, long rip) {

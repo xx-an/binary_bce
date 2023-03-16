@@ -3,7 +3,6 @@ package controlflow;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
@@ -12,11 +11,8 @@ import java.util.regex.Pattern;
 
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Expr;
 import com.microsoft.z3.FuncDecl;
 import com.microsoft.z3.Model;
-import com.microsoft.z3.Z3Exception;
-import com.microsoft.z3.enumerations.Z3_sort_kind;
 
 import block.Block;
 import block.Constraint;
@@ -242,7 +238,7 @@ public class CFHelper {
 
 	static int get_real_length(HashMap<String, Integer> mem_len_map, String arg) {
 	    int length = Config.MEM_ADDR_SIZE;
-	    if(!Lib.REG_NAMES.contains(arg));
+	    if(!Lib.REG_NAMES.contains(arg))
 	        length = mem_len_map.get(arg);
 	    return length;
 	}
@@ -786,12 +782,12 @@ public class CFHelper {
 
 	static Constraint insert_new_constraints(Store store, long rip, int block_id, String ext_name, ArrayList<String> preConstraint, Constraint constraint) {
 	    Constraint new_constraint = constraint;
-	    if(preConstraint.size() > 0) {
+	    if(preConstraint != null && preConstraint.size() > 0) {
 	        BoolExpr predicates = null;
 	        for(String p_constraint : preConstraint) {
 	            String p_constr = Utils.remove_multiple_spaces(p_constraint);
 	            p_constr = p_constraint.toLowerCase();
-	            BoolExpr pred = parse_predicates(store, rip, block_id, ext_name, p_constraint);
+	            BoolExpr pred = parse_predicates(store, rip, block_id, ext_name, p_constr);
 	            if(pred != null)
 	                if(predicates != null)
 	                    predicates = Helper.bv_and(predicates, pred);

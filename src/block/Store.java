@@ -7,6 +7,7 @@ import java.util.HashSet;
 import com.microsoft.z3.*;
 
 import common.Lib;
+import common.Utils;
 import common.Config;
 import common.Helper;
 
@@ -42,6 +43,7 @@ public class Store {
 	}
 	
 		
+	@SuppressWarnings("unchecked")
 	void init(Store store) {
 		if(store != null) {
 			g_RegStore = (HashMap<String, Node>) store.g_RegStore.clone();
@@ -107,7 +109,7 @@ public class Store {
 		if(store_key == Lib.MEM)
 			res = g_MemStore.containsKey(key);
 		else if(store_key == Lib.AUX_MEM)
-			res = g_AuxMemStore.contains(store_key);
+			res = g_AuxMemStore.contains(key);
 		return res;
 	}
 	
@@ -217,7 +219,7 @@ public class Store {
     public String pp_store() {
         StringBuilder sb = new StringBuilder();
         if(rip != -1) {
-        	sb.append("rip {" + Long.toHexString(rip) + "\n");
+        	sb.append("rip {" + Utils.num_to_hex_string(rip) + "\n");
         }
         sb.append(pp_reg_store());
         sb.append(pp_mem_store());

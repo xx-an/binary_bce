@@ -5,16 +5,10 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Scanner;
 import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import com.microsoft.z3.*;
 import com.microsoft.z3.enumerations.Z3_sort_kind;
@@ -25,7 +19,7 @@ public class Helper {
 	public static int stdout_mem_cnt = 0;
 	
 	public static Context ctx = new Context();
-	public static final BitVecExpr STDOUT_ADDR = (BitVecExpr) ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
+	public static final BitVecExpr STDOUT_ADDR = ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
 	
 	public static HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP = new HashMap<>();
 	
@@ -115,6 +109,11 @@ public class Helper {
 	}
 	
 	public static BoolExpr gen_bool_sym(int val) {
+		BoolExpr res = (val == 0) ? ctx.mkFalse() : ctx.mkTrue();
+		return res;
+	}
+	
+	public static BoolExpr gen_bool_sym(long val) {
 		BoolExpr res = (val == 0) ? ctx.mkFalse() : ctx.mkTrue();
 		return res;
 	}
@@ -336,6 +335,7 @@ public class Helper {
 	}
 	
 	
+	@SuppressWarnings("unchecked")
 	public static Model check_pred_satisfiable(ArrayList<BoolExpr> predicates) {
 		Solver s = ctx.mkSolver();
 	    for(BoolExpr pred : predicates)
@@ -347,6 +347,7 @@ public class Helper {
 	}
 
 
+	@SuppressWarnings("unchecked")
 	public static ArrayList<Model> repeated_check_pred_satisfiable(ArrayList<BoolExpr> predicates, int num) {
 	    ArrayList<Model> res = new ArrayList<Model>();
 	    Solver s = ctx.mkSolver();
@@ -443,7 +444,7 @@ public class Helper {
 	String string_of_address(BitVecExpr address) {
 	    String res = null;
 	    if(is_bit_vec_num(address)) {
-	        res = Integer.toHexString(((BitVecNum) address).getInt());
+	        res = Utils.num_to_hex_string(((BitVecNum) address).getLong());
 	    }
 	    else
 	    	res = address.toString();
@@ -567,7 +568,7 @@ public class Helper {
 	    if((lhs instanceof BitVecNum) && (rhs instanceof BitVecNum)) {
 	        int lhs_num = ((BitVecNum) lhs).getInt();
 	        int rhs_num = ((BitVecNum) rhs).getInt();
-	        if(!address_inst_map.containsKey(rhs_num)) {
+	        if(!address_inst_map.containsKey((long) rhs_num)) {
 	            if(!bvnum_eq(lhs, rhs)) {
 	                if(lhs_num >= GlobalVar.binaryInfo.rodata_start_addr && lhs_num < GlobalVar.binaryInfo.rodata_end_addr)
 	                    res = gen_sym(rhs.getSortSize());
@@ -578,7 +579,7 @@ public class Helper {
 	    }
 	    else if(rhs instanceof BitVecNum) {
 	    	int rhs_num = ((BitVecNum) rhs).getInt();
-	        if(!address_inst_map.containsKey(rhs_num))
+	        if(!address_inst_map.containsKey((long) rhs_num))
 	            res = gen_sym(rhs.getSortSize());
 	    }
 	    return res;

@@ -3,8 +3,6 @@ package semantics;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.microsoft.z3.BitVecExpr;
-
 public class TBRetInfo {
 	public ArrayList<String> src_names;
 	public Boolean need_stop;

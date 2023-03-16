@@ -25,7 +25,7 @@ public class Semantics {
 	static int block_id = 0;
 	static HashMap<String, Consumer<Tuple<Store, ArrayList<String>>>> INSTRUCTION_SEMANTICS_MAP = new HashMap<String, Consumer<Tuple<Store, ArrayList<String>>>>();
 	
-	Semantics() {
+	static {
 		INSTRUCTION_SEMANTICS_MAP.put("mov", arg -> mov(arg.x, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("lea", arg -> lea(arg.x, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("push", arg -> push(arg.x, arg.y));
@@ -75,13 +75,13 @@ public class Semantics {
 	}
 	
 	
-	void sym_bin_oprt(Store store, String op, int block_id, ArrayList<String> arg) {
+	static void sym_bin_oprt(Store store, String op, int block_id, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		sym_bin_oprt(store, op, dest, src, block_id);
 	}
 	
-	void sym_bin_oprt(Store store, String op, String dest, String src, int block_id) {
+	static void sym_bin_oprt(Store store, String op, String dest, String src, int block_id) {
 		int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 	    BitVecExpr res = SMTHelper.sym_bin_op_na_flags(store, rip, op, dest, src, block_id);
 	    SMTHelper.modify_status_flags(store, res, dest_len);
@@ -90,7 +90,7 @@ public class Semantics {
 	}
 
 
-	void mov(Store store, ArrayList<String> arg) {
+	static void mov(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		mov_op(store, dest, src);
@@ -103,7 +103,7 @@ public class Semantics {
 	}
 
 
-	void lea(Store store, ArrayList<String> arg) {
+	static void lea(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    BitVecExpr address = SymEngine.get_effective_address(store, rip, src);
@@ -111,12 +111,12 @@ public class Semantics {
 	}
 
 
-	void pop(Store store, ArrayList<String> arg) {
+	static void pop(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		pop(store, dest);
 	}
 	
-	void pop(Store store, String dest) {
+	static void pop(Store store, String dest) {
 		int dest_len = Utils.get_sym_length(dest);
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
 		BitVecExpr res = SymEngine.get_mem_sym(store, sym_rsp);
@@ -127,7 +127,7 @@ public class Semantics {
 	    		String.valueOf(dest_len / 8), block_id);
 	}
 	
-	void popad(Store store, ArrayList<String> arg) {
+	static void popad(Store store, ArrayList<String> arg) {
 	    pop(store, "edi");
 	    pop(store, "esi");
 	    pop(store, "ebp");
@@ -139,7 +139,7 @@ public class Semantics {
 	}
 
 
-	void popa(Store store, ArrayList<String> arg) {
+	static void popa(Store store, ArrayList<String> arg) {
 	    pop(store, "di");
 	    pop(store, "si");
 	    pop(store, "bp");
@@ -151,7 +151,7 @@ public class Semantics {
 	}
 
 
-	void push(Store store, ArrayList<String> arg) {
+	static void push(Store store, ArrayList<String> arg) {
 		String src = arg.get(0);
 		push(store, src);
 	}
@@ -161,7 +161,7 @@ public class Semantics {
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
 	
-	void pushad(Store store, ArrayList<String> arg) {
+	static void pushad(Store store, ArrayList<String> arg) {
 	    BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, "esp", block_id, 32);
 	    push(store, "eax");
 	    push(store, "ecx");
@@ -174,7 +174,7 @@ public class Semantics {
 	}
 
 
-	void pusha(Store store, ArrayList<String> arg) {
+	static void pusha(Store store, ArrayList<String> arg) {
 		BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, "sp", block_id, 16);
 	    push(store, "ax");
 	    push(store, "cx");
@@ -188,12 +188,12 @@ public class Semantics {
 
 
 	public static void call(Store store, ArrayList<String> arg) {
-	    push(store, Long.toHexString(rip));
+	    push(store, Utils.num_to_hex_string(rip));
 	}
 
 
 	public static void call_op(Store store, long rip, int block_id) {
-		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Long.toHexString(rip), block_id);
+		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Utils.num_to_hex_string(rip), block_id);
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
 	
@@ -224,7 +224,7 @@ public class Semantics {
 		Tuple<BitVecExpr, Long> result;
 		BitVecExpr res = null;
 		Long alter_res = null;
-		if(store.g_FuncCallStack != null) {
+		if(store.g_FuncCallStack != null && store.g_FuncCallStack.size() > 0) {
 	        alter_res = store.g_FuncCallStack.remove(store.g_FuncCallStack.size() - 1);
 		}
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
@@ -261,7 +261,7 @@ public class Semantics {
 	}
 
 
-	void xchg(Store store, ArrayList<String> arg) {
+	static void xchg(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    if(dest == src) return;
@@ -271,7 +271,7 @@ public class Semantics {
 	}
 
 
-	void leave(Store store) {
+	static void leave(Store store) {
 	    if(Config.MEM_ADDR_SIZE == 64) {
 	    	mov_op(store, "rsp", "rbp");
 		    pop(store, "rbp");
@@ -287,7 +287,7 @@ public class Semantics {
 	}
 	
 
-	void cdqe(Store store, int length) {
+	static void cdqe(Store store, int length) {
 		String src = Lib.AUX_REG_INFO.get(length).x;
 		String dest = Lib.AUX_REG_INFO.get(length * 2).x;
 	    BitVecExpr res = SymEngine.extension(store, rip, src, block_id, length * 2, true);
@@ -295,7 +295,7 @@ public class Semantics {
 	}
 
 
-	void mov_ext(Store store, boolean signed, ArrayList<String> arg) {
+	static void mov_ext(Store store, boolean signed, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    int src_len = Utils.get_sym_length(src);
@@ -311,7 +311,7 @@ public class Semantics {
 	}
 
 
-	void mul(Store store, ArrayList<String> arg) {
+	static void mul(Store store, ArrayList<String> arg) {
 		String src = arg.get(0);
 	    int bits_len = Utils.get_sym_length(src, Config.MEM_ADDR_SIZE);
 	    Triplet<String, String, String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -324,7 +324,7 @@ public class Semantics {
 	}
 
 
-	void imul(Store store, ArrayList<String> arg) {
+	static void imul(Store store, ArrayList<String> arg) {
 		String src = arg.get(0);
 		String src1 = arg.get(1);
 		String src2 = arg.get(2);
@@ -354,7 +354,7 @@ public class Semantics {
 	}
 
 
-	void div(Store store, boolean signed, ArrayList<String> arg) {
+	static void div(Store store, boolean signed, ArrayList<String> arg) {
 		String src = arg.get(0);
 	    int bits_len = Utils.get_sym_length(src, Config.MEM_ADDR_SIZE);
 	    Triplet<String, String, String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -371,7 +371,7 @@ public class Semantics {
 	}
 
 
-	void cmpxchg(Store store, ArrayList<String> arg) {
+	static void cmpxchg(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    int bits_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
@@ -436,13 +436,13 @@ public class Semantics {
 	}
 
 
-	void cmp_op(Store store, ArrayList<String> arg) {
+	static void cmp_op(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
-		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
-		BitVecExpr sym_dest = dest_src_sym.x;
-		BitVecExpr sym_src = dest_src_sym.y;
+//		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
+//		BitVecExpr sym_dest = dest_src_sym.x;
+//		BitVecExpr sym_src = dest_src_sym.y;
 		BitVecExpr res = SymEngine.sym_bin_op(store, rip, "-", dest, src, block_id);
 	    // if(isinstance(res, BitVecNumRef) {
 	    //     if(not isinstance(sym_dest, BitVecNumRef) && not isinstance(sym_src, BitVecNumRef) {
@@ -458,7 +458,7 @@ public class Semantics {
 	}
 
 
-	void sym_bin_op_with_cf(Store store, String op, ArrayList<String> arg) {
+	static void sym_bin_op_with_cf(Store store, String op, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    int dest_len = Utils.get_sym_length(dest);
@@ -472,7 +472,7 @@ public class Semantics {
 	}
 
 
-	void test(Store store, ArrayList<String> arg) {
+	static void test(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		BitVecExpr res = SymEngine.sym_bin_op(store, rip, "&", dest, src, block_id);
@@ -482,7 +482,7 @@ public class Semantics {
 	}
 
 
-	void neg(Store store, ArrayList<String> arg) {
+	static void neg(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 	    int dest_len = Utils.get_sym_length(dest);
 	    BitVecExpr sym_dest = SymEngine.get_sym(store, rip, dest, block_id, dest_len);
@@ -492,7 +492,7 @@ public class Semantics {
 	}
 
 
-	void not_op(Store store, ArrayList<String> arg) {
+	static void not_op(Store store, ArrayList<String> arg) {
 		String dest = arg.get(0);
 	    int dest_len = Utils.get_sym_length(dest);
 	    BitVecExpr sym_dest = SymEngine.get_sym(store, rip, dest, block_id, dest_len);
@@ -500,7 +500,7 @@ public class Semantics {
 	}
 
 	
-	void inc_dec(Store store, String op, ArrayList<String> arg) {
+	static void inc_dec(Store store, String op, ArrayList<String> arg) {
 		String dest = arg.get(0);
 	    int dest_len = Utils.get_sym_length(dest);
 	    BitVecExpr res = SymEngine.sym_bin_op(store, rip, op, dest, "1", block_id);
@@ -510,7 +510,7 @@ public class Semantics {
 	}
 
 
-	void rotate(Store store, boolean to_left, ArrayList<String> arg) {
+	static void rotate(Store store, boolean to_left, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 	    int dest_len = Utils.get_sym_length(dest);
@@ -561,7 +561,7 @@ public class Semantics {
 	}
 
 
-	void cdq(Store store, int length) {
+	static void cdq(Store store, int length) {
 		Triplet<String, String, String> reg_info = Lib.AUX_REG_INFO.get(length);
 		String src = reg_info.x;
 		String dest = reg_info.z;
@@ -570,7 +570,7 @@ public class Semantics {
 	}
 
 
-	void bt(Store store, ArrayList<String> arg) {
+	static void bt(Store store, ArrayList<String> arg) {
 		String bit_base = arg.get(0);
 		String bit_offset = arg.get(1);
 		BitVecExpr sym_base = SymEngine.get_sym(store, rip, bit_base, block_id);

@@ -33,7 +33,7 @@ public class BinaryContent {
 		}
 	}
 	
-	public static int read_bytes(long address, int length) {
+	public int read_bytes(long address, int length) {
 		ArrayList<Byte> res = new ArrayList<Byte>();
 		for(int i = length - 1; i >= 0; i--) {
 			long curr = address + i;

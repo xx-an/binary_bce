@@ -1,7 +1,6 @@
 package symbolic;
 
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Set;
 
 import com.microsoft.z3.*;
 
@@ -10,7 +9,6 @@ import common.Helper;
 import common.Config;
 import common.GlobalVar;
 
-import block.Node;
 import block.Store;
 
 public class SymHelper {
@@ -58,7 +56,7 @@ public class SymHelper {
 
 	void pollute_all_mem_content(Store store, int block_id) {
 		store.g_MemPolluted = block_id;
-		HashSet<BitVecExpr> addr_list = (HashSet) store.g_MemStore.keySet();
+		Set<BitVecExpr> addr_list = store.g_MemStore.keySet();
 	    for(BitVecExpr addr : addr_list) {
 	        if(!(addr instanceof BitVecNum)) {
 	        	BitVecExpr val = store.get_val(addr);
@@ -113,13 +111,13 @@ public class SymHelper {
 	boolean check_mem_addr_overlapping(Store store, BitVecExpr address, int byte_len) {
 	    boolean overlapping = false;
 	    if(Helper.is_bit_vec_num(address)) {
-	        long int_address = Helper.long_of_sym(address);
+//	        long int_address = Helper.long_of_sym(address);
 	        for(int offset = -7; offset < byte_len; offset++) {
 	            if(offset != 0) {
 	                BitVecExpr curr_address = Helper.bv_add(address, offset);
 	                if(store.containsKey(curr_address)) {
-	                	BitVecExpr prev_sym = store.get_val(curr_address);
-	                	int prev_len = prev_sym.getSortSize() / 8;
+//	                	BitVecExpr prev_sym = store.get_val(curr_address);
+//	                	int prev_len = prev_sym.getSortSize() / 8;
 	                	if(offset > 0) {
 	                		overlapping = true;
 	                		break;
@@ -136,7 +134,7 @@ public class SymHelper {
 	    boolean overflow = false;
 	    int byte_len = length / 8;
 	    long int_address = Helper.long_of_sym(address);
-	    Long stack_top = top_stack_addr(store);
+//	    Long stack_top = top_stack_addr(store);
 	    if(addr_in_data_section(int_address) || addr_in_heap(int_address)) {
 	        overflow = check_mem_addr_overlapping(store, address, byte_len);
 	    }

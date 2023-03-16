@@ -5,10 +5,6 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-import javax.script.ScriptException;
-
 import com.microsoft.z3.BitVecExpr;
 import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.FuncDecl;
@@ -76,7 +72,7 @@ public class SymMemory {
 			}
 		}
 		Collections.reverse(to_remove_idx);
-		for(Integer idx : to_remove_idx) {
+		for(int idx : to_remove_idx) {
 			 stack.remove(idx + 1);
 			 op_stack.remove(idx);
 		}
@@ -108,7 +104,7 @@ public class SymMemory {
 	    while(line != "") {
 	        Matcher m = letter_num_neg_pat.matcher(line);
 	        String lsi = null;
-	        if(m.matches()) {
+	        if(m.find()) {
 	            lsi = m.group();
 	            BitVecExpr val = get_sym_val(lsi, store, length);
 	            stack.add(val);
@@ -133,7 +129,7 @@ public class SymMemory {
 	    while(arg != "") {
 	        Matcher ai = letter_num_neg_pat.matcher(arg);
 	        String as = "";
-	        if(ai.matches()) {
+	        if(ai.find()) {
 	        	as = ai.group(0);
 	            BitVecExpr val = get_idx_sym_val(store, as, src_sym, src_val, length);
 	            stack.add(val);
@@ -154,10 +150,11 @@ public class SymMemory {
 	    if(src.endsWith("]")) {
 	        String tmp = Utils.extract_content(src, "[");
 	        if(Utils.imm_pat.matcher(tmp).matches()) {
-	            res = Helper.gen_bv_num(Utils.imm_str_to_int(tmp), length);
+	        	long addr = Long.decode(tmp);
+	            res = Helper.gen_bv_num(addr, length);
 	        }
 	        else if(tmp.contains("rip")) {  // "rip+0x2009a6"
-	            tmp = tmp.replace("rip", Long.toHexString(rip));
+	            tmp = tmp.replace("rip", Utils.num_to_hex_string(rip));
 	            long addr = (long) Utils.eval(tmp);
 	            if(Config.MEM_ADDR_SIZE == 64)
 	            	res = Helper.gen_bv_num(addr, length);
@@ -189,13 +186,12 @@ public class SymMemory {
 	static boolean check_mem_addr_overlapping(Store store, BitVecExpr address, int byte_len, String store_key) {
 		boolean overlapping = false;
 	    if(Helper.is_bit_vec_num(address)) {
-	        long int_address = Helper.long_of_sym(address);
 	        for(int offset = -7; offset < byte_len; offset++) {
 	            if(offset != 0) {
 	            	BitVecExpr curr_address = Helper.bv_add(address, offset);
 	                if(store.containsKey(store_key, curr_address)) {
-	                	BitVecExpr prev_sym = store.get_val(curr_address);
-	                    int prev_len = prev_sym.getSortSize() / 8;
+//	                	BitVecExpr prev_sym = store.get_val(curr_address);
+//	                    int prev_len = prev_sym.getSortSize() / 8;
 	                    if(offset > 0) {
 	                        overlapping = true;
 	                        break;
@@ -222,8 +218,9 @@ public class SymMemory {
 	        else
 	        	store.set_mem_val(address, sym, block_id);
 	    }
-	    else 
+	    else {
 	    	store.set_mem_val(address, sym, block_id);
+	    }
 	}
 
 	static BitVecExpr is_mem_addr_in_stdout(Store store, BitVecExpr address) {
@@ -305,7 +302,7 @@ public class SymMemory {
 	        if(val != null)
 	        	res = Helper.gen_bv_num(val, length);
 	        else
-	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Long.toHexString(int_address), length);
+	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.num_to_hex_string(int_address), length);
 	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }
 	    else {

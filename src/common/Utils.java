@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
+import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -71,12 +72,17 @@ public class Utils {
 	public static Logger output_logger = Logger.getLogger(LOG_NAMES[1]);
 	
 	public static void setup_logger(String logName, String log_path, boolean verbose, Level level) throws SecurityException, IOException {
-		FileHandler fh = new FileHandler(log_path);
+		Handler fh = new FileHandler(log_path);
+		Formatter fmt = new LogFormatter();
+		fh.setFormatter(fmt);
         if(logName == LOG_NAMES[0]) {
+        	logger.setUseParentHandlers(false);
         	logger.addHandler(fh);
             logger.setLevel(Level.ALL);
+            
         }
         else {
+        	output_logger.setUseParentHandlers(false);
         	output_logger.addHandler(fh);
         	output_logger.setLevel(Level.ALL);
         }
@@ -98,16 +104,39 @@ public class Utils {
 	}
 	
 	        
-	public static int imm_str_to_int(String imm_str) {
-	    int res = 0;
+	public static long imm_str_to_int(String imm_str) {
+		long res = 0;
 	    Pattern pattern = Pattern.compile("[a-f]+");
 	    Matcher matcher = pattern.matcher(imm_str);
 	    if(imm_str.startsWith("0x") || imm_str.startsWith("-0x"))
-	        res = Integer.decode(imm_str);
+	        res = Long.decode(imm_str);
 	    else if(matcher.find())
-	        res = Integer.decode(imm_str);
+	        res = Long.valueOf(imm_str, 16);
 	    else 
-	        res = Integer.parseInt(imm_str);
+	        res = Long.parseLong(imm_str, 16);
+	    return res;
+	}
+	
+	
+	public static String num_to_hex_string(long imm) {
+		String res = Long.toString(imm, 16);
+		if(res.startsWith("-")) {
+			res = res.split("-", 2)[1].strip();
+			res = "-0x" + res;
+		}
+		else
+			res = "0x" + res;
+	    return res;
+	}
+	
+	public static String num_to_hex_string(int imm) {
+		String res = Integer.toString(imm, 16);
+		if(res.startsWith("-")) {
+			res = res.split("-", 2)[1].strip();
+			res = "-0x" + res;
+		}
+		else
+			res = "0x" + res;
 	    return res;
 	}
 	
@@ -370,11 +399,6 @@ public class Utils {
 	    return matcher.find();
 	}
 	
-	public static String search(String expr, String regex) {
-		Pattern pattern = Pattern.compile(regex);
-	    Matcher matcher = pattern.matcher(expr);
-	    return matcher.group();
-	}
 
 	public static ArrayList<String> parse_inst_args(String[] inst_split) {
 		ArrayList<String> inst_args = new ArrayList<String>();
@@ -400,7 +424,6 @@ public class Utils {
 	}
 	
 	
-	
 	public static Object eval(String expr) {
 		Object result = null;
 		try {
@@ -411,6 +434,7 @@ public class Utils {
 		return result;	
 	}
 
+	
 	public static ArrayList<String> get_executable_files(String fileDir) {
 		String cmd = "ls -d -1 \"" + fileDir + "/\"* | xargs file | grep -e \"ELF 64-bit LSB shared object\" -e \" PE32 executable \"";
 		String out = execute_command(cmd);

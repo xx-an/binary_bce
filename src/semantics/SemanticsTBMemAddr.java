@@ -28,8 +28,7 @@ public class SemanticsTBMemAddr {
 	static HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
 	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 	
-	
-	public SemanticsTBMemAddr() {
+	static {
 		INSTRUCTION_SEMANTICS_MAP = new HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>>();
 		INSTRUCTION_SEMANTICS_MAP.put("mov", arg -> mov_op(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("lea", arg -> lea_op(arg.x, arg.y, arg.z));
@@ -58,7 +57,7 @@ public class SemanticsTBMemAddr {
 		INSTRUCTION_SEMANTICS_MAP.put("cdqe", arg -> cdqe(arg.x, arg.y, arg.z));
 	}
 	
-	public ArrayList<String> add_src_to_syms(ArrayList<String> sym_names, String src) {
+	public static ArrayList<String> add_src_to_syms(ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 	    src_names.add(SymHelper.get_root_reg(src));
 	    return src_names;
@@ -76,7 +75,7 @@ public class SemanticsTBMemAddr {
 	    return res;
 	}
 
-	ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 	    if(!Utils.imm_start_pat.matcher(src).matches()) {
 	        if(src.contains(":")) {
@@ -106,7 +105,7 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 
-	ArrayList<String> sym_bin_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> sym_bin_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src1 = arg.get(1);
 		String src2 = null;
@@ -115,7 +114,7 @@ public class SemanticsTBMemAddr {
 		return sym_bin_oprt(store, sym_names, dest, src1, src2);
 	}
 
-	ArrayList<String> sym_bin_oprt(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
+	static ArrayList<String> sym_bin_oprt(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
 		ArrayList<String> src_names = sym_names;
 		if(src2 == null)
 			src2 = dest;
@@ -125,7 +124,7 @@ public class SemanticsTBMemAddr {
 	}
 	    		
 
-	ArrayList<String> mov_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> mov_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		return mov(store, sym_names, dest, src);
@@ -171,13 +170,13 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 
-	ArrayList<String> lea_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> lea_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		return lea(store, sym_names, dest, src);
 	}
 
-	ArrayList<String> lea(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> lea(Store store, ArrayList<String> sym_names, String dest, String src) {
 	    ArrayList<String> src_names = sym_names;
 	    if(src_names.contains(dest)) {
 	        src_names.remove(dest);
@@ -188,12 +187,12 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 
-	ArrayList<String> push_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> push_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String src = arg.get(0);
 		return push(store, sym_names, src);
 	}
 
-	ArrayList<String> push(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> push(Store store, ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
 	    String prev_rsp = Helper.bv_sub(sym_rsp, Config.MEM_ADDR_SIZE / 8).toString();
@@ -204,13 +203,13 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 	
-	ArrayList<String> pop_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> pop_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		return pop(store, sym_names, dest);
 	}
 
 
-	ArrayList<String> pop(Store store, ArrayList<String> sym_names, String dest) {
+	static ArrayList<String> pop(Store store, ArrayList<String> sym_names, String dest) {
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
 		ArrayList<String> src_names = sym_names;
 	    SMTHelper.remove_reg_from_sym_srcs(dest, src_names);
@@ -218,26 +217,26 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 	
-	ArrayList<String> xchg_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> xchg_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		return xchg(store, sym_names, dest, src);
 	}
 
 
-	ArrayList<String> xchg(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> xchg(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    // if(check_source_is_sym(store, rip, dest, sym_names) {
 	    SMTHelper.add_new_reg_src(src_names, dest, src);
 	    return src_names;
 	}
 	
-	ArrayList<String> mul_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> mul_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		return mul(store, sym_names, dest);
 	}
 
-	ArrayList<String> mul(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> mul(Store store, ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 	    int bits_len = Utils.get_sym_length(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -247,7 +246,7 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 	
-	ArrayList<String> imul_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> imul_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src1 = null;
 		String src2 = null;
@@ -259,7 +258,7 @@ public class SemanticsTBMemAddr {
 	}
 
 
-	ArrayList<String> imul(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
+	static ArrayList<String> imul(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
 		ArrayList<String> src_names = sym_names;
 	    if(src1 != null) {
 	        if(src2 == null) {
@@ -275,13 +274,13 @@ public class SemanticsTBMemAddr {
 	    return src_names;
 	}
 	
-	ArrayList<String> div_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> div_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String src = arg.get(0);
 		return div(store, sym_names, src);
 	}
 
 
-	ArrayList<String> div(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> div(Store store, ArrayList<String> sym_names, String src) {
 	    int bits_len = Utils.get_sym_length(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
 	    String qreg = reg_info.x;
@@ -292,18 +291,18 @@ public class SemanticsTBMemAddr {
 	}
 
 
-	ArrayList<String> cdqe(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> cdqe(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 	    return sym_names;
 	}
 
 	
-	ArrayList<String> cmpxchg_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> cmpxchg_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		return cmpxchg(store, sym_names, dest, src);
 	}
 
-	ArrayList<String> cmpxchg(Store store, ArrayList<String> sym_names, String dest, String src) {
+	static ArrayList<String> cmpxchg(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    int bits_len = Utils.get_sym_length(dest);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -348,9 +347,8 @@ public class SemanticsTBMemAddr {
 	}
 
 
-	Boolean call(Store store, ArrayList<String> sym_names) {
+	static Boolean call(Store store, ArrayList<String> sym_names) {
 		Tuple<ArrayList<String>, ArrayList<String>> jmp_op_res = jmp_op(sym_names);
-		ArrayList<String> sym_in_stack = jmp_op_res.x;
 		ArrayList<String> sym_not_in_stack = jmp_op_res.y;
 	    func_call_point = true;
 	    for(String sym_name : sym_not_in_stack) {
@@ -411,7 +409,7 @@ public class SemanticsTBMemAddr {
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
 	    	Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>> inst_op = INSTRUCTION_SEMANTICS_MAP.get(inst_name);
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
-	        src_names = inst_op.apply(new Triplet(store, sym_names, inst_args));
+	        src_names = inst_op.apply(new Triplet<>(store, sym_names, inst_args));
 	    }
 	    else if(inst_name.equals("nop") || inst_name.equals("hlt")) { }
 	    else if(inst_name.startsWith("cmov")) {

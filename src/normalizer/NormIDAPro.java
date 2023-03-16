@@ -288,28 +288,28 @@ public class NormIDAPro implements Normalizer {
         }
         else if(Utils.check_jmp_with_address(instName)) {
             if(procValueMap.containsKey(symbol))
-                res = Long.toHexString(procValueMap.get(symbol));
+                res = Utils.num_to_hex_string(procValueMap.get(symbol));
             else if(varValueMap.containsKey(symbol)) {
-                res = Long.toHexString(varValueMap.get(symbol));
+                res = Utils.num_to_hex_string(varValueMap.get(symbol));
                 if(varPtrRepMap.containsKey(symbol))
                     currPtrRep = varPtrRepMap.get(symbol);
             }
             else if(symbol.startsWith("loc_")) {
                 String remaining = symbol.split("loc_", 2)[1].strip();
                 if(immPat.matcher(remaining).matches()) {
-                    res = Integer.toHexString(Integer.valueOf(remaining, 16));
+                    res = Utils.num_to_hex_string(Long.valueOf(remaining, 16));
                 }
             }
         }
         else if(varValueMap.containsKey(symbol)) {
-            res = Long.toHexString(varValueMap.get(symbol));
+            res = Utils.num_to_hex_string(varValueMap.get(symbol));
             if(varPtrRepMap.containsKey(symbol))
                 currPtrRep = varPtrRepMap.get(symbol);
         }
         else if(symbol.startsWith("loc_")) {
         	String remaining = symbol.split("loc_", 2)[1].strip();
             if(immPat.matcher(remaining).matches()) {
-                res = Integer.toHexString(Integer.decode(remaining));
+                res = Utils.num_to_hex_string(Long.decode(remaining));
             }
         }
         return res;
@@ -389,7 +389,7 @@ public class NormIDAPro implements Normalizer {
         }
         else if(globalDataName.contains(arg)) {
             if(count == 2)
-                res = "[" + Long.toHexString(varValueMap.get(arg)) + "]";
+                res = "[" + Utils.num_to_hex_string(varValueMap.get(arg)) + "]";
         }
         else if(arg.contains(" ptr ")) {
             String[] argSplit = arg.split(" ptr ", 2);
@@ -505,7 +505,7 @@ public class NormIDAPro implements Normalizer {
             if(res.startsWith("$")) {
                 res = res.split("$", 2)[1].strip();
                 long newAddr = address + Long.decode(res);
-                res = Long.toHexString(newAddr);
+                res = Utils.num_to_hex_string(newAddr);
             }
         }
         return res;
@@ -599,7 +599,7 @@ public class NormIDAPro implements Normalizer {
                 	Tuple<Integer, String> idaOffType = retrieveIdaTypeOffsetType(symbolType, itemEntry);
                 	int offset = idaOffType.x;
                 	String itemType  = idaOffType.y;
-                    res = Long.toHexString(varValueMap.get(symbolName) + offset);
+                    res = Utils.num_to_hex_string(varValueMap.get(symbolName) + offset);
                     String ptrRep = NormHelper.getIdaPtrRepFromItemType(itemType);
                     if(ptrRep != null)
                         currPtrRep = ptrRep;
@@ -638,11 +638,11 @@ public class NormIDAPro implements Normalizer {
             varPtrRepMap.put(varName, ptrRep);
         varValue = varValueSplit[varValueSplit.length - 1].strip();
         if(varValue.endsWith("h")) {
-        	long value = Integer.valueOf(Utils.rsplit(varValue, "h")[0].strip(), 16);
+        	long value = Long.valueOf(Utils.rsplit(varValue, "h")[0].strip(), 16);
             varValueMap.put(varName, value);
         }
         else if(Utils.imm_pat.matcher(varValue).matches()) {
-            long value = Integer.decode(varValue);
+            long value = Long.decode(varValue);
             varValueMap.put(varName, value);
         }
     }
@@ -680,13 +680,13 @@ public class NormIDAPro implements Normalizer {
                         variable = contentSplit[idx + 1];
                         original = "offset " + variable;
                         if(varOffsetMap.containsKey(variable))
-                            newVar = Long.toHexString(varOffsetMap.get(variable));
+                            newVar = Utils.num_to_hex_string(varOffsetMap.get(variable));
                         else if(variable.contains("."))
                             newVar = replaceIdaStructItemSymbol(variable);
                         else if(Utils.startsWith(variable, offsetSpecPrefix)) {
                             var = variable.split("_", 2)[1];
                             if(Utils.imm_start_pat.matcher(var).matches()) {
-                                newVar = Integer.toHexString(Integer.decode(var));
+                                newVar = Utils.num_to_hex_string(Long.decode(var));
                             }
                         }
                     }

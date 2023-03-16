@@ -26,7 +26,7 @@ public class SemanticsTB {
 	static HashMap<String, Integer> mem_len_map = new HashMap<>();
 	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 
-	SemanticsTB() {
+	static {
 		INSTRUCTION_SEMANTICS_MAP = new HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>>();
 		INSTRUCTION_SEMANTICS_MAP.put("mov", arg -> mov(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("lea", arg -> lea(arg.x, arg.y, arg.z));
@@ -55,12 +55,12 @@ public class SemanticsTB {
 	}
 	
 	
-	ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String src = arg.get(0);
 		return sym_bin_on_src(store, sym_names, src);
 	}
 	
-	ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 		int src_len = Utils.get_sym_length(src);
 	    BitVecExpr sym_src = SymEngine.get_sym(store, rip, src, src_len);
@@ -101,14 +101,14 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> sym_bin_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> sym_bin_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src1 = arg.get(1);
 		String src2 = (arg.size() > 2) ? arg.get(2) : null;
 		return sym_bin_oprt(store, sym_names, dest, src1, src2);
 	}
 	
-	ArrayList<String> sym_bin_oprt(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
+	static ArrayList<String> sym_bin_oprt(Store store, ArrayList<String> sym_names, String dest, String src1, String src2) {
 		ArrayList<String> src_names = sym_names;
 	    if(SMTHelper.check_source_is_sym(store, rip, dest, sym_names)) {
 	        String src_2 = (src2 == null) ? dest : src2;
@@ -119,7 +119,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> mov(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> mov(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		return mov_op(store, sym_names, dest, src);
@@ -149,7 +149,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> lea(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> lea(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		ArrayList<String> src_names = sym_names;
@@ -165,7 +165,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> pop(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> pop(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 	    ArrayList<String> src_names = sym_names;
 	    if(src_names.contains(dest))
@@ -174,7 +174,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> xchg(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> xchg(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		ArrayList<String> src_names = sym_names;
@@ -184,13 +184,13 @@ public class SemanticsTB {
 	}
 
 	
-	ArrayList<String> mul(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> mul(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String src = arg.get(0);
 		return mul_op(store, sym_names, src);
 	}
 	
 
-	ArrayList<String> mul_op(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> mul_op(Store store, ArrayList<String> sym_names, String src) {
 		ArrayList<String> src_names = sym_names;
 	    int bits_len = Utils.get_sym_length(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -201,7 +201,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> imul(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> imul(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src1 = (arg.size() > 1) ? arg.get(1) : null;
 		String src2 = (arg.size() > 2) ? arg.get(2) : null;
@@ -218,7 +218,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> div_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> div_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String src = arg.get(0);
 	    int bits_len = Utils.get_sym_length(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
@@ -230,7 +230,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> cmpxchg(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> cmpxchg(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		ArrayList<String> src_names = sym_names;
@@ -257,7 +257,7 @@ public class SemanticsTB {
 	}
 
 
-	ArrayList<String> cmp_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+	static ArrayList<String> cmp_op(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		ArrayList<String> src_names = sym_names;
@@ -297,7 +297,7 @@ public class SemanticsTB {
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
 	    	Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>> inst_op = INSTRUCTION_SEMANTICS_MAP.get(inst_name);
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
-	        src_names = inst_op.apply(new Triplet(store, sym_names, inst_args));
+	        src_names = inst_op.apply(new Triplet<>(store, sym_names, inst_args));
 	    }
 	    else if(inst_name.equals("nop") || inst_name.equals("hlt")) {}
 	    else if(inst_name.startsWith("cmov")) {

@@ -9,13 +9,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import com.microsoft.z3.BitVecExpr;
-
-import binary.BinaryContent;
-import binary.BinaryInfo;
-
 import org.apache.commons.cli.*;
 
-import common.Config;
 import common.GlobalVar;
 import common.Helper;
 import common.Utils;
@@ -87,11 +82,11 @@ public class CMC {
 		int numUnresolvedIndirects = cfg.cmcExecInfo[2];
 		int numUninitialized = cfg.cmcExecInfo[3];
 	    int numReachableAddrs = cfg.reachable_addresses_num();
-	    Utils.output_logger.info("// of reached instructions: " + Integer.toString(numReachableAddrs));
-	    Utils.output_logger.info("// of paths: " + Integer.toString(numPaths));
-	    Utils.output_logger.info("// of (possibly) negative paths: " + Integer.toString(numNegPaths));
-	    Utils.output_logger.info("// of uninitialized content: " + Integer.toString(numUninitialized));
-	    Utils.output_logger.info("// of unresolved indirects: " + Integer.toString(numUnresolvedIndirects));
+	    Utils.output_logger.info("# of reached instructions: " + Integer.toString(numReachableAddrs));
+	    Utils.output_logger.info("# of paths: " + Integer.toString(numPaths));
+	    Utils.output_logger.info("# of (possibly) negative paths: " + Integer.toString(numNegPaths));
+	    Utils.output_logger.info("# of uninitialized content: " + Integer.toString(numUninitialized));
+	    Utils.output_logger.info("# of unresolved indirects: " + Integer.toString(numUnresolvedIndirects));
 	}
 	    
 	
@@ -185,12 +180,6 @@ public class CMC {
                 .hasArg()
                 .desc("The default value of the CMC bound")
                 .build();
-        
-        Option memAddrSizeOpt = Option.builder("s").longOpt("memory_addr_size")
-                .argName("memory_addr_size")
-                .hasArg()
-                .desc("The default value of the memory address size")
-                .build();
 	    
 
         options.addOption(batchOpt);
@@ -200,14 +189,12 @@ public class CMC {
         options.addOption(exeDirOpt);
         options.addOption(fileNameOpt);
         options.addOption(cmcBoundOpt);
-        options.addOption(memAddrSizeOpt);
         
         
         CommandLineParser parser = new DefaultParser();
         CommandLine line = parser.parse(options, args);
 	    
 	    Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
-	    Config.MEM_ADDR_SIZE = Integer.decode(line.getOptionValue("memory_addr_size", "32"));
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name", "basename.exe");
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();

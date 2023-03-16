@@ -1,38 +1,28 @@
 package controlflow;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Random;
 
 import com.microsoft.z3.BitVecExpr;
 
 import block.Block;
-import block.Constraint;
 import block.Store;
-import common.Config;
-import common.Helper;
 import common.Lib;
 import common.Triplet;
-import common.Tuple;
 import common.Lib.TRACE_BACK_RET_TYPE;
 import common.Utils;
 import semantics.SemanticsTBMemAddr;
-import semantics.Semantics;
 import semantics.SemanticsTB;
 import semantics.SemanticsTBSym;
 import semantics.TBRetInfo;
-import symbolic.SymEngine;
 
 public class TraceBack {
-	
-	TraceBack() {}
 
 	static String pp_tb_debug_info(TRACE_BACK_RET_TYPE retType, long address, String inst) {
 	    String res = "The path is unsound due to ";
 	    res += retType.toString().toLowerCase();
-	    res += " at " + Long.toHexString(address) + ": " + inst;
+	    res += " at " + Utils.num_to_hex_string(address) + ": " + inst;
 	    return res;
 	}
 
@@ -55,7 +45,7 @@ public class TraceBack {
 	
 	static Triplet<Integer, Boolean, Boolean> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> dllFuncInfo, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
         Utils.logger.info("Trace back for symbolized memory address");
-        Utils.logger.info(Long.toHexString(blk.address) + ": " + blk.inst);
+        Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
         Store store = blk.store;
         long rip = store.rip;
         boolean tbHaltPoint = false;
@@ -67,12 +57,13 @@ public class TraceBack {
         ArrayList<Integer> bIDList = null;
         ArrayList<String> symList = null;
         while(bIDSymMap != null && count < Utils.MAX_TRACEBACK_COUNT) {
-        	bIDList = (ArrayList<Integer>) bIDSymMap.keySet();
+        	bIDList = new ArrayList<Integer>();
+        	bIDList.addAll(bIDSymMap.keySet());
         	Collections.sort(bIDList);
         	Integer currBlockID = bIDList.get(bIDList.size() - 1);
         	symList = bIDSymMap.get(currBlockID);
         	String currSymName = symList.remove(0);
-        	if(symList == null) 
+        	if(symList == null || symList.size() == 0) 
         		bIDSymMap.remove(currBlockID);
             if(currBlockID != -1) {
                 Block currBlk = blockMap.get(currBlockID);
@@ -90,7 +81,7 @@ public class TraceBack {
                 tbHaltPoint = tbInfo.halt_point;
                 HashMap<String, Integer> mLenMap = tbInfo.mem_len_map;
                 memLenMap.putAll(mLenMap);
-                Utils.logger.info("Block id " + Integer.toString(currBlockID) + ": " + Long.toHexString(currBlk.address) + "  " + currInst);
+                Utils.logger.info("Block id " + Integer.toString(currBlockID) + ": " + Utils.num_to_hex_string(currBlk.address) + "  " + currInst);
                 Utils.logger.info(srcNames.toString());
                 if(funcCallPoint)
                     // _update_external_assumptions(curr_store, curr_rip, curr_inst, src_names)
@@ -131,7 +122,7 @@ public class TraceBack {
             boolean stillTB = retInfo.still_tb;
             HashMap<String, Integer> mLenMap = retInfo.mem_len_map;
             memLenMap.putAll(mLenMap);
-            Utils.logger.info(Long.toHexString(blk.address) + ": " + blk.inst);
+            Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
             Utils.logger.info(srcNames.toString());
             if(needStop && srcNames.size() == 1) {
                 return new Triplet<>(Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED, srcNames, boundary);
@@ -169,9 +160,8 @@ public class TraceBack {
     static void locatePointerRelatedError(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, Block block, Store initStore, long address, String inst, ArrayList<String> symNames) {
         // store, rip = store, store.rip
         Utils.logger.info("Trace back for pointer-related error");
-        Utils.logger.info(Long.toHexString(address) + ": " + block.inst);
-        Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Long.toHexString(block.address) + ": " + block.inst);
-        boolean tbHaltPoint = false;
+        Utils.logger.info(Utils.num_to_hex_string(address) + ": " + block.inst);
+        Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Utils.num_to_hex_string(block.address) + ": " + block.inst);
         ArrayList<BlockNode> nodeStack = new ArrayList<>();
         ArrayList<String> srcNames = null;
         HashMap<Integer, ArrayList<String>> bIDSymMap = CFHelper.retrieveBIDSymInfo(initStore, initStore.rip, symNames);
@@ -188,9 +178,7 @@ public class TraceBack {
         while(nodeStack.size() > 0) {
         	BlockNode node = nodeStack.remove(nodeStack.size() - 1);
         	Block currBlk = node.block;
-        	ArrayList<String> currSymNames = node.symNames;
         	Store currStore = currBlk.store;
-        	String currInst = currBlk.inst;
             Block pBlock = CFHelper.getParentBlockInfo(blockMap, currBlk);
             if(pBlock == null) return;
             for(String symName : symNames) {
@@ -201,9 +189,9 @@ public class TraceBack {
             	boolean funcCallPoint = tbInfo.func_call_point;
             	boolean haltPoint = tbInfo.halt_point;
             	boolean concrete_val = tbInfo.concrete_val;
-                Utils.logger.info(Long.toHexString(currBlk.address) + ": " + currBlk.inst);
+                Utils.logger.info(Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
-                Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Long.toHexString(currBlk.address) + ": " + currBlk.inst);
+                Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, pBlock.store.rip, srcNames);
                 if(funcCallPoint || haltPoint || concrete_val) continue;
                 else {

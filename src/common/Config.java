@@ -1,6 +1,5 @@
 package common;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -124,9 +123,9 @@ public class Config {
 		
 		
 		INIT_STACK_FRAME_POINTER = new HashMap<Integer, Long>();
-		INIT_STACK_FRAME_POINTER.put(16, (long) (2^12-3));
-		INIT_STACK_FRAME_POINTER.put(32, (long) (2^24-5));
-		INIT_STACK_FRAME_POINTER.put(64, (long) (2^48-9));
+		INIT_STACK_FRAME_POINTER.put(16, (long) Math.pow(2, 12) - 3);
+		INIT_STACK_FRAME_POINTER.put(32, (long) Math.pow(2, 24) - 5);
+		INIT_STACK_FRAME_POINTER.put(64, (long) Math.pow(2, 48) - 9);
 		
 		HEAP_ADDR_INFO = new HashMap<Integer, Integer>();
 		HEAP_ADDR_INFO.put(16, 0x4ff);

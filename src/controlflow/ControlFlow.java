@@ -3,12 +3,10 @@ package controlflow;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Set;
 
 import com.microsoft.z3.BitVecExpr;
-import com.microsoft.z3.BitVecNum;
 import com.microsoft.z3.BoolExpr;
-import com.microsoft.z3.Model;
 
 import block.Block;
 import block.Constraint;
@@ -53,10 +51,12 @@ public class ControlFlow {
     HashMap<String, ArrayList<String>> extLibAssumptions;
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
 
+    
     public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, HashMap<Long, String> addressInstMap, HashMap<Long, Long> addressNextMap, long startAddress, long mainAddress, String func_name, HashMap<Long, String> addressExtFuncMap, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayDeque<>();
         addressBlockMap = new HashMap<>();
+        addressBlockCntMap = new HashMap<>();
         loopTraceCounter = new HashMap<>();
         memLenMap = new HashMap<>();
         this.symTable = symTable;
@@ -89,10 +89,10 @@ public class ControlFlow {
         
     void build_cfg(long startAddress, Store startStore, Constraint startConstraint) {
     	String startInst = addressInstMap.get(startAddress);
-        add_new_block(null, startAddress, startInst, startStore, startConstraint);
-        while(blockStack != null) {
+    	add_new_block(null, startAddress, startInst, startStore, startConstraint);
+        while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.pop();
-            Utils.logger.info(Long.toHexString(curr.address) + ": " + curr.inst); 
+            Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst); 
             long address = curr.address;
             String inst = curr.inst;
             Store store = curr.store;
@@ -146,7 +146,6 @@ public class ControlFlow {
             }
         }
         else {
-            // Utils.logger.info("jump_to_block_w_new_constraint")
             jump_to_block_w_new_constraint(block, inst, newAddress, store, constraint, val, need_new_constraint);
         }
     }
@@ -178,39 +177,39 @@ public class ControlFlow {
                         extFuncCallAddr.add(address);
                     }
                     String extFuncName = CFHelper.get_function_name_from_addr_sym_table(addressSymTable, newAddress);
-                    handle_external_function(newAddress, extFuncName, block, address, inst, store, constraint);
+                    handle_external_function(extFuncName, block, address, inst, store, constraint);
                 }
                 else {
                     handle_internal_jumps(block, address, inst, store, constraint, newAddress);
                 }
             }
-            else if(addressSymTable.containsKey(newAddress)) {
+            else if(addressSymTable.containsKey(nAddress)) {
                 String extFuncName = CFHelper.get_function_name_from_addr_sym_table(addressSymTable, newAddress);
                 if(!extFuncCallAddr.contains(address)) {
                     extFuncCallAddr.add(address);
                 }
-                handle_external_function(newAddress, extFuncName, block, address, inst, store, constraint);
+                handle_external_function(extFuncName, block, address, inst, store, constraint);
             }
             else if(dllFuncInfo.containsKey(newAddress)) {
                 String extFuncName = dllFuncInfo.get(newAddress);
                 if(!extFuncCallAddr.contains(address))
                     extFuncCallAddr.add(address);
-                handle_external_function(newAddress, extFuncName, block, address, inst, store, constraint);
+                handle_external_function(extFuncName, block, address, inst, store, constraint);
             }
             else if(Helper.is_bit_vec_num(nAddress) || nAddress.toString().startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
             	String extFuncName = nAddress.toString();
                 if(!extFuncCallAddr.contains(address))
                     extFuncCallAddr.add(address);
-                handle_external_function(newAddress, extFuncName, block, address, inst, store, constraint);
+                handle_external_function(extFuncName, block, address, inst, store, constraint);
                 // Utils.logger.debug("Jump to an undefined external address " + str(newAddress) + " at address " + hex(address))
             }
             else
-                handleUnresolvedIndirectJumps(block, address, inst, constraint, newAddress);
+                handleUnresolvedIndirectJumps(block, address, inst, constraint);
         }
     }
 
     void handle_internal_jumps(Block block, long address, String inst, Store store, Constraint constraint, long newAddress) {
-        Utils.logger.info(Long.toHexString(address) + ": jump address is " + Long.toHexString(address));
+        Utils.logger.info(Utils.num_to_hex_string(address) + ": jump address is " + Utils.num_to_hex_string(address));
         if(Utils.check_not_single_branch_inst(inst)) {    // je xxx
             construct_conditional_branches(block, address, inst, newAddress, store, constraint);
         }
@@ -234,10 +233,9 @@ public class ControlFlow {
         }
     }
 
-    void handle_external_function(long ext_func_address, String extFuncName, Block block, long address, String inst, Store store, Constraint constraint) {
+    void handle_external_function(String extFuncName, Block block, long address, String inst, Store store, Constraint constraint) {
         long rip = store.rip;
         Constraint newConstraint = constraint;
-        ArrayList<String> inv_names = extLibAssumptions.get(ext_func_address);
         String extName = extFuncName.split("@", 2)[0].strip();
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
         if(extFuncName.startsWith("__libc_start_main")) {
@@ -257,7 +255,6 @@ public class ControlFlow {
                 if(!succeed) return;
             }
             else {
-                boolean isMemPreserved = extMemPreserv.contains(ext_func_address);
                 ExtHandler.ext_func_call(store, rip, block.block_id);
                 if(Lib.TERMINATION_FUNCTIONS.contains(extName)) {
                     handle_cmc_path_termination(store);
@@ -285,7 +282,7 @@ public class ControlFlow {
     }
                 
 
-    void handleUnresolvedIndirectJumps(Block block, long address, String inst, Constraint constraint, long newAddress) {
+    void handleUnresolvedIndirectJumps(Block block, long address, String inst, Constraint constraint) {
         if(inst.startsWith("jmp ")) {
         	Lib.TRACE_BACK_RET_TYPE res = null;
             ArrayList<Block> trace_list = new ArrayList<>();
@@ -315,7 +312,7 @@ public class ControlFlow {
                 // num_of_unresolved_indirects
                 cmcExecInfo[2] += 1;
                 handle_cmc_path_termination(block.store);
-                Utils.logger.info("Cannot resolve the jump address " + Long.toHexString(newAddress) + " of " + inst + " at address " + Long.toHexString(address));
+                Utils.logger.info("Cannot resolve the jump address of " + inst + " at address " + Utils.num_to_hex_string(address));
 //                Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
                 // sys.exit("Can!resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
             }
@@ -324,7 +321,7 @@ public class ControlFlow {
             if(constraint != null) {
             	boolean isPathReachable = CFHelper.check_path_reachability(constraint);
                 if(isPathReachable == false) { 
-                    Utils.logger.info("The path is infeasible at the jump address " + Long.toHexString(newAddress) + " of " + inst + " at address " + Long.toHexString(address) + "\n");
+                    Utils.logger.info("The path is infeasible at the jump address of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
                     return;
                 }
             }
@@ -333,7 +330,7 @@ public class ControlFlow {
             TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, newSrcs);
             // num_of_unresolved_indirects
             cmcExecInfo[2] += 1;
-            Utils.logger.info("Can!resolve the jump address " + Long.toHexString(newAddress) + " of " + inst + " at address " + Long.toHexString(address));
+            Utils.logger.info("Cannot resolve the jump address of " + inst + " at address " + Utils.num_to_hex_string(address));
             handle_cmc_path_termination(block.store);
             // sys.exit("Can!resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
         }
@@ -342,7 +339,7 @@ public class ControlFlow {
 
     Integer exec_ret_operation(Block block, long address, Store store, Constraint constraint, long newAddress) {
         Integer block_id = null;
-        Utils.logger.info(Long.toHexString(address) + ": the return address is " + Long.toHexString(newAddress));
+        Utils.logger.info(Utils.num_to_hex_string(address) + ": the return address is " + Utils.num_to_hex_string(newAddress));
         if(addressInstMap.containsKey(newAddress)) {
             if(!retCallAddressMap.containsKey(newAddress)) {
                 Long callTarget = _get_prev_inst_target(newAddress);
@@ -393,9 +390,9 @@ public class ControlFlow {
                     // num_of_unresolved_indirects
                     cmcExecInfo[2] += 1;
                     handle_cmc_path_termination(store);
-                    Utils.logger.info("Cannot resolve the return address of " + block.inst + " at address " + Long.toHexString(address));
+                    Utils.logger.info("Cannot resolve the return address of " + block.inst + " at address " + Utils.num_to_hex_string(address));
                     System.exit(1);
-//                    System.exit("Cannot resolve the return address of " + block.inst + " at address " + Long.toHexString(address));
+//                    System.exit("Cannot resolve the return address of " + block.inst + " at address " + Utils.num_to_hex_string(address));
                 }
             }
         }
@@ -515,10 +512,10 @@ public class ControlFlow {
         	return TRACE_BACK_RET_TYPE.JT_NO_TARGET_ADDRESSES;
         ArrayList<String> addrsInfo = new ArrayList<>();
         for(BitVecExpr tAddr : targetAddrs) {
-        	addrsInfo.add(Long.toHexString(Helper.long_of_sym(tAddr)));
+        	addrsInfo.add(Utils.num_to_hex_string(Helper.long_of_sym(tAddr)));
         }
         String jtInfo = String.join(", ", addrsInfo);
-        Utils.logger.info(Long.toHexString(traceList.get(traceList.size() - 1).address) + ": jump addresses resolved using jump table [" + jtInfo + "]");
+        Utils.logger.info(Utils.num_to_hex_string(traceList.get(traceList.size() - 1).address) + ": jump addresses resolved using jump table [" + jtInfo + "]");
         reconstructNewBranches(traceList.get(traceList.size() - 1), dest, targetAddrs);
         return TRACE_BACK_RET_TYPE.JT_SUCCEED;
     }
@@ -629,13 +626,15 @@ public class ControlFlow {
         if(needsUpdateStore && inst != null && !Utils.check_branch_inst_wo_call(inst) && !inst.startsWith("cmov")) {
             Semantics.parse_semantics(store, store.rip, inst, block_id);
         }
-        if(store.g_NeedTraceBack)
+        if(store.g_NeedTraceBack) {
         	handleSymMemAddr(block, address, inst, store, constraint);
-        else if(store.g_PointerRelatedError != null && store.g_PointerRelatedError != Lib.MEMORY_RELATED_ERROR_TYPE.UNINITIALIZED_CONTENT)
+        }
+        else if(store.g_PointerRelatedError != null && store.g_PointerRelatedError != Lib.MEMORY_RELATED_ERROR_TYPE.NONE && store.g_PointerRelatedError != Lib.MEMORY_RELATED_ERROR_TYPE.UNINITIALIZED_CONTENT) {
         	terminatePointerRelatedErrorPath(block, store, address, inst, constraint, true);
+        }
         else {
             if(store.g_PointerRelatedError != null && store.g_PointerRelatedError == Lib.MEMORY_RELATED_ERROR_TYPE.UNINITIALIZED_CONTENT) {
-                String error_msg = Long.toHexString(address) + "\t" + inst + "\n\t" + CFHelper.str_of_error_type(store.g_PointerRelatedError) + " at address " + Long.toHexString(store.g_PRErrorAddress) + "\n";
+                String error_msg = Utils.num_to_hex_string(address) + "\t" + inst + "\n\t" + CFHelper.str_of_error_type(store.g_PointerRelatedError) + " at address " + Utils.num_to_hex_string(store.g_PRErrorAddress) + "\n";
 //                Utils.output_logger.error(error_msg);
                 Utils.logger.info(error_msg);
                 store.g_PointerRelatedError = null;
@@ -703,7 +702,7 @@ public class ControlFlow {
                 return;
             }
         }
-        String error_msg = "Error: " + Long.toHexString(address) + "\t" + inst + "\n\t" + CFHelper.str_of_error_type(store.g_PointerRelatedError) + " at address " + Long.toHexString(store.g_PRErrorAddress) + "\n";
+        String error_msg = "Error: " + Utils.num_to_hex_string(address) + "\t" + inst + "\n\t" + CFHelper.str_of_error_type(store.g_PointerRelatedError) + " at address " + Utils.num_to_hex_string(store.g_PRErrorAddress) + "\n";
 //        Utils.output_logger.error(error_msg);
         Utils.logger.info(error_msg);
         ArrayList<String> symNames = CFHelper.retrieve_source_for_memaddr(inst, common);
@@ -788,7 +787,7 @@ public class ControlFlow {
                 return new Triplet<>(false, blk.block_id, null);
             }
             else if(cnt > Utils.MAX_VISIT_COUNT) {
-                Utils.logger.info("Instruction " + new_inst + " at address " + Long.toHexString(newAddress) + " is visited for " + Integer.toString(cnt) + " times\n");
+                Utils.logger.info("Instruction " + new_inst + " at address " + Utils.num_to_hex_string(newAddress) + " is visited for " + Integer.toString(cnt) + " times\n");
                 return new Triplet<>(true, blk.block_id, blk.store);
             }
             else if(cnt > 3) {
@@ -797,7 +796,7 @@ public class ControlFlow {
                 Store newStore = new Store(store, rip);
                 newStore.merge_store(prevStore, addressInstMap);
                 if(newStore.state_equal(prevStore, addressInstMap) && cnt > 10) {
-                    Utils.logger.info("Block exists: " + new_inst + " at address " + Long.toHexString(newAddress) + " is visited for " + Integer.toString(cnt) + " times\n");
+                    Utils.logger.info("Block exists: " + new_inst + " at address " + Utils.num_to_hex_string(newAddress) + " is visited for " + Integer.toString(cnt) + " times\n");
                     // Utils.logger.debug(prev_sym_store.pp_store())
                     // Utils.logger.debug(sym_store.pp_store())
                     // sys.exit(1)
@@ -809,7 +808,7 @@ public class ControlFlow {
                 }
             }
         }
-        return new Triplet<>(false, null, null);
+        return new Triplet<>(false, 0, null);
     }
 
 
@@ -829,13 +828,13 @@ public class ControlFlow {
             
     
     void pp_unreachable_instrs() {
-        HashSet<Long> reachableAddrs = (HashSet<Long>) addressBlockMap.keySet();
-        HashSet<Long> instAddrs = (HashSet<Long>) addressInstMap.keySet();
+        Set<Long> reachableAddrs = addressBlockMap.keySet();
+        Set<Long> instAddrs = addressInstMap.keySet();
         Utils.logger.info("\n");
         Utils.logger.info(Utils.LOG_UNREACHABLE_INDICATOR);
         for(Long address : instAddrs) {
             if(!reachableAddrs.contains(address)) {
-                Utils.logger.info(Long.toHexString(address) + ": " + addressInstMap.get(address));
+                Utils.logger.info(Utils.num_to_hex_string(address) + ": " + addressInstMap.get(address));
             }
         }
     }

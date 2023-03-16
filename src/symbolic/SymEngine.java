@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.function.Function;
 
-import javax.script.ScriptException;
-
 import com.microsoft.z3.BitVecExpr;
 
 import block.Store;
@@ -53,7 +51,7 @@ public class SymEngine {
 	    if(Lib.REG_NAMES.contains(src)) // rax
 	        res = SymRegister.get_register_sym(store, src);
 	    else if(Utils.imm_pat.matcher(src).matches()) {    //0x123456
-	        int val = Utils.imm_str_to_int(src);
+	        long val = Utils.imm_str_to_int(src);
 	        res = Helper.gen_bv_num(val, length);
 	    }
 	    else if(src.contains("s:")) {       //fs:rax
@@ -119,7 +117,6 @@ public class SymEngine {
 	        SymRegister.set_register_sym(store, dest, sym, block_id);
 	    }
 	    else if(dest.contains("s:")) {       // fs:rax
-	        int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
 	        String[] destSplit = dest.split(":");
 	        String seg_reg = Utils.rsplit(destSplit[0], " ")[1].strip();
 	        // seg_reg_val = SymRegister.get_segment_reg_val(store, seg_reg)

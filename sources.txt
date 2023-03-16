@@ -2,6 +2,7 @@
 ./src/common/Config.java
 ./src/common/GlobalVar.java
 ./src/common/Helper.java
+./src/common/LogFormatter.java
 ./src/common/InstElement.java
 ./src/common/Lib.java
 ./src/common/Tuple.java
