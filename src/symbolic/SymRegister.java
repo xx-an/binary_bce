@@ -62,14 +62,24 @@ public class SymRegister {
 
 	static BitVecExpr bitwise_extend_parent(BitVecExpr p_sym, BitVecExpr sym, int start_idx, int length) {
 		BitVecExpr res = null;
-	    if(sym == Helper.bottom(length))
-	    	res = Helper.bottom(p_sym.getSortSize());
-	    else if(length == 32)
-	    	res = Helper.zero_ext(32, sym);
-	    else if(length == 8 && start_idx != 0)
-	    	res = Helper.concat(Helper.extract(63, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
-	    else
-	        res = Helper.concat(Helper.extract(63, length, p_sym), sym);
+		if(Config.MEM_ADDR_SIZE == 64) {
+		    if(sym == Helper.bottom(length))
+		    	res = Helper.bottom(p_sym.getSortSize());
+		    else if(length == 32)
+		    	res = Helper.zero_ext(32, sym);
+		    else if(length == 8 && start_idx != 0)
+		    	res = Helper.concat(Helper.extract(63, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
+		    else
+		        res = Helper.concat(Helper.extract(63, length, p_sym), sym);
+		}
+		else {
+			if(sym == Helper.bottom(length))
+		    	res = Helper.bottom(p_sym.getSortSize());
+		    else if(length == 8 && start_idx != 0)
+		    	res = Helper.concat(Helper.extract(31, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
+		    else
+		        res = Helper.concat(Helper.extract(31, length, p_sym), sym);
+		}
 	    return res;
 	}
 

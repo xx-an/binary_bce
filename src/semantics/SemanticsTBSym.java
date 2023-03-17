@@ -315,7 +315,7 @@ public class SemanticsTBSym {
 	    BitVecExpr sym_lhs = SymEngine.get_sym(store, rip, a_reg, Utils.TB_DEFAULT_BLOCK_NO, bits_len);
 	    BitVecExpr sym_rhs = SymEngine.get_sym(store, rip, dest, Utils.TB_DEFAULT_BLOCK_NO, bits_len);
 	    BoolExpr eq = Helper.is_equal(sym_lhs, sym_rhs);
-	    if(eq == Helper.sym_true()) {
+	    if(eq.equals(Helper.SymTrue)) {
 	        src_names = mov(store, sym_names, dest, src);
 	    }
 	    else {
@@ -328,7 +328,7 @@ public class SemanticsTBSym {
 	static ArrayList<String> cmov(Store store, ArrayList<String> sym_names, String inst, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "cmov");
-	    if(res == Helper.sym_false()) { }
+	    if(res.equals(Helper.SymFalse)) { }
 	    else { 
 	    	src_names = mov(store, sym_names, dest, src);
 	    }

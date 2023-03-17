@@ -56,7 +56,7 @@ public class TraceBack {
         bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, store, rip, symNames);
         ArrayList<Integer> bIDList = null;
         ArrayList<String> symList = null;
-        while(bIDSymMap != null && count < Utils.MAX_TRACEBACK_COUNT) {
+        while(bIDSymMap != null && bIDSymMap.size() > 0 && count < Utils.MAX_TRACEBACK_COUNT) {
         	bIDList = new ArrayList<Integer>();
         	bIDList.addAll(bIDSymMap.keySet());
         	Collections.sort(bIDList);
@@ -118,7 +118,7 @@ public class TraceBack {
             TBRetInfo retInfo = SemanticsTB.parse_sym_src(pStore, blk.store.rip, blk.inst, symNames);
             ArrayList<String> srcNames = retInfo.src_names;
             boolean needStop = retInfo.need_stop;
-            int boundary = retInfo.boundary;
+            Integer boundary = retInfo.boundary;
             boolean stillTB = retInfo.still_tb;
             HashMap<String, Integer> mLenMap = retInfo.mem_len_map;
             memLenMap.putAll(mLenMap);

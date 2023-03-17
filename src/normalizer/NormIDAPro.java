@@ -204,8 +204,19 @@ public class NormIDAPro implements Normalizer {
             varOffsetMap.put(varName, address);
             varValueMap.put(varName, address);
         }
+        else if(varSplit[0] != "" && varSplit[0].contains("stru_")) {
+        	for(String idaStructType : idaStructTypes) {
+            	String typeRep = " " + idaStructType + " ";
+                if(varStr.contains(typeRep)) {
+                    varOffsetMap.put(varName, address);
+                    varValueMap.put(varName, address);
+                    varIdaStructTypeMap.put(varName, idaStructType);
+                    break;
+                }
+            }
+        }
         else if(varSplit[1].strip() != "" && !varSplit[1].contains("endp") && !varSplit[1].contains("ends")) {
-            varOffsetMap.put(varName, address);
+        	varOffsetMap.put(varName, address);
             varValueMap.put(varName, address);
         }
         else {
@@ -281,8 +292,15 @@ public class NormIDAPro implements Normalizer {
     String replaceSymbol(String instName, String arg) {
         String symbol = arg.strip();
         String res = symbol;
-        if(symbol.contains("."))
-            res = replaceIdaStructItemSymbol(symbol);
+        if(symbol.contains(".")) {
+        	if(arg.startsWith("(") && arg.endsWith(")")) {
+            	res = Utils.extract_content(symbol, "(");
+            	res = handleOffsetOperation(res);
+            }
+            else if(arg.startsWith("offset ")) {
+            	res = handleOffsetOperation(symbol);
+            }
+        }
         else if(this.idaImmPat.matcher(symbol).matches()) {
             res = NormHelper.convertImmEndHToHex(symbol);
         }
@@ -431,12 +449,12 @@ public class NormIDAPro implements Normalizer {
                 res = "[" + memAddr + "]";
         }
         else if(arg.startsWith("(") && arg.endsWith(")")) {
-            content = Utils.extract_content(arg, "(");
-            content = handleOffsetOperation(content);
+        	content = Utils.extract_content(arg, "(");
+        	content = handleOffsetOperation(content);
             res = NormHelper.simulateEvalExpr(content);
         }
         else if(arg.startsWith("offset ")) {
-            content = handleOffsetOperation(arg);
+        	content = handleOffsetOperation(arg);
             res = NormHelper.simulateEvalExpr(content);
         }
         else {
@@ -444,8 +462,8 @@ public class NormIDAPro implements Normalizer {
         }
         return res;
     }
-        
 
+    
     String removeUnusedSegReg(long address, String arg) {
         String res = arg;
         if(arg.contains("s:") && !arg.endsWith("]")) {
@@ -589,7 +607,7 @@ public class NormIDAPro implements Normalizer {
 
     String replaceIdaStructItemSymbol(String symbol) {
         String res = symbol;
-        String[] symbolSplit = symbol.split(".", 2);
+        String[] symbolSplit = symbol.split("\\.", 2);
         String symbolName = symbolSplit[0].strip();
         if(varIdaStructTypeMap.containsKey(symbolName)) {
             String symbolType = varIdaStructTypeMap.get(symbolName);
@@ -670,14 +688,14 @@ public class NormIDAPro implements Normalizer {
         if(content.contains("offset ")) {
             String original = null;
             String newVar = null;
-            String[] contentSplit = content.split("[^a-zA-Z0-9_.@?$]+");
+            String[] contentSplit = content.split("((?<=[^a-zA-Z0-9_.@?$]+)|(?=[^a-zA-Z0-9_.@?$]+))");
             int cNum = contentSplit.length;
             String variable, var;
             for(int idx = 0; idx < cNum; idx++) {
             	String ci = contentSplit[idx];
                 if(ci.equals("offset")) {
-                    if(cNum > idx + 1) {
-                        variable = contentSplit[idx + 1];
+                    if(cNum > idx + 2) {
+                        variable = contentSplit[idx + 2];
                         original = "offset " + variable;
                         if(varOffsetMap.containsKey(variable))
                             newVar = Utils.num_to_hex_string(varOffsetMap.get(variable));

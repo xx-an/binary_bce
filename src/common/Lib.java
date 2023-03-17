@@ -107,26 +107,26 @@ public class Lib {
 	
 	static {
 		FLAG_CONDITIONS = new HashMap<String, String>();
-		FLAG_CONDITIONS.put("a",  "CF==0 and ZF==0");
+		FLAG_CONDITIONS.put("a",  "CF==0 && ZF==0");
 		FLAG_CONDITIONS.put("ae",  "CF==0");
 		FLAG_CONDITIONS.put("b",  "CF==1");
-		FLAG_CONDITIONS.put("be",  "CF==1 or ZF==1");
+		FLAG_CONDITIONS.put("be",  "CF==1 || ZF==1");
 		FLAG_CONDITIONS.put("c",  "CF==1");
 		FLAG_CONDITIONS.put("e",  "ZF==1");
-		FLAG_CONDITIONS.put("g",  "ZF==0 and SF==OF");
+		FLAG_CONDITIONS.put("g",  "ZF==0 && SF==OF");
 		FLAG_CONDITIONS.put("ge",  "SF==OF");
 		FLAG_CONDITIONS.put("l",  "SF<>OF");
-		FLAG_CONDITIONS.put("le",  "ZF==1 or SF<>OF");
-		FLAG_CONDITIONS.put("na",  "CF==1 or ZF==1");
+		FLAG_CONDITIONS.put("le",  "ZF==1 || SF<>OF");
+		FLAG_CONDITIONS.put("na",  "CF==1 || ZF==1");
 		FLAG_CONDITIONS.put("nae",  "CF==1");
 		FLAG_CONDITIONS.put("nb",  "CF==0");
-		FLAG_CONDITIONS.put("nbe",  "CF==0 and ZF==0");
+		FLAG_CONDITIONS.put("nbe",  "CF==0 && ZF==0");
 		FLAG_CONDITIONS.put("nc",  "CF==0");
 		FLAG_CONDITIONS.put("ne",  "ZF==0");
-		FLAG_CONDITIONS.put("ng",  "ZF==1 or SF<>OF");
+		FLAG_CONDITIONS.put("ng",  "ZF==1 || SF<>OF");
 		FLAG_CONDITIONS.put("nge",  "SF<>OF");
 		FLAG_CONDITIONS.put("nl",  "SF==OF");
-		FLAG_CONDITIONS.put("nle",  "ZF==0 and SF==OF");
+		FLAG_CONDITIONS.put("nle",  "ZF==0 && SF==OF");
 		FLAG_CONDITIONS.put("no",  "OF==0");
 		FLAG_CONDITIONS.put("np",  "PF==0");
 		FLAG_CONDITIONS.put("ns",  "SF==0");

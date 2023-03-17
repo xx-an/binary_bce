@@ -13,7 +13,7 @@ public class BinaryInfo {
 	
 	public String src_path;
 	public ArrayList<String> section_list = new ArrayList<String>();
-	public HashMap<String, Integer> section_address_map = new HashMap<String, Integer>();
+	public HashMap<String, Long> section_address_map = new HashMap<>();
 	public HashMap<String, BitVecExpr> sym_table = new HashMap<String, BitVecExpr>();
 	public HashMap<String, Integer> function_addr_table = new HashMap<String, Integer>();
 	public HashMap<String, Integer> sym_name_count = new HashMap<String, Integer>();
@@ -82,18 +82,18 @@ public class BinaryInfo {
 	    }
 	}
 
-	// line: "[ 1] .interp           PROGBITS         0000000000000238  00000238"
+	// line: "0 .text         00003ee0  00401000  00401000  00000400  2**2"
 	void parse_section_headers(String section_headers) {
 		String[] lines = section_headers.split("\n");
 	    for(String line : lines) {
 	        line = line.strip();
-	        if(line != "" && Utils.imm_start_pat.matcher(line).matches()) {
+	        if(line != "" && Utils.imm_start_pat.matcher(line).find()) {
                 String[] line_split = Utils.remove_multiple_spaces(line).split(" ");
                 String section_name = line_split[1];
-                int section_size = Integer.decode(line_split[2]);
-                int section_address = Integer.decode(line_split[3]);
+                int section_size = Integer.valueOf(line_split[2], 16);
+                long section_address = Long.valueOf(line_split[3], 16);
                 max_bin_header_address = Math.max(max_bin_header_address, section_address + section_size + 1);
-                int section_offset = Integer.decode(line_split[5]);
+                int section_offset = Integer.valueOf(line_split[5], 16);
                 section_address_map.put(section_name, section_address);
                 sym_table.put(section_name, Helper.gen_bv_num(section_address, Config.MEM_ADDR_SIZE));
                 if(section_name.equals(".data")) {

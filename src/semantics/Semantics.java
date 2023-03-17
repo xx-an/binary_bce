@@ -188,11 +188,13 @@ public class Semantics {
 
 
 	public static void call(Store store, ArrayList<String> arg) {
+		store.g_FuncCallStack.add(rip);
 	    push(store, Utils.num_to_hex_string(rip));
 	}
 
 
 	public static void call_op(Store store, long rip, int block_id) {
+		store.g_FuncCallStack.add(rip);
 		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Utils.num_to_hex_string(rip), block_id);
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
@@ -230,7 +232,7 @@ public class Semantics {
 		BitVecExpr sym_rsp = SMTHelper.get_sym_rsp(store, rip);
 		res = SymEngine.get_mem_sym(store, sym_rsp);
 	    if(alter_res != null) {
-	        if(!Helper.is_bit_vec_num(res) || Helper.int_of_sym(res) != alter_res)
+	        if(!Helper.is_bit_vec_num(res) || Helper.long_of_sym(res) != alter_res)
 	            res = Helper.gen_bv_num(alter_res, Config.MEM_ADDR_SIZE);
 	        else {
 	            SymHelper.remove_memory_content(store, sym_rsp);
@@ -242,7 +244,7 @@ public class Semantics {
 	        SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(Config.MEM_ADDR_SIZE / 8), block_id);
 	    }
 	    if(inst.startsWith("retn ")) {
-	        String arg = inst.strip().split(" ", 2)[1].strip();
+	        String arg = Utils.rsplit(inst.strip(), " ")[1].strip();
 	        if(Utils.imm_start_pat.matcher(arg).matches()) {
 	        	int imm = Integer.decode(arg);
 	        	SMTHelper.sym_bin_op_na_flags(store, rip, "+", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Integer.toString(imm), block_id);
@@ -379,12 +381,12 @@ public class Semantics {
 	    BitVecExpr sym_lhs = SymEngine.get_sym(store, rip, a_reg, block_id, bits_len);
 	    BitVecExpr sym_rhs = SymEngine.get_sym(store, rip, dest, block_id, bits_len);
 	    BoolExpr eq = Helper.is_equal(sym_lhs, sym_rhs);
-	    if(eq == Helper.sym_true()) {
-	        SMTHelper.set_flag_direct(store, "ZF", Helper.sym_true());
+	    if(eq.equals(Helper.SymTrue)) {
+	        SMTHelper.set_flag_direct(store, "ZF", Helper.SymTrue);
 	        mov_op(store, dest, src);
 	    }
-	    else if(eq == Helper.sym_false()) {
-	        SMTHelper.set_flag_direct(store, "ZF", Helper.sym_false());
+	    else if(eq.equals(Helper.SymFalse)) {
+	        SMTHelper.set_flag_direct(store, "ZF", Helper.SymFalse);
 	        mov_op(store, a_reg, dest);
 	    }
 	    else {
@@ -408,9 +410,9 @@ public class Semantics {
 	static void set_op(Store store, String inst, String dest) {
 	    int dest_len = Utils.get_sym_length(dest);
 	    BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "set");
-	    if(res == Helper.sym_false())
+	    if(res.equals(Helper.SymFalse))
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(0, dest_len), block_id);
-	    else if(res == Helper.sym_true())
+	    else if(res.equals(Helper.SymTrue))
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_bv_num(1, dest_len), block_id);
 	    else
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(dest_len), block_id);
@@ -420,17 +422,17 @@ public class Semantics {
 	static void rep(Store store, String inst_name, String inst) {
 		BitVecExpr sym_rcx = SymEngine.get_sym(store, rip, "rcx", block_id);
 	    BoolExpr rcx_is_0 = Helper.is_equal(sym_rcx, 0);
-	    while(rcx_is_0 == Helper.sym_false()) {
+	    while(rcx_is_0.equals(Helper.SymFalse)) {
 	        int res = parse_semantics(store, rip, inst, block_id);
 	        if(res == -1) break;
 	        sym_rcx = SMTHelper.sym_bin_op_na_flags(store, rip, "-", "rcx", "1", block_id);
 	        rcx_is_0 = Helper.is_equal(sym_rcx, 0);
-	        if(rcx_is_0 == Helper.sym_true())
+	        if(rcx_is_0.equals(Helper.SymTrue))
 	            break;
 	        BoolExpr sym_zf = SMTHelper.get_flag_direct(store, "ZF");
-	        if((inst_name.equals("repz") || inst_name.equals("repe")) && sym_zf == Helper.sym_false())
+	        if((inst_name.equals("repz") || inst_name.equals("repe")) && sym_zf.equals(Helper.SymFalse))
 	            break;
-	        else if((inst_name.equals("repnz") || inst_name.equals("repne")) && sym_zf == Helper.sym_true())
+	        else if((inst_name.equals("repnz") || inst_name.equals("repne")) && sym_zf.equals(Helper.SymTrue))
 	            break;
 	    }
 	}
@@ -464,9 +466,9 @@ public class Semantics {
 	    int dest_len = Utils.get_sym_length(dest);
 	    sym_bin_oprt(store, op, dest, src, block_id);
 	    BoolExpr carry_val = SMTHelper.get_flag_direct(store, "CF");
-	    if(carry_val == Helper.sym_true())
+	    if(carry_val.equals(Helper.SymTrue))
 	        sym_bin_oprt(store, op, dest, "1", block_id);
-	    else if(carry_val == Helper.sym_false()) {}
+	    else if(carry_val.equals(Helper.SymFalse)) {}
 	    else
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(dest_len), block_id);
 	}
@@ -525,13 +527,13 @@ public class Semantics {
 	            if(to_left) {
 	                tmp = Helper.most_significant_bit(sym_dest, dest_len);
 	                sym_dest = Helper.bv_lshift(sym_dest, 1);
-	                if(tmp == Helper.sym_true())
+	                if(tmp.equals(Helper.SymTrue))
 	                    sym_dest = Helper.bv_add(sym_dest, 1);
 	            }
 	            else {
 	                tmp = Helper.least_significant_bit(sym_dest, dest_len);
 	                sym_dest = Helper.bv_arith_rshift(sym_dest, 1);
-	                if(tmp == Helper.sym_true())
+	                if(tmp.equals(Helper.SymTrue))
 	                	sym_dest = Helper.bv_add(sym_dest, (1 << dest_len));
 	            }
 	            temp -= 1;

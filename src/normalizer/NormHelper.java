@@ -130,6 +130,54 @@ public class NormHelper {
 		return Utils.num_to_hex_string(res);
 	}
 	
+	public static String getIdaPtrRepFromItemType(String itemType) {
+	    String res = null;
+	    if(itemType.equals("dd") || itemType.equals("dq") || itemType.equals("db") || itemType.equals("dw")) {
+	        char suffix = itemType.charAt(itemType.length() - 1);
+	        res = BYTE_REP_PTR_MAP.get(suffix);
+	    }
+	    return res;
+	}
+
+	
+	public static String convertToHexRep(String arg) {
+	    String res = arg;
+	    if(arg.matches("^[0-9a-f]+$|^-[0-9a-f]+$"))
+	        res = Utils.num_to_hex_string(Long.valueOf(arg, 16));
+	    return res;
+	}
+	
+	public static String generateIdaPtrRep(String name, String inst, int length) {
+	    String wordPtrRep = null;
+	    if(name.startsWith("jmp"))
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name.equals("call"))
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name.equals("mov") || name.equals("cmp")) {
+	        if(length != 0)
+	        	wordPtrRep = BYTELEN_REP_MAP.get(length);
+	    }
+	    else if(name.startsWith("j"))
+	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
+	    else if(name.startsWith("set"))
+	        wordPtrRep = "byte ptr";
+	    else if(name.equals("subs") || name.equals("movs") || name.equals("ucomis"))
+	        wordPtrRep = "dword ptr";
+	    else if(name.equals("movdqu") || name.equals("movaps") || name.equals("movdqa") || name.equals("movups"))
+	        wordPtrRep = "xmmword ptr";
+	    else if(name.equals("movq") && inst.contains("xmm")) {}
+	    else if(name.equals("movsxd")) {
+	        if(length == 16 || length == 32)
+	            wordPtrRep = BYTELEN_REP_MAP.get(length);
+	        else
+	            wordPtrRep = "dword ptr";
+	    }
+	    else if(name.equals("movss"))
+	        wordPtrRep = "dword ptr";
+	    return wordPtrRep;
+	}
+	
+	
 	String calculate_relative_address(String line, int address) {
 		String res = "";
 	    if(Pattern.matches("^0x[0-9a-f]+$|^[0-9a-f]+$", line)) {
@@ -428,13 +476,15 @@ public class NormHelper {
 			            	opList.add(op);
 			            else
 			                numVal = (op.equals("+")) ? val : -val;
+			            idxList.add(idx);
+				        valList.add(numVal);
 			    	}
 	    		}
 	    		else {
 	    			numVal = Utils.imm_str_to_int(valStr);
+	    			idxList.add(idx);
+			        valList.add(numVal);
 	    		}
-		        idxList.add(idx);
-		        valList.add(numVal);
 	    	}	    
 	    }
 	    if(valList.size() > 1) {
@@ -444,53 +494,6 @@ public class NormHelper {
 	    else
 	        res = reconstructFormula(stack, opStack);
 	    return res;
-	}
-	
-	public static String getIdaPtrRepFromItemType(String itemType) {
-	    String res = null;
-	    if(itemType.equals("dd") || itemType.equals("dq") || itemType.equals("db") || itemType.equals("dw")) {
-	        char suffix = itemType.charAt(itemType.length() - 1);
-	        res = BYTE_REP_PTR_MAP.get(suffix);
-	    }
-	    return res;
-	}
-
-	
-	public static String convertToHexRep(String arg) {
-	    String res = arg;
-	    if(arg.matches("^[0-9a-f]+$|^-[0-9a-f]+$"))
-	        res = Utils.num_to_hex_string(Long.valueOf(arg, 16));
-	    return res;
-	}
-	
-	public static String generateIdaPtrRep(String name, String inst, int length) {
-	    String wordPtrRep = null;
-	    if(name.startsWith("jmp"))
-	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
-	    else if(name.equals("call"))
-	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
-	    else if(name.equals("mov") || name.equals("cmp")) {
-	        if(length != 0)
-	        	wordPtrRep = BYTELEN_REP_MAP.get(length);
-	    }
-	    else if(name.startsWith("j"))
-	        wordPtrRep = BYTELEN_REP_MAP.get(Config.MEM_ADDR_SIZE);
-	    else if(name.startsWith("set"))
-	        wordPtrRep = "byte ptr";
-	    else if(name.equals("subs") || name.equals("movs") || name.equals("ucomis"))
-	        wordPtrRep = "dword ptr";
-	    else if(name.equals("movdqu") || name.equals("movaps") || name.equals("movdqa") || name.equals("movups"))
-	        wordPtrRep = "xmmword ptr";
-	    else if(name.equals("movq") && inst.contains("xmm")) {}
-	    else if(name.equals("movsxd")) {
-	        if(length == 16 || length == 32)
-	            wordPtrRep = BYTELEN_REP_MAP.get(length);
-	        else
-	            wordPtrRep = "dword ptr";
-	    }
-	    else if(name.equals("movss"))
-	        wordPtrRep = "dword ptr";
-	    return wordPtrRep;
 	}
 	
 

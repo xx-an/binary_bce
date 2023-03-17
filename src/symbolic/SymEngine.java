@@ -195,7 +195,7 @@ public class SymEngine {
 		BitVecExpr sym_src = dest_src_sym.y;
 	    if(OPS_NEED_EXTENSION.contains(op) && dest_len != src_len)
 	        sym_src = extension_sym(sym_src, dest_len, src_len, false);
-	    BitVecExpr res = func.apply(new Triplet<BitVecExpr, BitVecExpr, Integer>(sym_dest, sym_src, dest_len));
+	    BitVecExpr res = (BitVecExpr) func.apply(new Triplet<BitVecExpr, BitVecExpr, Integer>(sym_dest, sym_src, dest_len)).simplify();
 	    res = (BitVecExpr) res.simplify();
 	    return res;
 	}

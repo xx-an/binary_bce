@@ -287,7 +287,7 @@ public class SymMemory {
 	public static BitVecExpr read_memory_val(Store store, BitVecExpr address, int block_id, int length) {
 		BitVecExpr res = null;
 	    if(Helper.is_bit_vec_num(address)) {
-	    	Integer val = null;
+	    	Long val = null;
 	        long int_address = Helper.long_of_sym(address);
 	        if(SymHelper.addr_in_rodata_section(int_address)) {
 	            long rodata_base_addr = GlobalVar.binaryInfo.rodata_base_addr;
@@ -296,6 +296,10 @@ public class SymMemory {
 	        else if(SymHelper.addr_in_data_section(int_address)) {
 	            long data_base_addr = GlobalVar.binaryInfo.data_base_addr;
 	            val = GlobalVar.binaryContent.read_bytes(int_address - data_base_addr, length / 8);
+	        }
+	        else if(SymHelper.addr_in_text_section(int_address)) {
+	            long text_base_addr = GlobalVar.binaryInfo.text_base_addr;
+	            val = GlobalVar.binaryContent.read_bytes(int_address - text_base_addr, length / 8);
 	        }
 	        else
 	            read_mem_error_report(store, int_address);

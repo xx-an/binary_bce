@@ -25,10 +25,10 @@ public class SMTHelper {
 
 	static void set_mul_OF_CF_flags(Store store, BoolExpr val) {
 	    reset_all_flags(store);
-	    if(val == Helper.sym_false())
-	        set_OF_CF_flags(store, Helper.sym_true());
-	    else if(val == Helper.sym_true())
-	        set_OF_CF_flags(store, Helper.sym_false());
+	    if(val.equals(Helper.SymFalse))
+	        set_OF_CF_flags(store, Helper.SymTrue);
+	    else if(val.equals(Helper.SymTrue))
+	        set_OF_CF_flags(store, Helper.SymFalse);
 	}
 
 
@@ -47,7 +47,7 @@ public class SMTHelper {
 	        set_flag_val(store, "OF", Helper.bv_or(case1, case2));
 	    }
 	    else
-	    	store.set_flag_val("OF", Helper.sym_false());
+	    	store.set_flag_val("OF", Helper.SymFalse);
 	}
 
 
@@ -57,7 +57,7 @@ public class SMTHelper {
 	    else if(op.equals("-"))
 	        _set_sub_CF_flag(store, rip, dest, src, block_id);
 	    else
-	    	store.set_flag_val("CF", Helper.sym_false());
+	    	store.set_flag_val("CF", Helper.SymFalse);
 	}
 
 
@@ -110,7 +110,7 @@ public class SMTHelper {
 
 
 	static void set_test_OF_CF_flags(Store store) {
-	    set_OF_CF_flags(store, Helper.sym_false());
+	    set_OF_CF_flags(store, Helper.SymFalse);
 	}
 
 
@@ -140,23 +140,36 @@ public class SMTHelper {
 	        return null;
 	    return Helper.LOGIC_OP_FUNC_MAP_BOOLEXPR.get(logic_op).apply(new Tuple<BoolExpr, BoolExpr>(lhs, rhs));
 	}
+	
+	
+	// expr: SF<>OF && OF==0
+	static BoolExpr parse_and_cond(Store store, String expr) {
+		String[] andConds = expr.split(" && ");
+		BoolExpr res = parse_condition(store, andConds[0]);
+    	if(res == null) return null;
+    	for(int idx = 1; idx < andConds.length; idx++) {
+    		String ac = andConds[idx];
+    		BoolExpr curr = parse_condition(store, ac);
+    		if(curr == null) return null;
+    		res = Helper.bv_and(res, curr);
+    	}
+    	return res;
+	}
 
 
-	// expr: ZF==1 || SF<>OF
+	// expr: ZF==1 || SF<>OF && OF==0
 	static BoolExpr parse_pred_expr(Store store, String expr) {
 //		System.out.println(expr);
-		BoolExpr result = Helper.sym_false();
-	    String[] or_conds = expr.split(" \\|\\| ");
-	    for(String s : or_conds) {
-	    	String[] and_conds = s.split(" && ");
-	    	BoolExpr res = Helper.sym_true();
-	    	for(String si : and_conds) {
-	    		BoolExpr curr = parse_condition(store, si);
-	    		res = Helper.bv_and(res, curr);
-	    	}
-	    	result = Helper.bv_or(result, res);
-	    }
-	    return result;
+	    String[] orConds = expr.split(" \\|\\| ");
+	    BoolExpr res = parse_and_cond(store, orConds[0]);
+    	if(res == null) return null;
+    	for(int idx = 1; idx < orConds.length; idx++) {
+    		String oc = orConds[idx];
+    		BoolExpr curr = parse_and_cond(store, oc);
+    		if(curr == null) return null;
+    		res = Helper.bv_or(res, curr);
+    	}
+    	return res;
 	}
 
 
@@ -168,6 +181,8 @@ public class SMTHelper {
 	        return null;
 	    else if(!val)
 	    	res = Helper.bv_not(res);
+//	    System.out.println(inst);
+//	    System.out.println(res);
 	    return res;
 	}
 	
@@ -178,7 +193,7 @@ public class SMTHelper {
 	    BoolExpr res = parse_pred_expr(store, expr);
 	    if(res == null)
 	        return null;
-	    else if(val == Helper.sym_false())
+	    else if(val.equals(Helper.SymFalse))
 	    	res = Helper.bv_not(res);
 	    return res;
 	}

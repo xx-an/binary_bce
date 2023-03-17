@@ -92,7 +92,7 @@ public class ControlFlow {
     	add_new_block(null, startAddress, startInst, startStore, startConstraint);
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.pop();
-            Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst); 
+            Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst);
             long address = curr.address;
             String inst = curr.inst;
             Store store = curr.store;
@@ -109,11 +109,11 @@ public class ControlFlow {
 
     void construct_conditional_branches(Block block, long address, String inst, long newAddress, Store store, Constraint constraint) {
         BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "j");
-        if(res == Helper.sym_false()) {
+        if(res.equals(Helper.SymFalse)) {
             long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
             construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
         }
-        else if(res == Helper.sym_true()) {
+        else if(res.equals(Helper.SymTrue)) {
             construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
         }
         else {
@@ -162,7 +162,7 @@ public class ControlFlow {
         
     void construct_branch(Block block, long address, String inst, Store store, Constraint constraint) {
         if(inst.startsWith("ret") || inst.endsWith(" ret")) {
-            build_ret_branch(block, address, inst, store, constraint);
+        	build_ret_branch(block, address, inst, store, constraint);
         }
         else {
             String jumpAddrStr = inst.split(" ", 2)[1].strip();
@@ -209,7 +209,7 @@ public class ControlFlow {
     }
 
     void handle_internal_jumps(Block block, long address, String inst, Store store, Constraint constraint, long newAddress) {
-        Utils.logger.info(Utils.num_to_hex_string(address) + ": jump address is " + Utils.num_to_hex_string(address));
+        Utils.logger.info(Utils.num_to_hex_string(address) + ": jump address is " + Utils.num_to_hex_string(newAddress));
         if(Utils.check_not_single_branch_inst(inst)) {    // je xxx
             construct_conditional_branches(block, address, inst, newAddress, store, constraint);
         }

@@ -33,7 +33,7 @@ public class BinaryContent {
 		}
 	}
 	
-	public int read_bytes(long address, int length) {
+	public long read_bytes(long address, int length) {
 		ArrayList<Byte> res = new ArrayList<Byte>();
 		for(int i = length - 1; i >= 0; i--) {
 			long curr = address + i;
@@ -61,7 +61,7 @@ public class BinaryContent {
 	void read_bytes_all() {
 		int num = addressBytesMap.size();
 		for(int i = 0; i < num; i++) {
-			int res = read_bytes(i, 1);
+			long res = read_bytes(i, 1);
 			System.out.println(res);
 		}
 	}

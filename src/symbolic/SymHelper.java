@@ -101,6 +101,10 @@ public class SymHelper {
 	public static boolean addr_in_data_section(long int_addr) {
 	    return GlobalVar.binaryInfo.data_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.data_end_addr;
 	}
+	
+	public static boolean addr_in_text_section(long int_addr) {
+	    return GlobalVar.binaryInfo.text_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.text_end_addr;
+	}
 
 
 	public static boolean addr_in_heap(long int_addr) {

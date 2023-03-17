@@ -21,6 +21,9 @@ public class Helper {
 	public static Context ctx = new Context();
 	public static final BitVecExpr STDOUT_ADDR = ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
 	
+	public static BoolExpr SymTrue = ctx.mkTrue();
+	public static BoolExpr SymFalse = ctx.mkFalse();
+	
 	public static HashMap<String, Function<Tuple<BitVecExpr, BitVecExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP = new HashMap<>();
 	
 	public static HashMap<String, Function<Tuple<BoolExpr, BoolExpr>, BoolExpr>> LOGIC_OP_FUNC_MAP_BOOLEXPR = new HashMap<>();
@@ -120,42 +123,49 @@ public class Helper {
 	
 	
 	public static BoolExpr is_equal(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkEq(x, y);
+		BoolExpr res = (BoolExpr) ctx.mkEq(x, y).simplify();
+//		Utils.logger.info(res.toString());
+		return res;
 	}
 	
 	public static BoolExpr is_equal(BoolExpr x, BoolExpr y) {
-		return ctx.mkEq(x, y);
+		BoolExpr res = (BoolExpr) ctx.mkEq(x, y).simplify();
+//		Utils.logger.info(res.toString());
+		return res;
 	}
 	
 	public static BoolExpr is_equal(BitVecExpr x, int y) {
 		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
-		return ctx.mkEq(x, bv_y);
+		return is_equal(x, bv_y);
+	}
+	
+	static BoolExpr not_equal(BitVecExpr x, BitVecExpr y) {
+		return (BoolExpr) ctx.mkNot(is_equal(x, y)).simplify();
+	}
+	
+	public static BoolExpr not_equal(BitVecExpr x, int y) {
+		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
+		return not_equal(x, bv_y);
+	}
+	
+	public static BoolExpr not_equal(BoolExpr x, BoolExpr y) {
+		return (BoolExpr) ctx.mkNot(is_equal(x, y)).simplify();
 	}
 	
 	public static BoolExpr is_less(BitVecExpr x, BitVecExpr y) {
 		return ctx.mkBVSLT(x, y);
 	}
 	
-	public static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
+	static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
 		return ctx.mkBVSGT(x, y);
 	}
 	
-	public static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
+	static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
 		return ctx.mkBVSLE(x, y);
 	}
 	
-	public static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
+	static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
 		return ctx.mkBVSGE(x, y);
-	}
-	
-	
-	public static BoolExpr sym_true() {
-		return ctx.mkTrue();
-	}
-	
-	
-	public static BoolExpr sym_false() {
-		return ctx.mkFalse();
 	}
 	
 	public static BitVecExpr bv_add(BitVecExpr x, BitVecExpr y) {
@@ -245,19 +255,19 @@ public class Helper {
 	}
 	
 	public static BoolExpr bv_and(BoolExpr... x) {
-		return ctx.mkAnd(x);
+		return (BoolExpr) ctx.mkAnd(x).simplify();
 	}
 	
 	public static BoolExpr bv_or(BoolExpr... x) {
-		return ctx.mkOr(x);
+		return (BoolExpr) ctx.mkOr(x).simplify();
 	}
 	
 	public static BoolExpr bv_xor(BoolExpr x, BoolExpr y) {
-		return ctx.mkXor(x, y);
+		return (BoolExpr) ctx.mkXor(x, y).simplify();
 	}
 	
 	public static BoolExpr bv_not(BoolExpr x) {
-		return ctx.mkNot(x);
+		return (BoolExpr) ctx.mkNot(x).simplify();
 	}
 	
 	BitVecExpr sym_op(String op, BitVecExpr x, BitVecExpr y) {
@@ -268,20 +278,7 @@ public class Helper {
 	        res = ctx.mkBVAdd(x, y);
 	    return (BitVecExpr) res.simplify();
 	}
-	
-	
-	static BoolExpr not_equal(BitVecExpr x, BitVecExpr y) {
-		return (BoolExpr) ctx.mkNot(ctx.mkEq(x, y)).simplify();
-	}
-	
-	public static BoolExpr not_equal(BitVecExpr x, int y) {
-		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
-		return not_equal(x, bv_y);
-	}
-	
-	public static BoolExpr not_equal(BoolExpr x, BoolExpr y) {
-		return (BoolExpr) ctx.mkNot(ctx.mkEq(x, y)).simplify();
-	}
+
 
 	public static BoolExpr is_neg(BitVecExpr x) {
 		int length = x.getSortSize();
@@ -326,7 +323,6 @@ public class Helper {
 		BitVecNum one = ctx.mkBV(1, 1);
 	    return is_equal(smsb, one);
 	}
-
 
 	
 	BitVecExpr bit_vec_wrap(String name, int length) {
