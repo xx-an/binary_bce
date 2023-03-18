@@ -42,7 +42,7 @@ public class Semantics {
 		INSTRUCTION_SEMANTICS_MAP.put("sar", arg -> sym_bin_oprt(arg.x, ">>", block_id, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("shr", arg -> sym_bin_oprt(arg.x, ">>>", block_id, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("sal", arg -> sym_bin_oprt(arg.x, "<<", block_id, arg.y));
-		INSTRUCTION_SEMANTICS_MAP.put("shl", arg -> sym_bin_oprt(arg.x, "<<<", block_id, arg.y));
+		INSTRUCTION_SEMANTICS_MAP.put("shl", arg -> sym_bin_oprt(arg.x, "<<", block_id, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("xchg", arg -> xchg(arg.x, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("neg", arg -> neg(arg.x, arg.y));
 		INSTRUCTION_SEMANTICS_MAP.put("not", arg -> not_op(arg.x, arg.y));
@@ -598,6 +598,7 @@ public class Semantics {
 	    if(inst.startsWith("lock ")) {
 	        inst = inst.split(" ", 2)[1];
 	    }
+//	    System.out.println(inst);
 	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(INSTRUCTION_SEMANTICS_MAP.containsKey(inst_name)) {
@@ -619,6 +620,7 @@ public class Semantics {
 	        return -1;
 	    }
 	    else {
+//	    	System.out.println("Undefined inst " + curr_inst);
 	    	ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
 	        SymEngine.undefined(store, rip, block_id, inst_args);
 	        SMTHelper.reset_all_flags(store);

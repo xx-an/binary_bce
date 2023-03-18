@@ -562,9 +562,9 @@ public class Helper {
 	public static BitVecExpr merge_sym(BitVecExpr lhs, BitVecExpr rhs, HashMap<Long, String> address_inst_map) {
 		BitVecExpr res = rhs;
 	    if((lhs instanceof BitVecNum) && (rhs instanceof BitVecNum)) {
-	        int lhs_num = ((BitVecNum) lhs).getInt();
-	        int rhs_num = ((BitVecNum) rhs).getInt();
-	        if(!address_inst_map.containsKey((long) rhs_num)) {
+	        long lhs_num = ((BitVecNum) lhs).getLong();
+	        long rhs_num = ((BitVecNum) rhs).getLong();
+	        if(!address_inst_map.containsKey(rhs_num)) {
 	            if(!bvnum_eq(lhs, rhs)) {
 	                if(lhs_num >= GlobalVar.binaryInfo.rodata_start_addr && lhs_num < GlobalVar.binaryInfo.rodata_end_addr)
 	                    res = gen_sym(rhs.getSortSize());
@@ -574,8 +574,8 @@ public class Helper {
 	        }
 	    }
 	    else if(rhs instanceof BitVecNum) {
-	    	int rhs_num = ((BitVecNum) rhs).getInt();
-	        if(!address_inst_map.containsKey((long) rhs_num))
+	    	long rhs_num = ((BitVecNum) rhs).getLong();
+	        if(!address_inst_map.containsKey(rhs_num))
 	            res = gen_sym(rhs.getSortSize());
 	    }
 	    return res;
@@ -583,7 +583,7 @@ public class Helper {
 
 
 	public static boolean is_bottom(BitVecExpr sym, int length) {
-	    return sym == bottom(length);
+	    return sym.equals(bottom(length));
 	}
 
 }

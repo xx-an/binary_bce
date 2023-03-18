@@ -55,7 +55,7 @@ public class CMC {
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
 	    // print(GlobalVar.binary_info.dll_func_info)
 	    // print(disasm_asm.valid_address_no)
-	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, GlobalVar.binaryInfo.dllFuncInfo);
+	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, GlobalVar.binaryInfo.dllFuncInfo, norm.readGlobalJPTEntriesMap());
 	    return cfg;
 	}
 	

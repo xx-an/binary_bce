@@ -12,6 +12,10 @@ import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.microsoft.z3.BitVecExpr;
+
+import common.Config;
+import common.Helper;
 import common.InstElement;
 import common.Lib;
 import common.Tuple;
@@ -25,6 +29,7 @@ public class NormIDAPro implements Normalizer {
 	HashMap<Long, String> addressLabelMap;
 	HashMap<Long, String> address_func_map;
 	HashMap<Long, String> addressExtFuncMap;
+	HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
 	
 	HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable;
 	
@@ -48,6 +53,8 @@ public class NormIDAPro implements Normalizer {
 
 	Pattern varExprPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} [a-zA-Z0-9_@?$]+");
 	Pattern idaImmPat = Pattern.compile("^[0-9A-F]+h$|^[0-9]$");
+	Pattern jptStartPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} jpt_[a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} jpt_[a-zA-Z0-9_@?$]+");
+	Pattern jptEndPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} ; [-]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} ; [-]+");
 
 	Pattern subtractHexPat = Pattern.compile("-[0-9a-fA-F]+h");
 
@@ -68,6 +75,7 @@ public class NormIDAPro implements Normalizer {
         valid_address_no = 0;
         currPtrRep = null;
         globalDataName = new HashSet<>();
+        globalJPTEntriesMap = new HashMap<>();
         addedPtrRepMap = new HashMap<>();
         idaStructTable = NormHelper.init_ida_struct_info();
         varIdaStructTypeMap = new HashMap<>();
@@ -78,21 +86,11 @@ public class NormIDAPro implements Normalizer {
         }
         read_asm_info();
 	}
-	        
-
-    public void read_asm_info() throws FileNotFoundException {
-    	File f = new File(disasmPath);
-    	ArrayList<String> lines = new ArrayList<>();
-    	try (BufferedReader br = new BufferedReader(new FileReader(f))) {
-    	    String line;
-    	    while ((line = br.readLine()) != null) {
-    	    	line = line.strip();
-                lines.add(line);
-    	    }
-    	} 
-    	catch (IOException e) {
-			e.printStackTrace();
-		}
+	
+	void readGlobalInfo(ArrayList<String> lines) {
+		boolean jptInfoStart = false;
+    	ArrayList<BitVecExpr> jtpEntryList = null;
+    	Long jptStartAddr = null;
 		for(String line : lines) {
             if(locatedAtDataSegments(line)) {
                 if(varExprPat.matcher(line).find()) {
@@ -100,7 +98,31 @@ public class NormIDAPro implements Normalizer {
                     globalDataName.add(varName);
                 }
             }
+            if(jptInfoStart) {
+            	if(jptEndPat.matcher(line).find()) {
+            		jptInfoStart = false;
+            		globalJPTEntriesMap.put(jptStartAddr, jtpEntryList);
+            	}
+            	else {
+//            		.text:00402D34                 dd offset loc_403675
+            		String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 2);
+            		readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
+            	}
+            }
+//            .text:004031FC jpt_4031F2      dd offset loc_403274
+            if(jptStartPat.matcher(line).find()) {
+            	jptInfoStart = true;
+            	jtpEntryList = new ArrayList<>();
+            	String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 3);
+            	jptStartAddr = Long.valueOf(lineSplit[0].split(":", 2)[1].strip(), 16);
+            	readJPTEntryAddr(lineSplit[2].strip(), jtpEntryList);
+            }
 		}
+//		System.out.println(globalJPTEntriesMap.toString());
+	}
+	
+	
+	void readInstInfo(ArrayList<String> lines) {
 		for(String line : lines) {
             if(line.contains(" extrn "))
                 storeExtFuncInfo(line);
@@ -123,6 +145,29 @@ public class NormIDAPro implements Normalizer {
                 }
             }
 		}
+	}
+	
+	
+	public HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap() {
+		return globalJPTEntriesMap;
+	}
+	        
+
+    public void read_asm_info() throws FileNotFoundException {
+    	File f = new File(disasmPath);
+    	ArrayList<String> lines = new ArrayList<>();
+    	try (BufferedReader br = new BufferedReader(new FileReader(f))) {
+    	    String line;
+    	    while ((line = br.readLine()) != null) {
+    	    	line = line.strip();
+                lines.add(line);
+    	    }
+    	} 
+    	catch (IOException e) {
+			e.printStackTrace();
+		}
+    	readGlobalInfo(lines);
+    	readInstInfo(lines);
 		ArrayList<Long> instAddrs = new ArrayList<Long>(addressInstMap.keySet());
 		Collections.sort(instAddrs);
 		int instNum = instAddrs.size();
@@ -299,6 +344,9 @@ public class NormIDAPro implements Normalizer {
             }
             else if(arg.startsWith("offset ")) {
             	res = handleOffsetOperation(symbol);
+            }
+            else {
+            	res = replaceIdaStructItemSymbol(symbol);
             }
         }
         else if(this.idaImmPat.matcher(symbol).matches()) {
@@ -576,6 +624,40 @@ public class NormIDAPro implements Normalizer {
         }
         return res;
     }
+    
+    
+    public BitVecExpr readEachEntryAddr(String arg) {
+    	BitVecExpr res = null;
+    	String tmp = arg;
+    	if(tmp.contains("offset")) {
+			String[] aSplit = tmp.split("offset", 2);
+			String a2s = aSplit[1].strip();
+			if(Utils.startsWith(a2s, offsetSpecPrefix)) {
+				String addrStr = a2s.split("_", 2)[1].strip();
+				res = Helper.gen_bv_num(Long.valueOf(addrStr, 16), Config.MEM_ADDR_SIZE);
+			}
+    	}
+    	return res;
+    }
+	
+//	dd offset def_402DF5, offset def_402DF5, offset def_402DF5 ; jump table for switch statement
+    // dd offset def_402DF5
+	public void readJPTEntryAddr(String arg, ArrayList<BitVecExpr> jptEntryList) {
+		BitVecExpr res = null;
+		String tmp = arg;
+		if(arg.contains(";")) {
+			tmp = tmp.split(";", 2)[0].strip();
+		}
+		String[] aSplit = tmp.split(",");
+		for(String as : aSplit) {
+			as = as.strip();
+			if(as != "") {
+				res = readEachEntryAddr(as);
+				if(!jptEntryList.contains(res))
+					jptEntryList.add(res);
+			}
+		}
+	}
 
 
     void handleIdaPtrRep(long address, String inst, int length, String instName, ArrayList<String> instArgs, int idx, String arg) {
@@ -641,8 +723,9 @@ public class NormIDAPro implements Normalizer {
         String ptrRep = varValueSplit[0].strip();
         String typeSpec = ptrRep.split("ptr", 2)[0].strip();
         if(!NormHelper.BYTE_LEN_REPS.containsKey(typeSpec)) {
-            if(idaStructTable.containsKey(typeSpec))
+            if(idaStructTable.containsKey(typeSpec)) {
                 varIdaStructTypeMap.put(varName, typeSpec);
+            }
             else if(typeSpec.equals("LARGE_INTEGER") || typeSpec.equals("_LARGE_INTEGER")) {
                 varPtrRepMap.put(varName, ptrRep);
             }

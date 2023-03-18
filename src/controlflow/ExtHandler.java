@@ -31,16 +31,6 @@ public class ExtHandler {
 	    return res;
 	}
 
-
-	void set_regs_bottom(Store store, long rip, String dests, int block_id) {
-		ArrayList<String> dest_list = regs_str_to_list(dests);
-	    for(String dest : dest_list) {
-	    	int dest_len = Utils.get_sym_length(dest);
-	        SymEngine.set_sym(store, rip, dest, Helper.bottom(dest_len), block_id);
-	    }
-	}
-
-
 	static void set_regs_sym(Store store, long rip, List<String> dests, int block_id) {
 		for(String dest : dests) {
 			int length = Utils.get_sym_length(dest);

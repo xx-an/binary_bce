@@ -21,10 +21,8 @@ import block.Store;
 import common.Config;
 import common.Lib;
 import common.Lib.MEMORY_RELATED_ERROR_TYPE;
-import common.Triplet;
 import common.Utils;
 import semantics.SMTHelper;
-import semantics.Semantics;
 import symbolic.SymEngine;
 import symbolic.SymHelper;
 import common.Helper;
@@ -32,7 +30,7 @@ import common.Tuple;
 
 public class CFHelper {
 
-	static Integer gen_cjmp_idx_upperbound(String inst_name, int boundary) {
+	static Integer gen_cjmp_upperbound(String inst_name, int boundary) {
 	    Integer res = null;
 	    String jmp_condition = inst_name.split("j", 2)[1].strip();
 	    if(jmp_condition.startsWith("n")) {
@@ -50,14 +48,20 @@ public class CFHelper {
 	}
 
 
-	static Tuple<Integer, Integer> gen_jt_idx_upperbound(ArrayList<Block> trace_list, int boundary) {
+	/**
+	    * Calculate the real upperbound according to the type of the condition jump instruction
+	    * @param  trace_list	the list that contains all the visited blocks till the indirect jump block
+	    * @param  boundary	the current boundary information
+	    * @return			the real upperbound information
+	    */
+	static Tuple<Integer, Integer> gen_jt_upperbound(ArrayList<Block> trace_list, int boundary) {
 	    Integer res = null;
 	    Integer idx = 0;
 	    for(idx = 0; idx < trace_list.size(); idx++) {
 	    	Block blk = trace_list.get(idx);
 	        String inst = blk.inst;
 	        if(Utils.check_not_single_branch_inst(inst)) {
-	            res = gen_cjmp_idx_upperbound(inst.split(" ", 2)[0], boundary);
+	            res = gen_cjmp_upperbound(inst.split(" ", 2)[0], boundary);
 	            break;
 	        }
 	    }
@@ -83,58 +87,44 @@ public class CFHelper {
 	    if(address_sym_table.containsKey(Helper.gen_bv_num(next_address, Config.MEM_ADDR_SIZE))) return -1;
 	    return next_address;
 	}
-
-
-	static boolean check_jt_assign_inst(String inst_args) {
-	    boolean res = false;
-	    String[] inst_arg_s = inst_args.split(",");
-	    if(inst_arg_s.length == 2) {
-	        String inst_arg_0 = inst_arg_s[0].strip();
-	        String inst_arg_1 = inst_arg_s[1].strip();
-	        if(Lib.REG_NAMES.contains(inst_arg_0) && inst_arg_1.endsWith("]") && !(inst_arg_1.contains("rip")))
-	            res = (inst_arg_1.contains("*")) && (inst_arg_1.contains("+"));
+	
+	static ArrayList<BitVecExpr> readJPTTargets(String instArg, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
+		ArrayList<BitVecExpr> targetAddrs = null;
+		if(instArg.endsWith("]") && !(instArg.contains("rip")) && instArg.contains("*") && (instArg.contains("+"))) {
+			String arg = Utils.extract_content(instArg, "[");
+			String[] argSplit = arg.split("\\+");
+			String addrStr = argSplit[argSplit.length - 1].strip();
+			if(addrStr.startsWith("0x")) {
+				long addr = Long.decode(addrStr);
+	    		targetAddrs = globalJPTEntriesMap.get(addr);
+			}
 	    }
-	    return res;
+	    return targetAddrs;
 	}
-
-
-	static Tuple<Integer, Boolean> check_jump_table_assign_inst(ArrayList<Block> trace_list, int idx) {
-	    boolean res = false;
-	    int n_idx = 0;
-	    int trace_count = trace_list.size();
-	    for(n_idx = idx + 1; n_idx < trace_count; n_idx++) {
-	        Block blk = trace_list.get(n_idx);
+	
+	static ArrayList<BitVecExpr> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
+		ArrayList<BitVecExpr> targetAddrs = null;
+		int aIdx = 0;
+		for(aIdx = 0; aIdx < idx; aIdx++) {
+	        Block blk = trace_list.get(aIdx);
 	        String inst = blk.inst;
+	        String instArg = inst.strip().split(" ", 2)[1].strip();
 	        if(inst.startsWith("mov")) {
-	            res = check_jt_assign_inst(inst.split(" ", 2)[1].strip());
-	            if(res) break;
+	        	String[] instArgs = instArg.split(",", 2);
+			    if(instArgs.length == 2) {
+			        String instArg0 = instArgs[0].strip();
+			        String instArg1 = instArgs[1].strip();
+			        if(Lib.REG_NAMES.contains(instArg0))
+			        	targetAddrs = readJPTTargets(instArg1, globalJPTEntriesMap);
+			    }
+			    if(targetAddrs != null) break;
+	        }
+	        else if(inst.startsWith("jmp")) {
+	        	targetAddrs = readJPTTargets(instArg, globalJPTEntriesMap);
+	        	if(targetAddrs != null) break;
 	        }
 	    }
-	    return new Tuple<Integer, Boolean>(n_idx, res);
-	}
-
-
-	// Read all the jump table entries
-	static Triplet<ArrayList<BitVecExpr>, String, Integer> get_distinct_jt_entries(Block blk, BitVecExpr src_sym, int jt_idx_upperbound, HashMap<Integer, Block> block_set) {
-		ArrayList<BitVecExpr> res = new ArrayList<BitVecExpr>();
-	    String inst = blk.inst;
-	    String[] inst_arg_split = inst.split(" ", 2)[1].strip().split(",");
-	    String inst_dest = inst_arg_split[0];
-	    String inst_src = inst_arg_split[1].strip();
-	    int src_len = Utils.get_sym_length(inst_src);
-	    Block parent_blk = block_set.get(blk.parent_id);
-	    Store p_store = parent_blk.store;
-	    for(int idx = 0; idx < jt_idx_upperbound; idx++) {
-	    	BitVecExpr src_val = Helper.gen_bv_num(idx, src_sym.getSortSize());
-	        BitVecExpr mem_address = SymEngine.get_jump_table_address(p_store, inst_src, src_sym, src_val, Config.MEM_ADDR_SIZE);
-	        BitVecExpr mem_val = SymEngine.read_memory_val(p_store, mem_address, Utils.INIT_BLOCK_NO, src_len);
-	        if(!Helper.is_bit_vec_num(mem_val)) {
-	            return new Triplet<ArrayList<BitVecExpr>, String, Integer>(null, inst_dest, src_len);
-	        }
-	        if(!res.contains(mem_val))
-	        	res.add(mem_val);
-	    }
-	    return new Triplet<ArrayList<BitVecExpr>, String, Integer>(res, inst_dest, src_len);
+		return targetAddrs;
 	}
 
 
@@ -172,56 +162,6 @@ public class CFHelper {
 	        parent_id = parent_blk.parent_id;
 	    }
 	    return trace_list;
-	}
-
-
-	static ArrayList<Store> reconstruct_jt_sym_stores(Block blk, ArrayList<BitVecExpr> distinct_entries, String inst_dest, int src_len) {
-	    String inst = blk.inst;
-	    Store store = blk.store;
-	    long rip = store.get_rip();
-	    int dest_len = Utils.get_sym_length(inst_dest);
-	    ArrayList<Store> store_list = new ArrayList<Store>();
-	    String inst_name = inst.split(" ", 2)[0];
-	    for(BitVecExpr mem_val : distinct_entries) {
-	        Store new_store = new Store(store, rip);
-	        if(inst_name.equals("mov"))
-	            SymEngine.set_sym(new_store, rip, inst_dest, mem_val, blk.block_id);
-	        else if(inst_name.contains("s"))
-	            Semantics.mov_op(new_store, inst_dest, dest_len, mem_val, src_len, true);
-	        else if(inst_name.contains("z"))
-	            Semantics.mov_op(new_store, inst_dest, dest_len, mem_val, src_len, false);
-	        store_list.add(new_store);
-	    }
-	    return store_list;
-	}
-
-
-	static Tuple<String, ArrayList<BitVecExpr>> reconstruct_jt_target_addresses(ArrayList<Block> trace_list, int blk_idx, ArrayList<Store> store_list, HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> address_jt_entries_map) {
-	    for(int idx = blk_idx + 1; idx < trace_list.size(); idx++) {
-	    	Block blk = trace_list.get(idx);
-	    	long address = blk.address;
-	    	String inst = blk.inst;
-	    	long rip = blk.store.get_rip();
-	        String[] inst_split = inst.split(" ", 2);
-	        String inst_name = inst_split[0];
-	        if(Utils.check_jmp_with_address(inst_name)) {
-	            String inst_dest = inst_split[1].strip();
-	            ArrayList<BitVecExpr> target_addresses = new ArrayList<BitVecExpr>();
-	            for(Store store : store_list) {
-	            	BitVecExpr target_addr = SymEngine.get_sym(store, rip, inst_dest, Utils.INIT_BLOCK_NO);
-	                target_addresses.add(target_addr);
-	            }
-	            address_jt_entries_map.put(address, new Tuple<>(inst_dest, target_addresses));
-	            return new Tuple<>(inst_dest, target_addresses);
-	        }
-	        else {
-	        	for(Store store : store_list) {
-	                store.rip = rip;
-	                Semantics.parse_semantics(store, rip, inst, blk.block_id);
-	        	}
-	        }
-	    }
-	    return new Tuple<>(null, null);
 	}
 
 

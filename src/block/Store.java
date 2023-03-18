@@ -106,9 +106,9 @@ public class Store {
 	
 	public boolean containsKey(String store_key, BitVecExpr key) {
 		boolean res = false;
-		if(store_key == Lib.MEM)
+		if(store_key.equals(Lib.MEM))
 			res = g_MemStore.containsKey(key);
-		else if(store_key == Lib.AUX_MEM)
+		else if(store_key.equals(Lib.AUX_MEM))
 			res = g_AuxMemStore.contains(key);
 		return res;
 	}
@@ -255,9 +255,9 @@ public class Store {
     
     public void merge_store(Store old, HashMap<Long, String> address_inst_map) {
         for(String k : Lib.RECORD_STATE_NAMES) {
-        	if(k == Lib.REG)
+        	if(k.equals(Lib.REG))
         		merge_reg_store(old, address_inst_map);
-        	else if(k == Lib.MEM)
+        	else if(k.equals(Lib.MEM))
         		merge_mem_store(old, address_inst_map);
         }
     }
@@ -309,9 +309,9 @@ public class Store {
     }
 
     public boolean state_ith_eq(Store old, HashMap<Long, String> address_inst_map, String k) {
-    	if(k == Lib.REG)
+    	if(k.equals(Lib.REG))
     		return reg_state_ith_eq(old, address_inst_map);
-    	else if(k == Lib.MEM)
+    	else if(k.equals(Lib.MEM))
     		return mem_state_ith_eq(old, address_inst_map);
         return true;
     }

@@ -15,9 +15,9 @@ public class Constraint {
 	}
 
 	public boolean equals(Constraint other) {
-        if(!(predicate == other.predicate))
+        if(!(predicate.equals(other.predicate)))
             return false;
-        return parent == other.parent;
+        return parent.equals(other.parent);
 	}
 
     void update_predicate(BoolExpr last_predicate) {

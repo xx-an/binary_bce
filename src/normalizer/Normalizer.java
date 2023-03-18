@@ -1,7 +1,10 @@
 package normalizer;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
+
+import com.microsoft.z3.BitVecExpr;
 
 public interface Normalizer {
 	
@@ -14,5 +17,7 @@ public interface Normalizer {
 	HashMap<Long, Long> getAddressNextMap();
 	
 	HashMap<Long, String> getAddressExtFuncMap();
+	
+	HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap();
 	
 }

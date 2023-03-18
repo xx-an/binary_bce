@@ -38,6 +38,7 @@ public class SymMemory {
 	    return res;
 	}
 
+	
 	static BitVecExpr get_idx_sym_val(Store store, String arg, BitVecExpr src_sym, BitVecExpr src_val, int length) {
 		BitVecExpr res = null;
 	    if(Lib.REG_NAMES.contains(arg)) {
@@ -48,9 +49,9 @@ public class SymMemory {
 	        	Model m = Helper.check_pred_satisfiable(predicates);
 	            if(m != null) {
 	            	for(FuncDecl<?> d : m.getDecls()) {
-	            		BitVecExpr s_val = (BitVecExpr) m.getConstInterp(d);
-	            		int s_len = s_val.getSortSize();
-	            		res = (BitVecExpr) res.substitute(Helper.gen_spec_sym(d.getName().toString(), s_len), s_val);
+	            		BitVecExpr sVal = (BitVecExpr) m.getConstInterp(d);
+	            		int sLen = sVal.getSortSize();
+	            		res = (BitVecExpr) res.substitute(Helper.gen_spec_sym(d.getName().toString(), sLen), sVal);
 	            	}
 	            }
 	        }
@@ -59,6 +60,7 @@ public class SymMemory {
 	        res = Helper.gen_bv_num(Utils.imm_str_to_int(arg), length);
 	    return res;
 	}
+	
 
 	static void calc_mult(ArrayList<BitVecExpr> stack, ArrayList<String> op_stack) {
 		BitVecExpr res = stack.get(0);
@@ -93,10 +95,13 @@ public class SymMemory {
 	}
 
 
-	
-	// line: "rax + rbx * 1 + 0"
-	// line: "rbp - 0x14"
-	// line: "rax"
+	/**
+	    * Calculate the effective address
+	    * @param  arg		the operand for the jmp instruction. For example: "rax+rbx*1+0x402d34", "rbp-0x14", "rax"
+	    * @param  store		the local store for the concolic execution process
+	    * @param  length	the size of the memory address
+	    * @return			the jump address
+	    */
 	static BitVecExpr calc_effective_address(String arg, Store store, int length) {
 		ArrayList<BitVecExpr> stack = new ArrayList<BitVecExpr>();
 		ArrayList<String> op_stack = new ArrayList<String>();
@@ -119,28 +124,34 @@ public class SymMemory {
 	    return res;
 	}
 
-
-	// src: DWORD PTR [rcx+rdx*4]
-	public static BitVecExpr get_jump_table_address(Store store, String src, BitVecExpr src_sym, BitVecExpr src_val, int length) {
+	/**
+	    * Calculate the address for a jump table entry
+	    * @param  store		the local store for the concolic execution process
+	    * @param  src		the operand for the jmp instruction. For example: "dword ptr [rcx+rdx*4]"
+	    * @param  srcSym	the symbolic expression that needs to be substituted. For example: m#h
+	    * @param  srcVal	the numeral value that is used to substitute the srcSym. For example: 4
+	    * @return			the jump table address
+	    */
+	public static BitVecExpr get_jump_table_address(Store store, String src, BitVecExpr srcSym, BitVecExpr srcVal, int length) {
 	    String arg = Utils.extract_content(src, "[");
 	    ArrayList<BitVecExpr> stack = new ArrayList<BitVecExpr>();
-	    ArrayList<String> op_stack = new ArrayList<String>();
+	    ArrayList<String> opStack = new ArrayList<String>();
 	    arg = arg.strip();
 	    while(arg != "") {
 	        Matcher ai = letter_num_neg_pat.matcher(arg);
 	        String as = "";
 	        if(ai.find()) {
 	        	as = ai.group(0);
-	            BitVecExpr val = get_idx_sym_val(store, as, src_sym, src_val, length);
+	            BitVecExpr val = get_idx_sym_val(store, as, srcSym, srcVal, length);
 	            stack.add(val);
 	        }
 	        else {
 	        	as = sym_pat.matcher(arg).group(0).strip();
-	            op_stack.add(as);
+	        	opStack.add(as);
 	        }
 	        arg = arg.split(as, 2)[1].strip();
 	    }
-	    BitVecExpr res = eval_simple_formula(stack, op_stack);
+	    BitVecExpr res = eval_simple_formula(stack, opStack);
 	    return res;
 	}
 
@@ -259,9 +270,9 @@ public class SymMemory {
 		BitVecExpr res = null;
 	    if(store.containsKey(address)) {
 	    	BitVecExpr sym = null;
-	    	if(store_key == Lib.MEM)
+	    	if(store_key.equals(Lib.MEM))
 	    		sym = store.get_val(address);
-	    	else if(store_key == Lib.STDOUT)
+	    	else if(store_key.equals(Lib.STDOUT))
 	    		sym = store.get_stdout_val(address);
 	        int sym_len = sym.getSortSize();
 	        if(sym_len > length)
@@ -303,10 +314,12 @@ public class SymMemory {
 	        }
 	        else
 	            read_mem_error_report(store, int_address);
+//	        System.out.println(val);
 	        if(val != null)
 	        	res = Helper.gen_bv_num(val, length);
-	        else
+	        else {
 	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.num_to_hex_string(int_address), length);
+	        }
 	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }
 	    else {
@@ -335,6 +348,8 @@ public class SymMemory {
 	    BitVecExpr res = get_stdout_mem_val(store, address, length);
 	    if(res == null) {
 	        res = get_mem_sym(store, address, length, Lib.MEM);
+//	        System.out.println("Effective addr " + address.toString());
+//	        System.out.println(res);
 	        if(res == null)
 	            res = read_memory_val(store, address, block_id, length);
 	    }

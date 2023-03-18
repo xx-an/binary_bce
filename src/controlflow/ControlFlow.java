@@ -47,12 +47,13 @@ public class ControlFlow {
     final long startAddress;
     final long mainAddress;
     HashMap<Long, Long> retCallAddressMap;
-    HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> addressJTEntriesMap;
+    HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> addressJPTEntriesMap;
+    HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
     HashMap<String, ArrayList<String>> extLibAssumptions;
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
 
     
-    public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, HashMap<Long, String> addressInstMap, HashMap<Long, Long> addressNextMap, long startAddress, long mainAddress, String func_name, HashMap<Long, String> addressExtFuncMap, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo) {
+    public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, HashMap<Long, String> addressInstMap, HashMap<Long, Long> addressNextMap, long startAddress, long mainAddress, String func_name, HashMap<Long, String> addressExtFuncMap, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayDeque<>();
         addressBlockMap = new HashMap<>();
@@ -69,12 +70,13 @@ public class ControlFlow {
         this.gPreConstraint = gPreConstraint;
         retCallAddressMap = new HashMap<>();
         extFuncCallAddr = new ArrayList<>();
-        addressJTEntriesMap = new HashMap<>();
+        addressJPTEntriesMap = new HashMap<>();
         symAddrValuesetMap = new HashMap<>();
         extLibAssumptions = new HashMap<>();
         extMemPreserv = new ArrayList<>();
         this.addressExtFuncMap = addressExtFuncMap;
         this.dllFuncInfo = dllFuncInfo;
+        this.globalJPTEntriesMap = globalJPTEntriesMap;
         Store store = new Store(null);
         cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
         Constraint constraint = null;
@@ -167,6 +169,7 @@ public class ControlFlow {
         else {
             String jumpAddrStr = inst.split(" ", 2)[1].strip();
             BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr);
+//            Utils.logger.info(Long.toHexString(address) + ": " + inst + " :: " + nAddress.toString());
             Long newAddress = null;
 	        if(Helper.is_bit_vec_num(nAddress)) {
 	        	newAddress = Helper.long_of_sym(nAddress);
@@ -204,7 +207,7 @@ public class ControlFlow {
                 // Utils.logger.debug("Jump to an undefined external address " + str(newAddress) + " at address " + hex(address))
             }
             else
-                handleUnresolvedIndirectJumps(block, address, inst, constraint);
+                handleUnresolvedIndirectJumps(block, address, nAddress, inst, constraint);
         }
     }
 
@@ -268,40 +271,41 @@ public class ControlFlow {
     }
     
     
-    void reconstructNewBranches(Block blk, String alternative_sym, ArrayList<BitVecExpr> alternative_values) {
+    void reconstructNewBranches(Block blk, String symName, ArrayList<BitVecExpr> alternativeValues) {
         Long address = blk.address;
         String inst = blk.inst;
         Store store = blk.store;
         long rip = store.rip;
         Constraint constraint = blk.constraint;
-        for(BitVecExpr val : alternative_values) {
+        for(BitVecExpr val : alternativeValues) {
             Store newStore = new Store(store, rip);
             int block_id = addNewBlock(blk, address, inst, newStore, constraint, false);
-            SymEngine.set_sym(newStore, rip, alternative_sym, val, block_id);
+            SymEngine.set_sym(newStore, rip, symName, val, block_id);
         }
     }
                 
 
-    void handleUnresolvedIndirectJumps(Block block, long address, String inst, Constraint constraint) {
+    void handleUnresolvedIndirectJumps(Block block, long address, BitVecExpr newAddress, String inst, Constraint constraint) {
         if(inst.startsWith("jmp ")) {
         	Lib.TRACE_BACK_RET_TYPE res = null;
             ArrayList<Block> trace_list = new ArrayList<>();
-            if(addressJTEntriesMap.containsKey(block.address)) {
-            	Tuple<String, ArrayList<BitVecExpr>> addrJTEntry = addressJTEntriesMap.get(block.address);
+            if(addressJPTEntriesMap.containsKey(block.address)) {
+            	Tuple<String, ArrayList<BitVecExpr>> addrJTEntry = addressJPTEntriesMap.get(block.address);
             	String instDest = addrJTEntry.x;
             	ArrayList<BitVecExpr> targetAddrs = addrJTEntry.y;
                 reconstructNewBranches(block, instDest, targetAddrs);
                 res = Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED;
             }
             else {
-            	ArrayList<String> srcNames = new ArrayList<>();
-            	srcNames.add(inst.split(" ", 2)[1].strip());
+            	ArrayList<String> srcNames = CFHelper.retrieveSymSrcs(block);
+//            	ArrayList<String> srcNames = new ArrayList<>();
+//            	srcNames.add(inst.split(" ", 2)[1].strip());
             	Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tbInfo = TraceBack.tracebackIndirectJumps(blockMap, block, srcNames, memLenMap, trace_list);
             	res = tbInfo.x;
             	if(res == Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {
 	            	srcNames = tbInfo.y;
 	            	int boundary = tbInfo.z;
-	            	res = handle_unbounded_jump_table_w_tb(trace_list, srcNames, boundary, block);
+	            	res = handle_unbounded_jump_table_w_tb(trace_list, srcNames, boundary);
             	}
             }
             if(res != Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {
@@ -312,7 +316,8 @@ public class ControlFlow {
                 // num_of_unresolved_indirects
                 cmcExecInfo[2] += 1;
                 handle_cmc_path_termination(block.store);
-                Utils.logger.info("Cannot resolve the jump address of " + inst + " at address " + Utils.num_to_hex_string(address));
+                Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address));
+                Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
 //                Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
                 // sys.exit("Can!resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
             }
@@ -321,7 +326,7 @@ public class ControlFlow {
             if(constraint != null) {
             	boolean isPathReachable = CFHelper.check_path_reachability(constraint);
                 if(isPathReachable == false) { 
-                    Utils.logger.info("The path is infeasible at the jump address of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
+                    Utils.logger.info("The path is infeasible at the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
                     return;
                 }
             }
@@ -330,7 +335,7 @@ public class ControlFlow {
             TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, newSrcs);
             // num_of_unresolved_indirects
             cmcExecInfo[2] += 1;
-            Utils.logger.info("Cannot resolve the jump address of " + inst + " at address " + Utils.num_to_hex_string(address));
+            Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
             handle_cmc_path_termination(block.store);
             // sys.exit("Can!resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
         }
@@ -390,7 +395,7 @@ public class ControlFlow {
                     // num_of_unresolved_indirects
                     cmcExecInfo[2] += 1;
                     handle_cmc_path_termination(store);
-                    Utils.logger.info("Cannot resolve the return address of " + block.inst + " at address " + Utils.num_to_hex_string(address));
+                    Utils.logger.info("Cannot resolve the return address " + newAddress.toString() + " of " + block.inst + " at address " + Utils.num_to_hex_string(address) + "\n");
                     System.exit(1);
 //                    System.exit("Cannot resolve the return address of " + block.inst + " at address " + Utils.num_to_hex_string(address));
                 }
@@ -482,41 +487,30 @@ public class ControlFlow {
     }
     
     
-    TRACE_BACK_RET_TYPE handle_unbounded_jump_table_w_tb(ArrayList<Block> traceList, ArrayList<String> srcNames, int boundary, Block blk) {
-    	traceList.remove(traceList.size() - 1);
-        String srcName = srcNames.get(0);
-        int src_len = Utils.get_sym_length(srcName);
-        long rip = blk.store.rip;
-        BitVecExpr src_sym = SymEngine.get_sym(blk.store, rip, srcName, blk.block_id, src_len);
-        Tuple<Integer, Integer> jt_idx_upperbound_info = CFHelper.gen_jt_idx_upperbound(traceList, boundary);
-        Integer cjmp_blk_idx = jt_idx_upperbound_info.x, jt_idx_upperbound = jt_idx_upperbound_info.y;
-        if(jt_idx_upperbound == null) 
+    TRACE_BACK_RET_TYPE handle_unbounded_jump_table_w_tb(ArrayList<Block> traceList, ArrayList<String> srcNames, int boundary) {
+    	Tuple<Integer, Integer> jtUpperboundInfo = CFHelper.gen_jt_upperbound(traceList, boundary);
+        Integer cjmpBlkIdx = jtUpperboundInfo.x, jtUpperbound = jtUpperboundInfo.y;
+        if(jtUpperbound == null) 
         	return TRACE_BACK_RET_TYPE.JT_NO_UPPERBOUND;
-        Tuple<Integer, Boolean> jt_assign_inst_info = CFHelper.check_jump_table_assign_inst(traceList, cjmp_blk_idx);
-        Integer jt_assign_blk_idx = jt_assign_inst_info.x;
-        boolean is_jt_assign_inst = jt_assign_inst_info.y;
-        if(!is_jt_assign_inst) 
-        	return TRACE_BACK_RET_TYPE.JT_NOT_ASSIGN_INST;
-        Block jt_assign_blk = traceList.get(jt_assign_blk_idx);
-        Triplet<ArrayList<BitVecExpr>, String, Integer> distinctJTEntriesInfo = CFHelper.get_distinct_jt_entries(jt_assign_blk, src_sym, jt_idx_upperbound, blockMap);
-        ArrayList<BitVecExpr> distinctEntries = distinctJTEntriesInfo.x;
-        String instDest = distinctJTEntriesInfo.y;
-        int srcLen = distinctJTEntriesInfo.z;
-        if(distinctEntries == null) 
-        	return TRACE_BACK_RET_TYPE.JT_NO_DISTINCT_ENTRIES;
-        ArrayList<Store> storeList = CFHelper.reconstruct_jt_sym_stores(jt_assign_blk, distinctEntries, instDest, srcLen);
-        Tuple<String, ArrayList<BitVecExpr>> JTTargetAddrsInfo = CFHelper.reconstruct_jt_target_addresses(traceList, jt_assign_blk_idx, storeList, addressJTEntriesMap);
-        String dest = JTTargetAddrsInfo.x;
-        ArrayList<BitVecExpr> targetAddrs = JTTargetAddrsInfo.y;
+        ArrayList<BitVecExpr> targetAddrs = CFHelper.readJPTTargetAddrs(traceList, cjmpBlkIdx, globalJPTEntriesMap);
         if(targetAddrs == null) 
-        	return TRACE_BACK_RET_TYPE.JT_NO_TARGET_ADDRESSES;
-        ArrayList<String> addrsInfo = new ArrayList<>();
-        for(BitVecExpr tAddr : targetAddrs) {
-        	addrsInfo.add(Utils.num_to_hex_string(Helper.long_of_sym(tAddr)));
+        	return TRACE_BACK_RET_TYPE.JT_NOT_CORRECT_ASSIGN_INST;
+        Block blk = traceList.get(0);
+        String inst = blk.inst;
+        if(Utils.check_jmp_with_address(inst)) {
+	        String[] instSplit = inst.split(" ", 2);
+	        String dest = instSplit[1].strip();
+	        ArrayList<String> addrsInfo = new ArrayList<>();
+	        for(BitVecExpr tAddr : targetAddrs) {
+	        	addrsInfo.add(Utils.num_to_hex_string(Helper.long_of_sym(tAddr)));
+	        }
+	        String jptInfo = String.join(", ", addrsInfo);
+	        Utils.logger.info(Utils.num_to_hex_string(traceList.get(0).address) + ": jump addresses resolved using jump table with entries: [" + jptInfo + "]");
+	        addressJPTEntriesMap.put(blk.address, new Tuple<>(dest, targetAddrs));
+	        reconstructNewBranches(blk, dest, targetAddrs);
         }
-        String jtInfo = String.join(", ", addrsInfo);
-        Utils.logger.info(Utils.num_to_hex_string(traceList.get(traceList.size() - 1).address) + ": jump addresses resolved using jump table [" + jtInfo + "]");
-        reconstructNewBranches(traceList.get(traceList.size() - 1), dest, targetAddrs);
+        else
+        	return TRACE_BACK_RET_TYPE.JT_NO_CORRECT_JMP_INST;
         return TRACE_BACK_RET_TYPE.JT_SUCCEED;
     }
 
@@ -764,7 +758,8 @@ public class ControlFlow {
         Store preStore = blk.store;
         String newInst = addressInstMap.get(newAddress);
         Store newStore = new Store(store, preStore.rip);
-        Semantics.parse_semantics(newStore, newStore.rip, newInst, -1);
+        if(!Utils.check_branch_inst_wo_call(newInst) && !newInst.startsWith("cmov"))
+        	Semantics.parse_semantics(newStore, newStore.rip, newInst, -1);
         boolean res = newStore.state_ith_eq(preStore, addressInstMap, Lib.REG);
         return res;
     }

@@ -342,7 +342,7 @@ public class Utils {
 	    
 	public static boolean check_branch_inst_wo_call(String inst) {
 		String inst_name = inst.strip().split(" ", 2)[0];
-		return Lib.JMP_INST_WITHOUT_CALL.contains(inst_name) || inst.endsWith(" ret") || inst.startsWith("ret ");
+		return Lib.JMP_INST_WITHOUT_CALL.contains(inst_name) || inst.endsWith(" ret") || inst.startsWith("ret");
 	}
 	    
 	public static boolean check_not_single_branch_inst(String inst) {

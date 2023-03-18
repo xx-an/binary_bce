@@ -22,7 +22,7 @@ public class TraceBack {
 	static String pp_tb_debug_info(TRACE_BACK_RET_TYPE retType, long address, String inst) {
 	    String res = "The path is unsound due to ";
 	    res += retType.toString().toLowerCase();
-	    res += " at " + Utils.num_to_hex_string(address) + ": " + inst;
+	    res += " at " + Utils.num_to_hex_string(address) + ": " + inst + "\n";
 	    return res;
 	}
 
@@ -133,7 +133,7 @@ public class TraceBack {
                 symNames = srcNames;
             }
             else { 
-                Utils.logger.info("\n");
+                Utils.logger.info("Do not need to trace back anymore\n");
                 break;
             }
         }

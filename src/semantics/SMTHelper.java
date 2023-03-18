@@ -352,15 +352,15 @@ public class SMTHelper {
 	    		res = check_source_is_sym(store, rip, dest, sym_names);
 	        else if(dest.endsWith("]")) {
 	        	Tuple<ArrayList<String>, Boolean> tmp = get_bottom_source(dest, store, rip, mem_len_map);
-	        	ArrayList<String> new_srcs = tmp.x;
+	        	ArrayList<String> newSrcs = tmp.x;
 	            boolean is_reg_bottom = tmp.y;
 	            if(is_reg_bottom) {
-	                if(new_srcs.size() == 1)
-	                    res = new_srcs.get(0) == sym_names.get(0);
+	                if(newSrcs.size() == 1)
+	                    res = newSrcs.get(0).equals(sym_names.get(0));
 	            }
 	            else {
 	                BitVecExpr addr = SymEngine.get_effective_address(store, rip, dest);
-	                res = addr.toString() == sym_names.get(0);
+	                res = addr.toString().equals(sym_names.get(0));
 	            }
 	        }
 	    }
@@ -369,17 +369,17 @@ public class SMTHelper {
 
 
 	static void remove_reg_from_sym_srcs(String reg, ArrayList<String> src_names) {
-	    String src_reg = SymHelper.get_root_reg(reg);
-	    if(src_names.contains(src_reg))
-	    	src_names.remove(src_reg);
+	    String rootReg = SymHelper.get_root_reg(reg);
+	    if(src_names.contains(rootReg))
+	    	src_names.remove(rootReg);
 	}
 
 
 	static void add_new_reg_src(ArrayList<String> sym_names, String dest, String src) {
 	    remove_reg_from_sym_srcs(dest, sym_names);
-	    String root_reg = SymHelper.get_root_reg(src);
-	    if(!sym_names.contains(root_reg))
-	    	sym_names.add(root_reg);
+	    String rootReg = SymHelper.get_root_reg(src);
+	    if(!sym_names.contains(rootReg))
+	    	sym_names.add(rootReg);
 	}
 
 

@@ -129,8 +129,18 @@ public class SemanticsTB {
 	static ArrayList<String> mov_op(Store store, ArrayList<String> sym_names, String dest, String src) {
 		ArrayList<String> src_names = sym_names;
 	    if(SMTHelper.check_source_is_sym(store, rip, dest, sym_names)) {
-	        if(Lib.REG_NAMES.contains(src))
-	            SMTHelper.add_new_reg_src(src_names, dest, src);
+	        if(Lib.REG_NAMES.contains(src)) {
+	        	String destReg = "";
+	        	if(dest.endsWith("]")) {
+	        		BitVecExpr addr = SymEngine.get_effective_address(store, rip, dest);
+	        		destReg = addr.toString();
+	        	}
+	        	else
+	        		destReg = SymHelper.get_root_reg(dest);
+	        	if(src_names.contains(destReg))
+	        		src_names.remove(destReg);
+ 	            src_names.add(SymHelper.get_root_reg(src));
+	        }
 	        else if(src.endsWith("]")) {
 	            SMTHelper.remove_reg_from_sym_srcs(dest, src_names);
 	            Tuple<ArrayList<String>, Boolean> bottom_source = SMTHelper.get_bottom_source(src, store, rip, mem_len_map);
@@ -138,10 +148,11 @@ public class SemanticsTB {
 	        	boolean is_reg_bottom = bottom_source.y;
 	            if(is_reg_bottom)
 	            	src_names.addAll(new_srcs);
-//	                src_names = src_names + new_srcs;
 	            else {
 	            	BitVecExpr addr = SymEngine.get_effective_address(store, rip, src);
 	                src_names.add(addr.toString());
+	                int length = Utils.get_sym_length(src);
+	                mem_len_map.put(addr.toString(), length);
 	            }
 	        }
 	    }
