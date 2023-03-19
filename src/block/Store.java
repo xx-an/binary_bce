@@ -127,15 +127,8 @@ public class Store {
 	}
 	
 	public void set_mem_val(BitVecExpr addr, BitVecExpr val, int block_id) {
-		if(g_MemStore.containsKey(addr)) {
-			Node node = g_MemStore.get(addr);
-			node.expr = val;
-			node.block_id = block_id;
-		}
-		else {
-			Node node = new Node(val, block_id);
-			g_MemStore.put(addr, node);
-		}
+		Node node = new Node(val, block_id);
+		g_MemStore.put(addr, node);
 	}
 	
 	public void remove_mem_val(BitVecExpr addr) {

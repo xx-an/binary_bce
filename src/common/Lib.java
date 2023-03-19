@@ -44,6 +44,7 @@ public class Lib {
 	public static final String FS = "fs";
 	public static final String CS = "cs";
 	public static final String GS = "gs";
+	public static final String DS = "ds";
 	public static final String AUX_MEM = "aux_memory";
 	public static final String STDIN = "stdin";
 	public static final String STDOUT = "stdout";
@@ -58,7 +59,7 @@ public class Lib {
 	public static final String HEAP_ADDR = "heap_addr";
 	
 	public static final Set<String> STATE_NAMES = Set.of(REG, MEM, FLAGS, FS, CS, GS, STDOUT);
-	public static final Set<String> SEG_STATE_NAMES = Set.of(FS, CS, GS);
+	public static final Set<String> SEG_STATE_NAMES = Set.of(FS, CS, GS, DS);
 	
 	public static final Set<String> RECORD_STATE_NAMES = Set.of(REG, MEM);
 	

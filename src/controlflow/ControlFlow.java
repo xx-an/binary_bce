@@ -111,17 +111,24 @@ public class ControlFlow {
 
     void construct_conditional_branches(Block block, long address, String inst, long newAddress, Store store, Constraint constraint) {
         BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "j");
-        if(res.equals(Helper.SymFalse)) {
-            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+        if(res == null) {
+        	long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
             construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
-        }
-        else if(res.equals(Helper.SymTrue)) {
             construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
         }
         else {
-            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
-            construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
-            construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
+	        if(res.equals(Helper.SymFalse)) {
+	            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+	            construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
+	        }
+	        else if(res.equals(Helper.SymTrue)) {
+	            construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
+	        }
+	        else {
+	            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+	            construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
+	            construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
+	        }
         }
     }
 
@@ -277,6 +284,8 @@ public class ControlFlow {
         Store store = blk.store;
         long rip = store.rip;
         Constraint constraint = blk.constraint;
+        store.g_NeedTraceBack = false;
+        store.g_PointerRelatedError = null;
         for(BitVecExpr val : alternativeValues) {
             Store newStore = new Store(store, rip);
             int block_id = addNewBlock(blk, address, inst, newStore, constraint, false);
@@ -298,8 +307,6 @@ public class ControlFlow {
             }
             else {
             	ArrayList<String> srcNames = CFHelper.retrieveSymSrcs(block);
-//            	ArrayList<String> srcNames = new ArrayList<>();
-//            	srcNames.add(inst.split(" ", 2)[1].strip());
             	Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tbInfo = TraceBack.tracebackIndirectJumps(blockMap, block, srcNames, memLenMap, trace_list);
             	res = tbInfo.x;
             	if(res == Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {

@@ -52,6 +52,8 @@ public class SemanticsTBSym {
 		INSTRUCTION_SEMANTICS_MAP.put("adc", arg -> sym_bin_op(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("sbb", arg -> sym_bin_op(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("cdqe", arg -> cdqe(arg.x, arg.y, arg.z));
+		INSTRUCTION_SEMANTICS_MAP.put("inc", arg -> inc_dec(arg.x, arg.y, arg.z));
+		INSTRUCTION_SEMANTICS_MAP.put("dec", arg -> inc_dec(arg.x, arg.y, arg.z));
 	}
 
 	
@@ -335,6 +337,10 @@ public class SemanticsTBSym {
 	    return src_names;
 	}
 	
+	static ArrayList<String> inc_dec(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+		String dest = arg.get(0);
+		return sym_bin_on_src(store, sym_names, dest);
+	}
 	
 	static Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> sym_names) {
 		ArrayList<String> sym_in_stack = new ArrayList<String>();

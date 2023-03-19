@@ -170,7 +170,6 @@ public class SemanticsTB {
         	ArrayList<String> new_srcs = bottom_source.x;
         	still_tb = bottom_source.y;
         	src_names.addAll(new_srcs);
-//	        src_names = src_names + new_srcs
 	    }
 	    return src_names;
 	}

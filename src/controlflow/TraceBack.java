@@ -1,7 +1,6 @@
 package controlflow;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 
 import com.microsoft.z3.BitVecExpr;
@@ -59,7 +58,7 @@ public class TraceBack {
         while(bIDSymMap != null && bIDSymMap.size() > 0 && count < Utils.MAX_TRACEBACK_COUNT) {
         	bIDList = new ArrayList<Integer>();
         	bIDList.addAll(bIDSymMap.keySet());
-        	Collections.sort(bIDList);
+//        	Collections.sort(bIDList);
         	Integer currBlockID = bIDList.get(bIDList.size() - 1);
         	symList = bIDSymMap.get(currBlockID);
         	String currSymName = symList.remove(0);
@@ -97,13 +96,11 @@ public class TraceBack {
                 }
                 else {
                 	bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, pBlock.store, currRIP, srcNames);
-            // else {
-            //     tb_halt_point = true
-            //     break
                 }
             }
             count += 1;
         }
+        Utils.logger.info("Traceback ends\n");
         return new Triplet<>(count, tbHaltPoint, funcCallPoint);
     }
     

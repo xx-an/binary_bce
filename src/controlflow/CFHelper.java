@@ -232,6 +232,7 @@ public class CFHelper {
     
     static ArrayList<String> retrieveSymSrcs(Block block) {
     	HashMap<String, Integer> memLenMap = new HashMap<>();
+//    	System.out.println(Long.toHexString(block.address) + ": " + block.inst);
         String[] inst_split = block.inst.strip().split(" ", 2);
         ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
         Store store = block.store;
@@ -240,9 +241,9 @@ public class CFHelper {
     }
 	
 	
-	static HashMap<Integer, ArrayList<String>> retrieveBIDSymInfo(Store p_store, long rip, ArrayList<String> src_names) {
+	static HashMap<Integer, ArrayList<String>> retrieveBIDSymInfo(Store p_store, long rip, ArrayList<String> srcNames) {
     	HashMap<Integer, ArrayList<String>> res = new HashMap<Integer, ArrayList<String>>();
-        for(String symName : src_names) {
+        for(String symName : srcNames) {
             String tmpName = symName;
             if(Utils.imm_start_pat.matcher(symName).matches()) {
             	tmpName = "[" + symName + "]";

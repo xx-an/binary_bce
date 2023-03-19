@@ -55,6 +55,8 @@ public class SemanticsTBMemAddr {
 		INSTRUCTION_SEMANTICS_MAP.put("adc", arg -> sym_bin_op(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("sbb", arg -> sym_bin_op(arg.x, arg.y, arg.z));
 		INSTRUCTION_SEMANTICS_MAP.put("cdqe", arg -> cdqe(arg.x, arg.y, arg.z));
+		INSTRUCTION_SEMANTICS_MAP.put("inc", arg -> inc_dec(arg.x, arg.y, arg.z));
+		INSTRUCTION_SEMANTICS_MAP.put("dec", arg -> inc_dec(arg.x, arg.y, arg.z));
 	}
 	
 	public static ArrayList<String> add_src_to_syms(ArrayList<String> sym_names, String src) {
@@ -390,6 +392,12 @@ public class SemanticsTBMemAddr {
 	        }
 	    }
 	    return func_call_point;
+	}
+	
+	
+	static ArrayList<String> inc_dec(Store store, ArrayList<String> sym_names, ArrayList<String> arg) {
+		String dest = arg.get(0);
+		return sym_bin_on_src(store, sym_names, dest);
 	}
 	
 	

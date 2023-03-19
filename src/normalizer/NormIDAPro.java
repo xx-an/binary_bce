@@ -457,13 +457,17 @@ public class NormIDAPro implements Normalizer {
             if(count == 2)
                 res = "[" + Utils.num_to_hex_string(varValueMap.get(arg)) + "]";
         }
+        else if(arg.contains(" near ptr ")) {
+        	String[] argSplit = arg.split(" ptr ", 2);
+        	res = replaceEachExpr(instName, argSplit[1].strip());
+        }
         else if(arg.contains(" ptr ")) {
             String[] argSplit = arg.split(" ptr ", 2);
             String ptrRep = argSplit[0] + " ptr ";
-            res = ptrRep + "[" + replaceSymbol(instName, argSplit[1].strip()) + "]";
+            res = ptrRep + "[" + replaceEachExpr(instName, argSplit[1].strip()) + "]";
         }
         else
-            res = replaceSymbol(instName, arg);
+            res = replaceEachExpr(instName, arg);
         return res;
     }
     

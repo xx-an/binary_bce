@@ -24,8 +24,10 @@ public class SymMemory {
 
 	static BitVecExpr get_sym_val(String str_val, Store store, int length) {
 		BitVecExpr res = null;
-	    if(Lib.REG_NAMES.contains(str_val))
-	        res = store.get_val(str_val);
+	    if(Lib.REG_NAMES.contains(str_val)) {
+	    	String rootReg = SymHelper.get_root_reg(str_val);
+	        res = store.get_val(rootReg);
+	    }
 	    else if(Utils.imm_pat.matcher(str_val).matches())
 	    	res = Helper.gen_bv_num(Utils.imm_str_to_int(str_val), length);
 	    else if(str_val.contains(":")) {
@@ -42,7 +44,8 @@ public class SymMemory {
 	static BitVecExpr get_idx_sym_val(Store store, String arg, BitVecExpr src_sym, BitVecExpr src_val, int length) {
 		BitVecExpr res = null;
 	    if(Lib.REG_NAMES.contains(arg)) {
-	        res = store.get_val(arg);
+	    	String rootReg = SymHelper.get_root_reg(arg);
+	        res = store.get_val(rootReg);
 	        if(!Helper.is_bit_vec_num(res)) {
 	            ArrayList<BoolExpr> predicates = new ArrayList<BoolExpr>();
 	            predicates.add(Helper.is_equal(src_sym, src_val));
@@ -256,8 +259,8 @@ public class SymMemory {
 	            set_mem_sym_val(store, tmp, sym, block_id, length, Lib.STDOUT);
 	        else {
 	        	store.set_mem_val(address, sym, block_id);
-	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
-	            store.g_NeedTraceBack = true;
+//	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
+//	            store.g_NeedTraceBack = true;
 	        }
 	    }
 	    else
