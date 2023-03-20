@@ -46,6 +46,16 @@ public class SymRegister {
 	    }
 	    return sym;
 	}
+	
+	
+	static BitVecExpr getRegSymAddr(Store store, String name) {
+		BitVecExpr res = get_register_sym(store, name);
+		int length = res.getSortSize();
+		if(length < Config.MEM_ADDR_SIZE) {
+			res = Helper.zero_ext(Config.MEM_ADDR_SIZE - length, res);
+		}
+		return res;
+	}
 
 
 	public static Integer get_reg_sym_block_id(Store store, String name) {
@@ -62,24 +72,14 @@ public class SymRegister {
 
 	static BitVecExpr bitwise_extend_parent(BitVecExpr p_sym, BitVecExpr sym, int start_idx, int length) {
 		BitVecExpr res = null;
-		if(Config.MEM_ADDR_SIZE == 64) {
-		    if(sym.equals(Helper.bottom(length)))
-		    	res = Helper.bottom(p_sym.getSortSize());
-		    else if(length == 32)
-		    	res = Helper.zero_ext(32, sym);
-		    else if(length == 8 && start_idx != 0)
-		    	res = Helper.concat(Helper.extract(63, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
-		    else
-		        res = Helper.concat(Helper.extract(63, length, p_sym), sym);
-		}
-		else {
-			if(sym.equals(Helper.bottom(length)))
-		    	res = Helper.bottom(p_sym.getSortSize());
-		    else if(length == 8 && start_idx != 0)
-		    	res = Helper.concat(Helper.extract(31, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
-		    else
-		        res = Helper.concat(Helper.extract(31, length, p_sym), sym);
-		}
+		if(sym.equals(Helper.bottom(length)))
+	    	res = Helper.bottom(p_sym.getSortSize());
+	    else if(length == 32)
+	    	res = Helper.zero_ext(Config.MEM_ADDR_SIZE - 32, sym);
+	    else if(length == 8 && start_idx != 0)
+	    	res = Helper.concat(Helper.extract(Config.MEM_ADDR_SIZE - 1, 16, p_sym), sym, Helper.extract(7, 0, p_sym));
+	    else
+	        res = Helper.concat(Helper.extract(Config.MEM_ADDR_SIZE - 1, length, p_sym), sym);
 	    return res;
 	}
 

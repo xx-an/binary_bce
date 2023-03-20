@@ -394,17 +394,21 @@ public class Helper {
 
 	
 	public static BitVecExpr sign_ext(int length, BitVecExpr sym) {
-		return ctx.mkSignExt(length, sym);
+		if(length > 0)
+			return (BitVecExpr) ctx.mkSignExt(length, sym).simplify();;
+		return sym;
 	}
 	
 	
 	public static BitVecExpr zero_ext(int length, BitVecExpr sym) {
-		return ctx.mkZeroExt(length, sym);
+		if(length > 0)
+			return (BitVecExpr) ctx.mkZeroExt(length, sym).simplify();
+		return sym;
 	}
 
 	
 	public static BitVecExpr extract(int high, int low, BitVecExpr sym) {
-		return ctx.mkExtract(high, low, sym);
+		return (BitVecExpr) ctx.mkExtract(high, low, sym).simplify();
 	}
 	
 	public static BitVecExpr concat(BitVecExpr... syms) {

@@ -19,8 +19,12 @@ public class Constraint {
             return false;
         return parent.equals(other.parent);
 	}
+	
+	public BoolExpr getPredicate() {
+		return predicate;
+	}
 
-    void update_predicate(BoolExpr last_predicate) {
+    public void updatePredicate(BoolExpr last_predicate) {
         predicate = last_predicate;
     }
 

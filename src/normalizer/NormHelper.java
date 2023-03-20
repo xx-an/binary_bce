@@ -53,11 +53,11 @@ public class NormHelper {
 		BYTELEN_REP_MAP.put(8, "byte ptr");
 	}
 	
-	void disassemble_to_asm(String exec_path, String disasm_path, String disasm_type) throws Exception {
-		File f = new File(disasm_path);
-	    if(f.exists()) return;
-	    if(disasm_type.equals("objdump")) {
-	        String cmd = "objdump -M intel -d " + exec_path + " > " + disasm_path;
+	
+	public static void disassemble_to_asm(String execPath, String disasmPath, String disasmType) throws Exception {
+		if(Files.exists(Paths.get(disasmPath))) return;
+	    if(disasmType.equals("objdump")) {
+	        String cmd = "objdump -M intel -d " + execPath + " > " + disasmPath;
 	        Utils.execute_command(cmd);
 	    }
 	    else
@@ -388,14 +388,6 @@ public class NormHelper {
 	    res = res.replace("[ ]*\\*[ ]*", "*");
 	    res = res.replace("+-", "-");
 	    return res;
-	}
-	
-
-	public static void disassemble_to_asm(String disasmPath) throws Exception {
-		if(Files.exists(Paths.get(disasmPath))) return;
-		else {
-			throw new Exception("The assembly file has not been generated");
-		}
 	}
 	
 	

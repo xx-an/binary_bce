@@ -48,4 +48,10 @@ public class Tuple<X, Y> {
         hash = 53 * hash + (this.y != null ? this.y.hashCode() : 0);
         return hash;
     }
+	
+	@Override
+    public String toString() {
+		String res = "(" + this.x.toString() + ", " + this.y.toString() + ")";
+		return res;
+    }
 }

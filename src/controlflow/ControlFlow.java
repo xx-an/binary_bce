@@ -47,7 +47,7 @@ public class ControlFlow {
     final long startAddress;
     final long mainAddress;
     HashMap<Long, Long> retCallAddressMap;
-    HashMap<Long, Tuple<String, ArrayList<BitVecExpr>>> addressJPTEntriesMap;
+    HashMap<Long, Triplet<String, String, ArrayList<BitVecExpr>>> addressJPTEntriesMap;
     HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
     HashMap<String, ArrayList<String>> extLibAssumptions;
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
@@ -278,18 +278,25 @@ public class ControlFlow {
     }
     
     
-    void reconstructNewBranches(Block blk, String symName, ArrayList<BitVecExpr> alternativeValues) {
-        Long address = blk.address;
+    void reconstructNewBranches(Block blk, String symName, String jptIdxRegName, ArrayList<BitVecExpr> targetAddrs) {
+        int blkID = blk.block_id;
+    	Long address = blk.address;
         String inst = blk.inst;
         Store store = blk.store;
         long rip = store.rip;
         Constraint constraint = blk.constraint;
         store.g_NeedTraceBack = false;
         store.g_PointerRelatedError = null;
-        for(BitVecExpr val : alternativeValues) {
+        Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> unifiedJPTInfo = CFHelper.setNewJPTConstraint(store, rip, constraint, blkID, jptIdxRegName, targetAddrs);
+        ArrayList<Constraint> constraintList = unifiedJPTInfo.x;
+    	ArrayList<BitVecExpr> unifiedTargetAddrs = unifiedJPTInfo.y;
+    	int length = unifiedTargetAddrs.size();
+    	for(int idx = 0; idx < length; idx++) {
+    		BitVecExpr tAddr = unifiedTargetAddrs.get(idx);
+    		constraint = constraintList.get(idx);
             Store newStore = new Store(store, rip);
             int block_id = addNewBlock(blk, address, inst, newStore, constraint, false);
-            SymEngine.set_sym(newStore, rip, symName, val, block_id);
+            SymEngine.set_sym(newStore, rip, symName, tAddr, block_id);
         }
     }
                 
@@ -299,10 +306,11 @@ public class ControlFlow {
         	Lib.TRACE_BACK_RET_TYPE res = null;
             ArrayList<Block> trace_list = new ArrayList<>();
             if(addressJPTEntriesMap.containsKey(block.address)) {
-            	Tuple<String, ArrayList<BitVecExpr>> addrJTEntry = addressJPTEntriesMap.get(block.address);
+            	Triplet<String, String, ArrayList<BitVecExpr>> addrJTEntry = addressJPTEntriesMap.get(block.address);
             	String instDest = addrJTEntry.x;
-            	ArrayList<BitVecExpr> targetAddrs = addrJTEntry.y;
-                reconstructNewBranches(block, instDest, targetAddrs);
+            	String jptIdxRegName = addrJTEntry.y;
+            	ArrayList<BitVecExpr> targetAddrs = addrJTEntry.z;
+                reconstructNewBranches(block, instDest, jptIdxRegName, targetAddrs);
                 res = Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED;
             }
             else {
@@ -499,22 +507,29 @@ public class ControlFlow {
         Integer cjmpBlkIdx = jtUpperboundInfo.x, jtUpperbound = jtUpperboundInfo.y;
         if(jtUpperbound == null) 
         	return TRACE_BACK_RET_TYPE.JT_NO_UPPERBOUND;
-        ArrayList<BitVecExpr> targetAddrs = CFHelper.readJPTTargetAddrs(traceList, cjmpBlkIdx, globalJPTEntriesMap);
+        Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = CFHelper.readJPTTargetAddrs(traceList, cjmpBlkIdx, globalJPTEntriesMap);
+        String jptIdxRegName = jptTargetInfo.x;
+        ArrayList<BitVecExpr> targetAddrs = jptTargetInfo.y;
         if(targetAddrs == null) 
         	return TRACE_BACK_RET_TYPE.JT_NOT_CORRECT_ASSIGN_INST;
+        if(targetAddrs.size() != jtUpperbound)
+        	return TRACE_BACK_RET_TYPE.JT_UPPERBOUND_DISMATCH;
         Block blk = traceList.get(0);
         String inst = blk.inst;
         if(Utils.check_jmp_with_address(inst)) {
 	        String[] instSplit = inst.split(" ", 2);
 	        String dest = instSplit[1].strip();
 	        ArrayList<String> addrsInfo = new ArrayList<>();
+	        String targetAddr = "";
 	        for(BitVecExpr tAddr : targetAddrs) {
-	        	addrsInfo.add(Utils.num_to_hex_string(Helper.long_of_sym(tAddr)));
+	        	targetAddr = Utils.num_to_hex_string(Helper.long_of_sym(tAddr));
+	        	if(!addrsInfo.contains(targetAddr))
+	        		addrsInfo.add(targetAddr);
 	        }
 	        String jptInfo = String.join(", ", addrsInfo);
 	        Utils.logger.info(Utils.num_to_hex_string(traceList.get(0).address) + ": jump addresses resolved using jump table with entries: [" + jptInfo + "]");
-	        addressJPTEntriesMap.put(blk.address, new Tuple<>(dest, targetAddrs));
-	        reconstructNewBranches(blk, dest, targetAddrs);
+	        addressJPTEntriesMap.put(blk.address, new Triplet<>(dest, jptIdxRegName, targetAddrs));
+	        reconstructNewBranches(blk, dest, jptIdxRegName, targetAddrs);
         }
         else
         	return TRACE_BACK_RET_TYPE.JT_NO_CORRECT_JMP_INST;

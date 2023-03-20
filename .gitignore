@@ -6,3 +6,5 @@
 *.til
 *.log
 *.output
+*.objdump
+src/check

@@ -87,40 +87,6 @@ public class NormIDAPro implements Normalizer {
         read_asm_info();
 	}
 	
-	void readGlobalInfo(ArrayList<String> lines) {
-		boolean jptInfoStart = false;
-    	ArrayList<BitVecExpr> jtpEntryList = null;
-    	Long jptStartAddr = null;
-		for(String line : lines) {
-            if(locatedAtDataSegments(line)) {
-                if(varExprPat.matcher(line).find()) {
-                    String varName = retrieveVarName(line);
-                    globalDataName.add(varName);
-                }
-            }
-            if(jptInfoStart) {
-            	if(jptEndPat.matcher(line).find()) {
-            		jptInfoStart = false;
-            		globalJPTEntriesMap.put(jptStartAddr, jtpEntryList);
-            	}
-            	else {
-//            		.text:00402D34                 dd offset loc_403675
-            		String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 2);
-            		readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
-            	}
-            }
-//            .text:004031FC jpt_4031F2      dd offset loc_403274
-            if(jptStartPat.matcher(line).find()) {
-            	jptInfoStart = true;
-            	jtpEntryList = new ArrayList<>();
-            	String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 3);
-            	jptStartAddr = Long.valueOf(lineSplit[0].split(":", 2)[1].strip(), 16);
-            	readJPTEntryAddr(lineSplit[2].strip(), jtpEntryList);
-            }
-		}
-//		System.out.println(globalJPTEntriesMap.toString());
-	}
-	
 	
 	void readInstInfo(ArrayList<String> lines) {
 		for(String line : lines) {
@@ -166,7 +132,14 @@ public class NormIDAPro implements Normalizer {
     	catch (IOException e) {
 			e.printStackTrace();
 		}
-    	readGlobalInfo(lines);
+    	for(String line : lines) {
+            if(locatedAtDataSegments(line)) {
+                if(varExprPat.matcher(line).find()) {
+                    String varName = retrieveVarName(line);
+                    globalDataName.add(varName);
+                }
+            }
+    	}
     	readInstInfo(lines);
 		ArrayList<Long> instAddrs = new ArrayList<Long>(addressInstMap.keySet());
 		Collections.sort(instAddrs);
@@ -190,7 +163,37 @@ public class NormIDAPro implements Normalizer {
             addressInstMap.put(address, inst);
             addressNextMap.put(address, rip);
         }
+		readGlobalJPTInfo(lines);
     }
+    
+    
+	void readGlobalJPTInfo(ArrayList<String> lines) {
+		boolean jptInfoStart = false;
+    	ArrayList<BitVecExpr> jtpEntryList = null;
+    	Long jptStartAddr = null;
+		for(String line : lines) {
+            if(jptInfoStart) {
+            	if(jptEndPat.matcher(line).find()) {
+            		jptInfoStart = false;
+            		globalJPTEntriesMap.put(jptStartAddr, jtpEntryList);
+            	}
+            	else {
+//            		.text:00402D34                 dd offset loc_403675
+            		String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 2);
+            		readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
+            	}
+            }
+//            .text:004031FC jpt_4031F2      dd offset loc_403274
+            if(jptStartPat.matcher(line).find()) {
+            	jptInfoStart = true;
+            	jtpEntryList = new ArrayList<>();
+            	String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 3);
+            	jptStartAddr = Long.valueOf(lineSplit[0].split(":", 2)[1].strip(), 16);
+            	readJPTEntryAddr(lineSplit[2].strip(), jtpEntryList);
+            }
+		}
+//		System.out.println(globalJPTEntriesMap.toString());
+	}
 
         
 
@@ -636,7 +639,11 @@ public class NormIDAPro implements Normalizer {
     	if(tmp.contains("offset")) {
 			String[] aSplit = tmp.split("offset", 2);
 			String a2s = aSplit[1].strip();
-			if(Utils.startsWith(a2s, offsetSpecPrefix)) {
+			if(this.varOffsetMap.containsKey(a2s)) {
+				long addr = varOffsetMap.get(a2s);
+				res = Helper.gen_bv_num(addr, Config.MEM_ADDR_SIZE);
+			}
+			else if(Utils.startsWith(a2s, offsetSpecPrefix)) {
 				String addrStr = a2s.split("_", 2)[1].strip();
 				res = Helper.gen_bv_num(Long.valueOf(addrStr, 16), Config.MEM_ADDR_SIZE);
 			}
@@ -657,8 +664,7 @@ public class NormIDAPro implements Normalizer {
 			as = as.strip();
 			if(as != "") {
 				res = readEachEntryAddr(as);
-				if(!jptEntryList.contains(res))
-					jptEntryList.add(res);
+				jptEntryList.add(res);
 			}
 		}
 	}

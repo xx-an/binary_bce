@@ -88,22 +88,30 @@ public class CFHelper {
 	    return next_address;
 	}
 	
-	static ArrayList<BitVecExpr> readJPTTargets(String instArg, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
+	static Tuple<String, ArrayList<BitVecExpr>> readJPTTargets(String instArg, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
 		ArrayList<BitVecExpr> targetAddrs = null;
+		String jptIdxRegName = "";
 		if(instArg.endsWith("]") && !(instArg.contains("rip")) && instArg.contains("*") && (instArg.contains("+"))) {
 			String arg = Utils.extract_content(instArg, "[");
 			String[] argSplit = arg.split("\\+");
-			String addrStr = argSplit[argSplit.length - 1].strip();
-			if(addrStr.startsWith("0x")) {
-				long addr = Long.decode(addrStr);
-	    		targetAddrs = globalJPTEntriesMap.get(addr);
+			for(String as : argSplit) {
+				as = as.strip();
+				if(as.startsWith("0x")) {
+					long addr = Long.decode(as);
+		    		targetAddrs = globalJPTEntriesMap.get(addr);
+				}
+				else if(as.contains("*")) {
+					String[] asSplit = as.split("\\*");
+					jptIdxRegName = asSplit[0].strip();
+				}
 			}
 	    }
-	    return targetAddrs;
+	    return new Tuple<>(jptIdxRegName, targetAddrs);
 	}
 	
-	static ArrayList<BitVecExpr> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
+	static Tuple<String, ArrayList<BitVecExpr>> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
 		ArrayList<BitVecExpr> targetAddrs = null;
+		String jptIdxRegName = "";
 		int aIdx = 0;
 		for(aIdx = 0; aIdx < idx; aIdx++) {
 	        Block blk = trace_list.get(aIdx);
@@ -114,18 +122,52 @@ public class CFHelper {
 			    if(instArgs.length == 2) {
 			        String instArg0 = instArgs[0].strip();
 			        String instArg1 = instArgs[1].strip();
-			        if(Lib.REG_NAMES.contains(instArg0))
-			        	targetAddrs = readJPTTargets(instArg1, globalJPTEntriesMap);
+			        if(Lib.REG_NAMES.contains(instArg0)) {
+			        	Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = readJPTTargets(instArg1, globalJPTEntriesMap);
+			        	jptIdxRegName = jptTargetInfo.x;
+			        	targetAddrs = jptTargetInfo.y;
+			        }
 			    }
-			    if(targetAddrs != null) break;
 	        }
 	        else if(inst.startsWith("jmp")) {
-	        	targetAddrs = readJPTTargets(instArg, globalJPTEntriesMap);
-	        	if(targetAddrs != null) break;
+	        	Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = readJPTTargets(instArg, globalJPTEntriesMap);
+	        	jptIdxRegName = jptTargetInfo.x;
+	        	targetAddrs = jptTargetInfo.y;
 	        }
+	        if(targetAddrs != null) break;
 	    }
-		return targetAddrs;
+		return new Tuple<>(jptIdxRegName, targetAddrs);
 	}
+	
+	
+	static Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> setNewJPTConstraint(Store store, long rip, Constraint constraint, int blkID, String jptIdxRegName, ArrayList<BitVecExpr> targetAddrs) {
+    	ArrayList<Constraint> constraintList = new ArrayList<>();
+    	ArrayList<BitVecExpr> unifiedTargetAddrs = new ArrayList<BitVecExpr>();
+    	HashMap<BitVecExpr, Integer> tAddrFistIdx = new HashMap<BitVecExpr, Integer>();
+    	BitVecExpr symIdxReg = SymEngine.get_sym(store, rip, jptIdxRegName, blkID);
+    	int jptUpperbound = targetAddrs.size();
+    	int index = 0;
+    	for(int idx = 0; idx < jptUpperbound; idx++) {
+    		BitVecExpr tAddr = targetAddrs.get(idx);
+    		if(!unifiedTargetAddrs.contains(tAddr)) {
+    			unifiedTargetAddrs.add(tAddr);
+    			BoolExpr predicate = Helper.is_equal(symIdxReg, idx);
+    			Constraint newConstraint = new Constraint(constraint, predicate);
+    			constraintList.add(newConstraint);
+    			tAddrFistIdx.put(tAddr, index);
+    			index++;
+    		}
+    		else {
+    			int tIdx = tAddrFistIdx.get(tAddr);
+    			Constraint currConstraint = constraintList.get(tIdx);
+    			BoolExpr predicate = constraint.getPredicate();
+    			predicate = Helper.bv_and(predicate, Helper.is_equal(symIdxReg, idx));
+    			currConstraint.updatePredicate(predicate);
+    		}
+    	}
+    	return new Tuple<>(constraintList, unifiedTargetAddrs);
+    }
+    
 
 
 	static boolean detect_loop(Block block, Long address, Long new_address, HashMap<Integer, Block> block_set) {

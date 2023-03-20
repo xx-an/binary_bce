@@ -22,21 +22,20 @@ public class SymMemory {
 	static Pattern letter_num_neg_pat = Pattern.compile("\\w+");
 	static Pattern sym_pat = Pattern.compile("\\W+");
 
-	static BitVecExpr get_sym_val(String str_val, Store store, int length) {
+	static BitVecExpr get_sym_val(String arg, Store store, int length) {
 		BitVecExpr res = null;
-	    if(Lib.REG_NAMES.contains(str_val)) {
-	    	String rootReg = SymHelper.get_root_reg(str_val);
-	        res = store.get_val(rootReg);
+	    if(Lib.REG_NAMES.contains(arg)) {
+	        res = SymRegister.getRegSymAddr(store, arg);
 	    }
-	    else if(Utils.imm_pat.matcher(str_val).matches())
-	    	res = Helper.gen_bv_num(Utils.imm_str_to_int(str_val), length);
-	    else if(str_val.contains(":")) {
-	    	String[] s_split = str_val.split(":", 2);
+	    else if(Utils.imm_pat.matcher(arg).matches())
+	    	res = Helper.gen_bv_num(Utils.imm_str_to_int(arg), length);
+	    else if(arg.contains(":")) {
+	    	String[] s_split = arg.split(":", 2);
 	    	BitVecExpr new_addr = get_effective_address(store, store.rip, s_split[1].strip(), length);
 	    	res = store.get_seg_val(s_split[0], new_addr);
 	    }
 	    else
-	        res = Helper.gen_spec_sym(str_val, length);
+	        res = Helper.gen_spec_sym(arg, length);
 	    return res;
 	}
 
@@ -44,8 +43,7 @@ public class SymMemory {
 	static BitVecExpr get_idx_sym_val(Store store, String arg, BitVecExpr src_sym, BitVecExpr src_val, int length) {
 		BitVecExpr res = null;
 	    if(Lib.REG_NAMES.contains(arg)) {
-	    	String rootReg = SymHelper.get_root_reg(arg);
-	        res = store.get_val(rootReg);
+	    	res = SymRegister.getRegSymAddr(store, arg);
 	        if(!Helper.is_bit_vec_num(res)) {
 	            ArrayList<BoolExpr> predicates = new ArrayList<BoolExpr>();
 	            predicates.add(Helper.is_equal(src_sym, src_val));
@@ -252,15 +250,15 @@ public class SymMemory {
 
 
 	public static void set_mem_sym(Store store, BitVecExpr address, BitVecExpr sym, int block_id, int length) {
-	    // If the memory address != concrete
+	    // If the memory address is not a concrete value
 	    if(!Helper.is_bit_vec_num(address)) {
 	    	BitVecExpr tmp = is_mem_addr_in_stdout(store, address);
 	        if(tmp !=  null)
 	            set_mem_sym_val(store, tmp, sym, block_id, length, Lib.STDOUT);
 	        else {
 	        	store.set_mem_val(address, sym, block_id);
-//	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
-//	            store.g_NeedTraceBack = true;
+	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
+	            store.g_NeedTraceBack = true;
 	        }
 	    }
 	    else
@@ -317,7 +315,6 @@ public class SymMemory {
 	        }
 	        else
 	            read_mem_error_report(store, int_address);
-//	        System.out.println(val);
 	        if(val != null)
 	        	res = Helper.gen_bv_num(val, length);
 	        else {

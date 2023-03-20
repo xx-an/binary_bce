@@ -92,7 +92,7 @@ public class CMC {
 	
 	static void cmc_main(String execPath, String disasmPath, String disasmType, boolean verbose) throws Exception {
 	    set_logger(disasmPath, disasmType, verbose);
-	    NormHelper.disassemble_to_asm(disasmPath);
+	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
 	    NormFactory normFactory = new NormFactory(disasmPath, disasmType);
 	    Normalizer norm = normFactory.get_disasm();
 	    GlobalVar.getBinaryInfo(execPath);

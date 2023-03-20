@@ -1,3 +1,4 @@
+./src/check/CheckNormalization.java
 ./src/common/Utils.java
 ./src/common/Config.java
 ./src/common/GlobalVar.java
@@ -25,6 +26,7 @@
 ./src/block/Store.java
 ./src/block/Constraint.java
 ./src/block/Node.java
+./src/normalizer/NormObjdump.java
 ./src/normalizer/NormFactory.java
 ./src/normalizer/NormHelper.java
 ./src/normalizer/NormIDAPro.java
