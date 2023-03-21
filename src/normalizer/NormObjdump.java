@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.regex.Pattern;
 
 import com.microsoft.z3.BitVecExpr;
@@ -200,9 +201,13 @@ public class NormObjdump implements Normalizer {
 
 	@Override
 	public HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap() {
-		return new HashMap<Long, ArrayList<BitVecExpr>>();
+		return null;
 	}
 
 
+	@Override
+	public HashSet<Long> getFuncEndAddrs() {
+		return null;
+	}
 
 }

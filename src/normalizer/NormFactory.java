@@ -4,20 +4,16 @@ import java.io.FileNotFoundException;
 
 public class NormFactory {
 
-	String asmPath;
-	String disasmType;
+	public static Normalizer norm;
 
-	public NormFactory(String asm_path, String disasmType) {
-        this.asmPath = asm_path;
-        this.disasmType = disasmType;
-	}
-
-
-    public Normalizer get_disasm() throws FileNotFoundException {
-        if(this.disasmType.equals("idapro")) {
-            return new NormIDAPro(asmPath);
+    public static void setDisasm(String asmPath, String disasmType) throws FileNotFoundException {
+    	norm = null;
+        if(disasmType.equals("idapro")) {
+        	norm = new NormIDAPro(asmPath);
         }
-        return null;
+        else if(disasmType.equals("objdump")) {
+        	norm = new NormObjdump(asmPath);
+        }
     }
 
 

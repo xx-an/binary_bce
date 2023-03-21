@@ -106,7 +106,7 @@ public class TraceBack {
     
     
 	static Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tracebackIndirectJumps(HashMap<Integer, Block> blockMap, Block blk, ArrayList<String> symNames, HashMap<String, Integer> memLenMap, ArrayList<Block> traceBlockList) {
-        Utils.logger.info("Resolve indirect jump address");
+        Utils.logger.info("\nResolve indirect jump address");
         for(int i = 0; i < Utils.MAX_TRACEBACK_COUNT; i++) {
             Store pStore = CFHelper.getParentStore(blockMap, blk);
             if(pStore == null) {
@@ -130,7 +130,7 @@ public class TraceBack {
                 symNames = srcNames;
             }
             else { 
-                Utils.logger.info("Do not need to trace back anymore\n");
+                Utils.logger.info("Traceback ends\n");
                 break;
             }
         }

@@ -149,9 +149,8 @@ public class Store {
 	}
 	
 	public void set_stdout_val(BitVecExpr addr, BitVecExpr val, int block_id) {
-		Node node = g_StdoutStore.get(addr);
-		node.expr = val;
-		node.block_id = block_id;
+		Node node = new Node(val, block_id);
+		g_StdoutStore.put(addr, node);
 	}
 
 	public BitVecExpr get_seg_val(String seg, BitVecExpr name) {

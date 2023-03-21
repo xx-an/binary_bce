@@ -328,8 +328,12 @@ public class Semantics {
 
 	static void imul(Store store, ArrayList<String> arg) {
 		String src = arg.get(0);
-		String src1 = arg.get(1);
-		String src2 = arg.get(2);
+		String src1 = null, src2 = null;
+		if(arg.size() > 1) {
+			src1 = arg.get(1);
+			if(arg.size() > 2)
+				src2 = arg.get(2);
+		}
 		String dest = null;
 	    int bits_len = Utils.get_sym_length(src, Config.MEM_ADDR_SIZE);
 	    BitVecExpr res = null;

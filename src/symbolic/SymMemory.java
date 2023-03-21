@@ -2,6 +2,7 @@ package symbolic;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,7 @@ import common.GlobalVar;
 import common.Helper;
 import common.Lib;
 import common.Utils;
+import normalizer.NormFactory;
 
 public class SymMemory {
 
@@ -247,6 +249,24 @@ public class SymMemory {
         }
 	    return res;
 	}
+	
+	
+	static BitVecExpr isMemAddrLocatedAtExtrnFunc(Store store, BitVecExpr address) {
+		BitVecExpr res = null;
+		HashMap<Long, String> addressExtFuncMap = NormFactory.norm.getAddressExtFuncMap();
+		if(addressExtFuncMap.containsKey(address)) {
+			
+		}
+        BitVecExpr tmp = Helper.bv_sub(address, store.g_StdoutHandler);
+        if(Helper.is_bit_vec_num(tmp))
+            res = tmp;
+        else {
+            tmp = Helper.bv_sub(address, SymHelper.STDOUT_ADDR);
+            if(Helper.is_bit_vec_num(tmp))
+                res = address;
+        }
+	    return res;
+	}
 
 
 	public static void set_mem_sym(Store store, BitVecExpr address, BitVecExpr sym, int block_id, int length) {
@@ -257,8 +277,12 @@ public class SymMemory {
 	            set_mem_sym_val(store, tmp, sym, block_id, length, Lib.STDOUT);
 	        else {
 	        	store.set_mem_val(address, sym, block_id);
-	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
-	            store.g_NeedTraceBack = true;
+//	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
+	            String addrStr = address.toString();
+	            if(!addrStr.startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
+//	            	System.out.println(addrStr);
+//	            	store.g_NeedTraceBack = true;
+	            }
 	        }
 	    }
 	    else
@@ -313,6 +337,9 @@ public class SymMemory {
 	            long text_base_addr = GlobalVar.binaryInfo.text_base_addr;
 	            val = GlobalVar.binaryContent.read_bytes(int_address - text_base_addr, length / 8);
 	        }
+//	        else if(NormFactory.norm.getAddressExtFuncMap().containsKey(int_address)) {
+//	        	
+//	        }
 	        else
 	            read_mem_error_report(store, int_address);
 	        if(val != null)
@@ -323,7 +350,12 @@ public class SymMemory {
 	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }
 	    else {
-	        res = Helper.gen_mem_sym(length);
+	    	String addrStr = address.toString();
+	    	if(addrStr.startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
+	    		res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + "(" + addrStr + ")", length);
+	    	}
+	    	else
+	    		res = Helper.gen_mem_sym(length);
 	        store.set_mem_val(address, res, block_id);
 	    }
 	    return res;

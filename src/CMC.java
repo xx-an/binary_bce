@@ -15,29 +15,17 @@ import common.GlobalVar;
 import common.Helper;
 import common.Utils;
 import controlflow.ControlFlow;
-import normalizer.Normalizer;
 import normalizer.NormFactory;
 import normalizer.NormHelper;
 
 public class CMC {
 	
-	final String[] CHECK_RESULTS;
-	static long mainAddress;
-	static HashMap<String, BitVecExpr> symTable;
-	static HashMap<BitVecExpr, ArrayList<String>> addressSymTable;
-	static HashMap<Long, String> addressInstMap;
-	static HashMap<Long, String> addressLableMap;
-	
-	public CMC() {
-		CHECK_RESULTS = new String[] {"", "$\\\\times$"};
-	}
-	
-	static ControlFlow constructCF(Normalizer norm, String execPath) {
-		mainAddress = GlobalVar.binaryInfo.main_address;
-		symTable = GlobalVar.binaryInfo.sym_table;
-		addressSymTable = GlobalVar.binaryInfo.address_sym_table;
-		addressInstMap = norm.getAddressInstMap();
-		addressLableMap = norm.getAddressLabelMap();
+
+	static ControlFlow constructCF(String execPath) {
+		long mainAddress = GlobalVar.binaryInfo.main_address;
+		HashMap<String, BitVecExpr> symTable = GlobalVar.binaryInfo.sym_table;
+		HashMap<BitVecExpr, ArrayList<String>> addressSymTable = GlobalVar.binaryInfo.address_sym_table;
+		HashMap<Long, String> addressLableMap = NormFactory.norm.getAddressLabelMap();
 		for(long address : addressLableMap.keySet()) {
 			BitVecExpr bvAddr = Helper.gen_bv_num(address, 64);
 			if(addressSymTable.containsKey(bvAddr)) {
@@ -53,9 +41,7 @@ public class CMC {
 	    long startAddress = GlobalVar.binaryInfo.entry_address;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
-	    // print(GlobalVar.binary_info.dll_func_info)
-	    // print(disasm_asm.valid_address_no)
-	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, addressInstMap, norm.getAddressNextMap(), startAddress, mainAddress, funcName, norm.getAddressExtFuncMap(), preConstraint, GlobalVar.binaryInfo.dllFuncInfo, norm.readGlobalJPTEntriesMap());
+	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, startAddress, mainAddress, funcName, preConstraint, GlobalVar.binaryInfo.dllFuncInfo, NormFactory.norm);
 	    return cfg;
 	}
 	
@@ -93,11 +79,10 @@ public class CMC {
 	static void cmc_main(String execPath, String disasmPath, String disasmType, boolean verbose) throws Exception {
 	    set_logger(disasmPath, disasmType, verbose);
 	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
-	    NormFactory normFactory = new NormFactory(disasmPath, disasmType);
-	    Normalizer norm = normFactory.get_disasm();
+	    NormFactory.setDisasm(disasmPath, disasmType);
 	    GlobalVar.getBinaryInfo(execPath);
 		long startTime = System.nanoTime();
-	    ControlFlow cfg = constructCF(norm, execPath);
+	    ControlFlow cfg = constructCF(execPath);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
 	    write_results(cfg);
 	    Utils.output_logger.info("Execution time (s) : " + Long.toString(duration));

@@ -169,13 +169,19 @@ public class Helper {
 	}
 	
 	public static BitVecExpr bv_add(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVAdd(x, y);
+		return (BitVecExpr) ctx.mkBVAdd(x, y).simplify();
+	}
+	
+	public static BitVecExpr bv_add(BitVecExpr x, long y) {
+		int size = x.getSortSize();
+		BitVecNum bv_y = ctx.mkBV(y, size);
+		return (BitVecExpr) ctx.mkBVAdd(x, bv_y).simplify();
 	}
 	
 	public static BitVecExpr bv_add(BitVecExpr x, int y) {
 		int size = x.getSortSize();
 		BitVecNum bv_y = ctx.mkBV(y, size);
-		return ctx.mkBVAdd(x, bv_y);
+		return (BitVecExpr) ctx.mkBVAdd(x, bv_y).simplify();
 	}
 	
 	public static BitVecExpr bv_sub(BitVecExpr x, BitVecExpr y) {

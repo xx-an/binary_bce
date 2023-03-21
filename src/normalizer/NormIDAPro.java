@@ -29,6 +29,7 @@ public class NormIDAPro implements Normalizer {
 	HashMap<Long, String> addressLabelMap;
 	HashMap<Long, String> address_func_map;
 	HashMap<Long, String> addressExtFuncMap;
+	HashSet<Long> funcEndAddressSet;
 	HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
 	
 	HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable;
@@ -68,6 +69,8 @@ public class NormIDAPro implements Normalizer {
         addressNextMap = new HashMap<>();
         addressLabelMap = new HashMap<>();
         addressExtFuncMap = new HashMap<>();
+        funcEndAddressSet = new HashSet<>();
+        globalJPTEntriesMap = new HashMap<>();
         varOffsetMap = new HashMap<>();
         varValueMap = new HashMap<>();
         procValueMap = new HashMap<>();
@@ -75,7 +78,6 @@ public class NormIDAPro implements Normalizer {
         valid_address_no = 0;
         currPtrRep = null;
         globalDataName = new HashSet<>();
-        globalJPTEntriesMap = new HashMap<>();
         addedPtrRepMap = new HashMap<>();
         idaStructTable = NormHelper.init_ida_struct_info();
         varIdaStructTypeMap = new HashMap<>();
@@ -207,6 +209,7 @@ public class NormIDAPro implements Normalizer {
         String[] varSplit = varStr.split(" ", 2);
         String varName = Utils.rsplit(varSplit[1], ":")[0].strip();
         varValueMap.put(varName, address);
+        this.addressExtFuncMap.put(address, varName);
     }
 
 
@@ -266,6 +269,9 @@ public class NormIDAPro implements Normalizer {
         else if(varSplit[1].strip() != "" && !varSplit[1].contains("endp") && !varSplit[1].contains("ends")) {
         	varOffsetMap.put(varName, address);
             varValueMap.put(varName, address);
+        }
+        else if(varSplit[1].strip() != "" && varSplit[1].contains("endp")) {
+        	funcEndAddressSet.add(address);
         }
         else {
             for(String idaStructType : idaStructTypes) {
@@ -853,6 +859,11 @@ public class NormIDAPro implements Normalizer {
 	@Override
 	public HashMap<Long, String> getAddressExtFuncMap() {
 		return this.addressExtFuncMap;
+	}
+	
+	@Override
+	public HashSet<Long> getFuncEndAddrs() {
+		return this.funcEndAddressSet;
 	}
             		
 }

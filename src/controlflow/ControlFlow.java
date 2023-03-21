@@ -1,8 +1,9 @@
 package controlflow;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.microsoft.z3.BitVecExpr;
@@ -23,11 +24,12 @@ import semantics.SMTHelper;
 import semantics.Semantics;
 import symbolic.SymEngine;
 import symbolic.SymHelper;
+import normalizer.Normalizer;
 
 public class ControlFlow {
 	
 	HashMap<Integer, Block> blockMap;
-	ArrayDeque<Block> blockStack;
+	ArrayList<Block> blockStack;
     HashMap<Long, Block> addressBlockMap;
     HashMap<Long, Integer> addressBlockCntMap;
     HashMap<Long, String> addressExtFuncMap;
@@ -39,6 +41,7 @@ public class ControlFlow {
     HashMap<Long, String> dllFuncInfo;
     HashMap<Tuple<Long, Long>, Integer> loopTraceCounter;
     HashMap<String, ArrayList<String>> gPreConstraint;
+    HashSet<Long> funcEndAddressSet;
     ArrayList<Long> extFuncCallAddr;
     ArrayList<BitVecExpr> extMemPreserv;
     String disasmType;
@@ -53,9 +56,9 @@ public class ControlFlow {
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
 
     
-    public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, HashMap<Long, String> addressInstMap, HashMap<Long, Long> addressNextMap, long startAddress, long mainAddress, String func_name, HashMap<Long, String> addressExtFuncMap, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
+    public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, long startAddress, long mainAddress, String func_name, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo, Normalizer norm) {
     	blockMap = new HashMap<>();
-    	blockStack = new ArrayDeque<>();
+    	blockStack = new ArrayList<>();
         addressBlockMap = new HashMap<>();
         addressBlockCntMap = new HashMap<>();
         loopTraceCounter = new HashMap<>();
@@ -63,8 +66,8 @@ public class ControlFlow {
         this.symTable = symTable;
         this.addressSymTable = addressSymTable;
         this.startAddress = startAddress;
-        this.addressInstMap = addressInstMap;
-        this.addressNextMap = addressNextMap;
+        this.addressInstMap = norm.getAddressInstMap();
+        this.addressNextMap = norm.getAddressNextMap();
         dummyBlock = new Block(-1, 0, "", null, null);
         this.mainAddress = mainAddress;
         this.gPreConstraint = gPreConstraint;
@@ -74,9 +77,11 @@ public class ControlFlow {
         symAddrValuesetMap = new HashMap<>();
         extLibAssumptions = new HashMap<>();
         extMemPreserv = new ArrayList<>();
-        this.addressExtFuncMap = addressExtFuncMap;
+        this.addressExtFuncMap = norm.getAddressExtFuncMap();
+//        System.out.println(this.addressExtFuncMap);
+        this.funcEndAddressSet = norm.getFuncEndAddrs();
         this.dllFuncInfo = dllFuncInfo;
-        this.globalJPTEntriesMap = globalJPTEntriesMap;
+        this.globalJPTEntriesMap = norm.readGlobalJPTEntriesMap();
         Store store = new Store(null);
         cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
         Constraint constraint = null;
@@ -93,7 +98,7 @@ public class ControlFlow {
     	String startInst = addressInstMap.get(startAddress);
     	add_new_block(null, startAddress, startInst, startStore, startConstraint);
         while(blockStack != null && blockStack.size() > 0) {
-            Block curr = blockStack.pop();
+            Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst);
             long address = curr.address;
             String inst = curr.inst;
@@ -103,8 +108,12 @@ public class ControlFlow {
                 inst = inst.strip().split(" ", 2)[1];
             if(Utils.check_branch_inst(inst))
                 construct_branch(curr, address, inst, store, constraint);
-            else
-                _jump_to_next_block(curr, address, store, constraint);
+            else {
+            	if(!funcEndAddressSet.contains(curr.address))
+            		_jump_to_next_block(curr, address, store, constraint);
+            	else
+            		Utils.logger.info("\n");
+            }
         }
     }
 
@@ -285,8 +294,6 @@ public class ControlFlow {
         Store store = blk.store;
         long rip = store.rip;
         Constraint constraint = blk.constraint;
-        store.g_NeedTraceBack = false;
-        store.g_PointerRelatedError = null;
         Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> unifiedJPTInfo = CFHelper.setNewJPTConstraint(store, rip, constraint, blkID, jptIdxRegName, targetAddrs);
         ArrayList<Constraint> constraintList = unifiedJPTInfo.x;
     	ArrayList<BitVecExpr> unifiedTargetAddrs = unifiedJPTInfo.y;
@@ -297,6 +304,8 @@ public class ControlFlow {
             Store newStore = new Store(store, rip);
             int block_id = addNewBlock(blk, address, inst, newStore, constraint, false);
             SymEngine.set_sym(newStore, rip, symName, tAddr, block_id);
+            newStore.g_NeedTraceBack = false;
+            newStore.g_PointerRelatedError = null;
         }
     }
                 
@@ -527,7 +536,7 @@ public class ControlFlow {
 	        		addrsInfo.add(targetAddr);
 	        }
 	        String jptInfo = String.join(", ", addrsInfo);
-	        Utils.logger.info(Utils.num_to_hex_string(traceList.get(0).address) + ": jump addresses resolved using jump table with entries: [" + jptInfo + "]");
+	        Utils.logger.info(Utils.num_to_hex_string(traceList.get(0).address) + ": jump addresses resolved using jump table with entries: [" + jptInfo + "]\n");
 	        addressJPTEntriesMap.put(blk.address, new Triplet<>(dest, jptIdxRegName, targetAddrs));
 	        reconstructNewBranches(blk, dest, jptIdxRegName, targetAddrs);
         }
@@ -847,9 +856,11 @@ public class ControlFlow {
     void pp_unreachable_instrs() {
         Set<Long> reachableAddrs = addressBlockMap.keySet();
         Set<Long> instAddrs = addressInstMap.keySet();
+        ArrayList<Long> sortedAddrs = new ArrayList<Long>(instAddrs);
+        Collections.sort(sortedAddrs);
         Utils.logger.info("\n");
         Utils.logger.info(Utils.LOG_UNREACHABLE_INDICATOR);
-        for(Long address : instAddrs) {
+        for(Long address : sortedAddrs) {
             if(!reachableAddrs.contains(address)) {
                 Utils.logger.info(Utils.num_to_hex_string(address) + ": " + addressInstMap.get(address));
             }

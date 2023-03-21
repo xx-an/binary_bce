@@ -140,10 +140,20 @@ public class CFHelper {
 	}
 	
 	
+	/**
+	    * Unify the jump table entries and construct new constraints accordingly
+	    * @param  store		the local store for the concolic execution process
+	    * @param  rip		next address stored in the RIP register
+	    * @param  constraint	the local current constraint for the concolic execution process
+	    * @param  blkID		the block id for current block
+	    * @param  jptIdxRegName		the name of the register that stores the symbolic index for the jump table entries, such as "ebx"
+	    * @param  targetAddrs		a list that contains all the jump table entries
+	    * @return			new constrains and unified jump table entries
+	    */
 	static Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> setNewJPTConstraint(Store store, long rip, Constraint constraint, int blkID, String jptIdxRegName, ArrayList<BitVecExpr> targetAddrs) {
     	ArrayList<Constraint> constraintList = new ArrayList<>();
     	ArrayList<BitVecExpr> unifiedTargetAddrs = new ArrayList<BitVecExpr>();
-    	HashMap<BitVecExpr, Integer> tAddrFistIdx = new HashMap<BitVecExpr, Integer>();
+    	HashMap<BitVecExpr, Integer> tAddrFistIdxMap = new HashMap<BitVecExpr, Integer>();
     	BitVecExpr symIdxReg = SymEngine.get_sym(store, rip, jptIdxRegName, blkID);
     	int jptUpperbound = targetAddrs.size();
     	int index = 0;
@@ -154,14 +164,14 @@ public class CFHelper {
     			BoolExpr predicate = Helper.is_equal(symIdxReg, idx);
     			Constraint newConstraint = new Constraint(constraint, predicate);
     			constraintList.add(newConstraint);
-    			tAddrFistIdx.put(tAddr, index);
+    			tAddrFistIdxMap.put(tAddr, index);
     			index++;
     		}
     		else {
-    			int tIdx = tAddrFistIdx.get(tAddr);
+    			int tIdx = tAddrFistIdxMap.get(tAddr);
     			Constraint currConstraint = constraintList.get(tIdx);
     			BoolExpr predicate = constraint.getPredicate();
-    			predicate = Helper.bv_and(predicate, Helper.is_equal(symIdxReg, idx));
+    			predicate = Helper.bv_or(predicate, Helper.is_equal(symIdxReg, idx));
     			currConstraint.updatePredicate(predicate);
     		}
     	}
