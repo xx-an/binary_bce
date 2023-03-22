@@ -185,17 +185,17 @@ public class Helper {
 	}
 	
 	public static BitVecExpr bv_sub(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSub(x, y);
+		return (BitVecExpr) ctx.mkBVSub(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_sub(BitVecExpr x, int y) {
 		int size = x.getSortSize();
 		BitVecNum bv_y = ctx.mkBV(y, size);
-		return ctx.mkBVSub(x, bv_y);
+		return (BitVecExpr) ctx.mkBVSub(x, bv_y).simplify();
 	}
 	
 	public static BitVecExpr bv_and(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVAND(x, y);
+		return (BitVecExpr) ctx.mkBVAND(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_and(BitVecExpr x, int y) {
@@ -205,7 +205,7 @@ public class Helper {
 	}
 	
 	public static BitVecExpr bv_or(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVOR(x, y);
+		return (BitVecExpr) ctx.mkBVOR(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_xor(BitVecExpr x, BitVecExpr y) {

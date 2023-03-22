@@ -7,4 +7,5 @@
 *.log
 *.output
 *.objdump
-src/check
+src/check/
+*.class

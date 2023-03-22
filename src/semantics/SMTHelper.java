@@ -18,6 +18,9 @@ import symbolic.SymHelper;
 
 
 public class SMTHelper {
+	
+	final static String[] pushaOrder = new String[] {"ax", "cx", "dx", "bx", "", "bp", "si", "di"};
+    final static String[] pushadOrder = new String[] {"eax", "ecx", "edx", "ebx", "", "ebp", "esi", "edi"};
 
 	static void set_flag_val(Store store, String flag_name, BoolExpr res) {
 	    store.g_FlagStore.put(flag_name, res);
@@ -317,8 +320,8 @@ public class SMTHelper {
 	static boolean check_source_is_sym(Store store, long rip, String src, ArrayList<String> syms) {
 	    boolean res = false;
 	    if(Lib.REG_INFO_DICT.containsKey(src)) {
-	    	String root_src = SymHelper.get_root_reg(src);
-	    	res = syms.contains(root_src);
+	    	String rootReg = SymHelper.get_root_reg(src);
+	    	res = syms.contains(rootReg);
 	    }
 	    else if(Lib.REG_NAMES.contains(src))
 	        res = syms.contains(src);

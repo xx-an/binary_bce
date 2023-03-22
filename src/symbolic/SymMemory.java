@@ -2,7 +2,6 @@ package symbolic;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,7 +16,6 @@ import common.GlobalVar;
 import common.Helper;
 import common.Lib;
 import common.Utils;
-import normalizer.NormFactory;
 
 public class SymMemory {
 
@@ -253,10 +251,6 @@ public class SymMemory {
 	
 	static BitVecExpr isMemAddrLocatedAtExtrnFunc(Store store, BitVecExpr address) {
 		BitVecExpr res = null;
-		HashMap<Long, String> addressExtFuncMap = NormFactory.norm.getAddressExtFuncMap();
-		if(addressExtFuncMap.containsKey(address)) {
-			
-		}
         BitVecExpr tmp = Helper.bv_sub(address, store.g_StdoutHandler);
         if(Helper.is_bit_vec_num(tmp))
             res = tmp;
@@ -279,9 +273,9 @@ public class SymMemory {
 	        	store.set_mem_val(address, sym, block_id);
 //	            Utils.logger.info("\nWarning: Potential buffer overflow with symbolic memory address " + address.toString());
 	            String addrStr = address.toString();
-	            if(!addrStr.startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
+	            if(!addrStr.contains(Utils.MEM_DATA_SEC_SUFFIX)) {
 //	            	System.out.println(addrStr);
-//	            	store.g_NeedTraceBack = true;
+	            	store.g_NeedTraceBack = true;
 	            }
 	        }
 	    }
@@ -351,7 +345,7 @@ public class SymMemory {
 	    }
 	    else {
 	    	String addrStr = address.toString();
-	    	if(addrStr.startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
+	    	if(addrStr.contains(Utils.MEM_DATA_SEC_SUFFIX)) {
 	    		res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + "(" + addrStr + ")", length);
 	    	}
 	    	else
@@ -391,13 +385,15 @@ public class SymMemory {
 
 	public static Integer get_mem_sym_block_id(Store store, BitVecExpr address) {
 	    Integer res = null;
+	    long intAddr = Helper.long_of_sym(address);
+	    if(intAddr == 16776716)
+	    	System.out.println(store.pp_mem_store());
 	    if(store.containsKey(address))
 	    	res = store.get_block_id(address);
 	    else {
-	        long int_address = Helper.long_of_sym(address);
-	        if(SymHelper.addr_in_rodata_section(int_address))
+	        if(SymHelper.addr_in_rodata_section(intAddr))
 	            res = Utils.INIT_BLOCK_NO;
-	        else if(SymHelper.addr_in_data_section(int_address))
+	        else if(SymHelper.addr_in_data_section(intAddr))
 	            res = store.g_MemPolluted;
 	    }
 	    return res;

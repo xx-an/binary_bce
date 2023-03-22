@@ -83,8 +83,8 @@ public class Store {
     
 	String pp_val(BitVecExpr sym) {
         String res = "";
-        if(sym instanceof BitVecNum) {
-            res = Integer.toHexString(((BitVecNum) sym).getInt());
+        if(Helper.is_bit_vec_num(sym)) {
+        	res = "0x" + Long.toHexString(Helper.long_of_sym(sym));
         }
         else { 
         	res = sym.toString(); 
@@ -186,25 +186,25 @@ public class Store {
 		g_HeapAddr = head_addr;
 	}
 	
-	String pp_reg_store() {
+	public String pp_reg_store() {
 		StringBuilder sb = new StringBuilder();
         String res_str = "";
         for (String ki : g_RegStore.keySet()) {
         	BitVecExpr vi = g_RegStore.get(ki).expr;
-        	res_str += ki + " { " + pp_val(vi) + ",\n";
+        	res_str += ki + ": " + pp_val(vi) + ",\n";
         }
-        sb.append("Reg {{\n" + res_str + "}\n");
+        sb.append("Reg: {\n" + res_str + "}\n");
 		return sb.toString();
 	}
 	
-	String pp_mem_store() {
+	public String pp_mem_store() {
 		StringBuilder sb = new StringBuilder();
         String res_str = "";
         for (BitVecExpr ki : g_MemStore.keySet()) {
         	BitVecExpr vi = g_MemStore.get(ki).expr;
-        	res_str += ki + " { " + pp_val(vi) + ",\n";
+        	res_str += ki + ": " + pp_val(vi) + ",\n";
         }
-        sb.append("Mem {{\n" + res_str + "}\n");
+        sb.append("Mem: {\n" + res_str + "}\n");
 		return sb.toString();
 	}
 	

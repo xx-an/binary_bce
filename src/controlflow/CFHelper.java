@@ -321,6 +321,7 @@ public class CFHelper {
     // Add new (block_id, sym_name) pair to blockid_sym_list according to current src_names
     static HashMap<Integer, ArrayList<String>> updateBIDSymInfo(HashMap<Integer, ArrayList<String>> bIDSymMap, Store preStore, long rip, ArrayList<String> srcNames) {
     	HashMap<Integer, ArrayList<String>> newBIDSymMap = retrieveBIDSymInfo(preStore, rip, srcNames);
+//    	System.out.println(newBIDSymMap.toString());
     	for(Integer bID : newBIDSymMap.keySet())
     	{
     		ArrayList<String> newSymInfo = newBIDSymMap.get(bID);
@@ -450,8 +451,12 @@ public class CFHelper {
 	            }
 	        }
 	    }
-	    else
-	    	symNames.add("rdi");
+	    else {
+	    	if(Config.MEM_ADDR_SIZE == 64)
+	    		symNames.add("rdi");
+	    	else
+	    		symNames.add("edi");
+	    }
 	    return symNames;
 	}
 	

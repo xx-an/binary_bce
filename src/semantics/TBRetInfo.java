@@ -4,46 +4,50 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class TBRetInfo {
-	public ArrayList<String> src_names;
-	public Boolean need_stop;
+	public ArrayList<String> srcNames;
 	public Integer boundary;
-	public Boolean still_tb;
-	public Boolean func_call_point;
+	public Boolean stillTB;
+	public Boolean funcCallPoint;
 	public Boolean concrete_val;
-	public Boolean halt_point;
-	public HashMap<String, Integer> mem_len_map;
+	public Boolean haltPoint;
+	public HashMap<String, Integer> memLenMap;
 	
 	public TBRetInfo() {
-		src_names = null;
-		need_stop = null;
+		srcNames = null;
+		haltPoint = null;
 		boundary = null;
-		still_tb = null;
-		func_call_point = null;
+		stillTB = null;
+		funcCallPoint = null;
 		concrete_val = null;
-		halt_point = null;
-		mem_len_map = null;
+		memLenMap = null;
 	}
 	
-	public TBRetInfo(ArrayList<String> src_names, Boolean need_stop, Integer boundary, Boolean still_tb, HashMap<String, Integer> mem_len_map) {
-		this.src_names = src_names;
-		this.need_stop = need_stop;
+	public TBRetInfo(ArrayList<String> srcNames, Boolean haltPoint, Integer boundary, Boolean still_tb, HashMap<String, Integer> memLenMap) {
+		this.srcNames = srcNames;
+		this.haltPoint = haltPoint;
 		this.boundary = boundary;
-		this.still_tb = still_tb;
-		this.mem_len_map = mem_len_map;
+		this.stillTB = still_tb;
+		this.memLenMap = memLenMap;
 	}
 	
-	public TBRetInfo(ArrayList<String> src_names, Boolean func_call_point, Boolean halt_point, Boolean concrete_val) {
-		this.src_names = src_names;
-		this.func_call_point = func_call_point;
-		this.halt_point = halt_point;
+	public TBRetInfo(ArrayList<String> srcNames, Boolean func_call_point, Boolean haltPoint, Boolean concrete_val) {
+		this.srcNames = srcNames;
+		this.funcCallPoint = func_call_point;
+		this.haltPoint = haltPoint;
 		this.concrete_val = concrete_val;
 	}
 	
 	
-	public TBRetInfo(ArrayList<String> src_names, Boolean func_call_point, Boolean halt_point, HashMap<String, Integer> mem_len_map) {
-		this.src_names = src_names;
-		this.func_call_point = func_call_point;
-		this.halt_point = halt_point;
-		this.mem_len_map = mem_len_map;
+	public TBRetInfo(ArrayList<String> srcNames, Boolean func_call_point, HashMap<String, Integer> memLenMap) {
+		this.srcNames = srcNames;
+		this.funcCallPoint = func_call_point;
+		this.memLenMap = memLenMap;
+	}
+	
+	public TBRetInfo(ArrayList<String> srcNames, Boolean func_call_point, Boolean haltPoint, HashMap<String, Integer> memLenMap) {
+		this.srcNames = srcNames;
+		this.funcCallPoint = func_call_point;
+		this.haltPoint = haltPoint;
+		this.memLenMap = memLenMap;
 	}
 }

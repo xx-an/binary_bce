@@ -85,10 +85,11 @@ public class ExtHandler {
 
 
 	static void ext__libc_start_main(Store store, long rip, long main_address, int block_id) {
-	    ArrayList<String> dests = regs_str_to_list("rcx, rdx, rsi, rdi, r8, r9, r10, r11");
-	    set_reg_val(store, rip, "rax", main_address, block_id);
+		String regs = (Config.MEM_ADDR_SIZE==64)?"rcx, rdx, rsi, rdi, r8, r9, r10, r11":"ecx, edx, esi, edi";
+	    ArrayList<String> dests = regs_str_to_list(regs);
+	    set_reg_val(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", main_address, block_id);
 	    set_regs_sym(store, rip, dests, block_id);
-	    SymEngine.set_sym(store, rip, "rbp", SymEngine.get_sym(store, main_address, "rcx", block_id), block_id);
+	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rbp":"ebp", SymEngine.get_sym(store, main_address, (Config.MEM_ADDR_SIZE==64)?"rcx":"ecx", block_id), block_id);
 	    clear_flags(store);
 	    insert_termination_symbol(store, rip, block_id);
 	}
@@ -97,7 +98,7 @@ public class ExtHandler {
 	static void ext_gen_fresh_heap_pointer(Store store, long rip, String ext_func_name, int block_id, BitVecExpr m_size) {
 	    long heap_addr = store.g_HeapAddr;
 	    BitVecExpr mem_addr = Helper.gen_bv_num(heap_addr, Config.MEM_ADDR_SIZE);
-	    SymEngine.set_sym(store, rip, "rax", mem_addr, block_id);
+	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", mem_addr, block_id);
 	    int mem_size = 0;
 	    if(Helper.is_bit_vec_num(m_size))
 	    	mem_size = Helper.int_of_sym(m_size);
@@ -113,7 +114,8 @@ public class ExtHandler {
 	    heap_addr += mem_size;
 	    Config.MAX_HEAP_ADDR = Math.max(Config.MAX_HEAP_ADDR, heap_addr);
 	    SymEngine.set_mem_sym(store, mem_addr, mem_val, mem_size);
-	    ArrayList<String> dests = regs_str_to_list("rcx, rdx, rsi, rdi, r8, r9, r10, r11");
+	    String regs = (Config.MEM_ADDR_SIZE==64)?"rcx, rdx, rsi, rdi, r8, r9, r10, r11":"ecx, edx, esi, edi";
+	    ArrayList<String> dests = regs_str_to_list(regs);
 	    set_regs_sym(store, rip, dests, block_id);
 	    clear_flags(store);
 	    store.g_HeapAddr = heap_addr;
@@ -154,9 +156,9 @@ public class ExtHandler {
 	static void ext_alloc_mem_call(Store store, long rip, String ext_func_name, int block_id) {
 	    long heap_addr = store.get_heap_addr();
 //	    Utils.logger.info(heap_addr)
-	    BitVecExpr bv_mem_size = (ext_func_name.equals("malloc") || ext_func_name.equals("calloc")) ? SymEngine.get_sym(store, rip, "rdi", block_id) : SymEngine.get_sym(store, rip, "rsi", block_id);
+	    BitVecExpr bv_mem_size = (ext_func_name.equals("malloc") || ext_func_name.equals("calloc")) ? SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id) : SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rsi":"esi", block_id);
 	    BitVecExpr mem_addr = Helper.gen_bv_num(heap_addr, Config.MEM_ADDR_SIZE);
-	    SymEngine.set_sym(store, rip, "rax", mem_addr, block_id);
+	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", mem_addr, block_id);
 	    int mem_size = 0;
 	    if(Helper.is_bit_vec_num(bv_mem_size))
 	        mem_size = Helper.int_of_sym(bv_mem_size);
@@ -170,7 +172,8 @@ public class ExtHandler {
 	    heap_addr += mem_size;
 	    Config.MAX_HEAP_ADDR = (Config.MAX_HEAP_ADDR < heap_addr) ? heap_addr : Config.MAX_HEAP_ADDR;
 	    SymEngine.set_mem_sym(store, mem_addr, mem_val, mem_size);
-	    ArrayList<String> dests = regs_str_to_list("rcx, rdx, rsi, rdi, r8, r9, r10, r11");
+	    String regs = (Config.MEM_ADDR_SIZE==64)?"rcx, rdx, rsi, rdi, r8, r9, r10, r11":"ecx, edx, esi, edi";
+	    ArrayList<String> dests = regs_str_to_list(regs);
 	    set_regs_sym(store, rip, dests, block_id);
 	    clear_flags(store);
 	    store.set_heap_addr(heap_addr);
@@ -179,7 +182,7 @@ public class ExtHandler {
 
 	static boolean ext_free_mem_call(Store store, long rip, int block_id) {
 	    boolean succeed = true;
-	    BitVecExpr mem_addr = SymEngine.get_sym(store, rip, "rdi", block_id);
+	    BitVecExpr mem_addr = SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id);
 	    if(store.containsKey(mem_addr))
 	        SymHelper.remove_memory_content(store, mem_addr);
 	    else if(Helper.is_bit_vec_num(mem_addr)) {

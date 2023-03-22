@@ -24,9 +24,7 @@ public class Lib {
 	public static final HashSet<String> JMP_INST_WITH_ADDRESS;
 	public static final HashSet<String> JMP_INST_WITH_JUMP;
 
-	public static final List<String> CALLEE_SAVED_REGS = Arrays.asList("rbx", "rbp", "r12", "r13", "r14", "r15");
-	
-	public static final List<String> CALLEE_NOT_SAVED_REGS = Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11");
+	public static final List<String> CALLEE_NOT_SAVED_REGS;
 	
 	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
@@ -236,6 +234,12 @@ public class Lib {
 		for(String x : f_conds) {
 			CONDITIONAL_SET_INST.add("set" + x);
 		}
+		
+		if(Config.MEM_ADDR_SIZE == 64)
+			CALLEE_NOT_SAVED_REGS = Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11");
+		else
+			CALLEE_NOT_SAVED_REGS = Arrays.asList("eax", "ecx", "edx", "esi", "edi");
+		
 		
 		String[] t_functions = {
 			    "__stack_chk_fail",

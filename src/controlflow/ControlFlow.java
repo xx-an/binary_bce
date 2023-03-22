@@ -429,9 +429,9 @@ public class ControlFlow {
    }
 
 
-    TRACE_BACK_RET_TYPE handle_sym_memwrite_addr(Block blk, int count, boolean tb_halt_point, boolean func_call_point, ArrayList<HashMap<Integer,ArrayList<String>>> traceList, ArrayList<String> symNames) {
+    TRACE_BACK_RET_TYPE handle_sym_memwrite_addr(Block blk, int count, boolean func_call_point, ArrayList<HashMap<Integer,ArrayList<String>>> traceList, ArrayList<String> symNames) {
     	Lib.TRACE_BACK_RET_TYPE res;
-    	if(tb_halt_point || func_call_point)
+    	if(func_call_point)
             res = _handle_sym_addr_w_concretize(blk, traceList, symNames);
         else if(count >= Utils.MAX_TRACEBACK_COUNT)
             res = TRACE_BACK_RET_TYPE.TB_COUNT_EXCEEDS_LIMITATION;
@@ -693,23 +693,22 @@ public class ControlFlow {
 
 
     void handleSymMemAddr(Block block, long address, String inst, Store store, Constraint constraint) {
+    	if(constraint != null) {
+            boolean isPathReachable = CFHelper.check_path_reachability(constraint);
+            if(!isPathReachable) return;
+        }
         ArrayList<String> symNames = CFHelper.retrieveSymSrcs(block);
         ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
         HashMap<String, Integer> memLenMap = new HashMap<>();
-        Triplet<Integer, Boolean, Boolean> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, symNames);
+        Tuple<Integer, Boolean> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, symNames);
         int count = tbInfo.x;
         if(count == -1) {
         	Utils.logger.info("Parent block does not exist.");
         }
         else {
-	        boolean haltPoint = tbInfo.y;
-	        boolean funcCallPoint = tbInfo.z;
-	        TRACE_BACK_RET_TYPE res = handle_sym_memwrite_addr(block, count, haltPoint, funcCallPoint, traceBIDSymList, symNames);
+	        boolean funcCallPoint = tbInfo.y;
+	        TRACE_BACK_RET_TYPE res = handle_sym_memwrite_addr(block, count, funcCallPoint, traceBIDSymList, symNames);
 	        if(res != TRACE_BACK_RET_TYPE.SYMADDR_SUCCEED) {
-	            if(constraint != null) {
-	                boolean isPathReachable = CFHelper.check_path_reachability(constraint);
-	                if(!isPathReachable) return;
-	            }
 	            String printInfo = TraceBack.pp_tb_debug_info(res, address, inst);
 	            Utils.logger.info(printInfo);
 	        }

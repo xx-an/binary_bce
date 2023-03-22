@@ -138,9 +138,9 @@ public class SymEngine {
 	    }
 	    else if(dest.contains(":")) {     // rax:rdx
 	        String[] destSplit = dest.split(":");
-	        int reg_len = Utils.get_sym_length(destSplit[0], Config.MEM_ADDR_SIZE);
-	        BitVecExpr left = Helper.extract(reg_len + reg_len - 1, reg_len, sym);
-	        BitVecExpr right = Helper.extract(reg_len - 1, 0, sym);
+	        int regLen = Utils.get_sym_length(destSplit[0], Config.MEM_ADDR_SIZE);
+	        BitVecExpr left = Helper.extract(regLen + regLen - 1, regLen, sym);
+	        BitVecExpr right = Helper.extract(regLen - 1, 0, sym);
 	        SymRegister.set_register_sym(store, destSplit[0], left, block_id);
 	        SymRegister.set_register_sym(store, destSplit[1], right, block_id);
 	    }
