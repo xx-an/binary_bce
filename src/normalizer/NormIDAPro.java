@@ -104,6 +104,7 @@ public class NormIDAPro implements Normalizer {
                     	long address = lineInfo.x;
                     	String inst = lineInfo.y;
                         if(inst != null && !Utils.startsWith(inst, nonInstPrefix)) {
+//                        	System.out.println(inst);
                             inst = replaceInstVarArg(address, inst, line);
                             addressInstMap.put(address, inst);
                             addressLineMap.put(address, line);
@@ -182,7 +183,8 @@ public class NormIDAPro implements Normalizer {
             	else {
 //            		.text:00402D34                 dd offset loc_403675
             		String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 2);
-            		readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
+            		if(lineSplit.length > 1 && lineSplit[1].strip() != "")
+            			readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
             	}
             }
 //            .text:004031FC jpt_4031F2      dd offset loc_403274
@@ -408,7 +410,7 @@ public class NormIDAPro implements Normalizer {
     String replaceEachExpr(String instName, String content) {
         ArrayList<String> stack = new ArrayList<>();
         ArrayList<String> opStack = new ArrayList<>();
-        String line = NormHelper.rmUnusedSpaces(content);
+        String line = Utils.rmUnusedSpaces(content);
         String[] lineSplit = NormHelper.simple_op_split_pat.split(line);
         for(String lsi : lineSplit) {
             if(NormHelper.simple_operator_pat.matcher(lsi).matches()) {
@@ -819,7 +821,7 @@ public class NormIDAPro implements Normalizer {
 
     Tuple<Integer, String> retrieveIdaTypeOffsetType(String symbolType, String itemEntry) {
         if(itemEntry.contains(".")) {
-        	String[] itemEntrySplit = itemEntry.split(".", 2);
+        	String[] itemEntrySplit = itemEntry.split("\\.", 2);
         	String newSymType = itemEntrySplit[0];
         	String newItemEntry = itemEntrySplit[1];
         	Tuple<Integer, String> newItemInfo = idaStructTable.get(symbolType).get(newSymType);

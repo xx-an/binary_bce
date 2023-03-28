@@ -637,14 +637,13 @@ public class CFHelper {
 	static void start_init(Store store, long rip, int block_id) {
 		List<String> dests = Config.ADDR_SIZE_REGS_MAP.get(Config.MEM_ADDR_SIZE);
 		ExtHandler.set_regs_sym(store, rip, dests, block_id);
-	    String sp_name = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
+	    String spName = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
 	    long stack_frame_pointer = Config.INIT_STACK_FRAME_POINTER.get(Config.MEM_ADDR_SIZE);
-	    SymEngine.set_sym(store, rip, sp_name, Helper.gen_bv_num(stack_frame_pointer, Config.MEM_ADDR_SIZE), block_id);
-	    ExtHandler.set_segment_regs_sym(store, rip);
+	    SymEngine.set_sym(store, rip, spName, Helper.gen_bv_num(stack_frame_pointer, Config.MEM_ADDR_SIZE), block_id);
 	    ExtHandler.clear_flags(store);
 	    BitVecExpr sym_src = Helper.gen_sym(Config.MEM_ADDR_SIZE);
-	    BitVecExpr sym_sp = SymEngine.get_sym(store, rip, Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), block_id);
-	    SymEngine.set_mem_sym(store, sym_sp, sym_src, block_id);
+	    BitVecExpr symSP = SymEngine.get_sym(store, rip, Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), block_id);
+	    SymEngine.set_mem_sym(store, symSP, sym_src, block_id);
 	    ExtHandler.insert_termination_symbol(store, rip, block_id);
 	    ExtHandler.insert_termination_symbol(store, rip, block_id);
 	}

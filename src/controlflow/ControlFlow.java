@@ -78,7 +78,6 @@ public class ControlFlow {
         extLibAssumptions = new HashMap<>();
         extMemPreserv = new ArrayList<>();
         this.addressExtFuncMap = norm.getAddressExtFuncMap();
-//        System.out.println(this.addressExtFuncMap);
         this.funcEndAddressSet = norm.getFuncEndAddrs();
         this.dllFuncInfo = dllFuncInfo;
         this.globalJPTEntriesMap = norm.readGlobalJPTEntriesMap();
@@ -100,7 +99,12 @@ public class ControlFlow {
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst);
+//            Utils.logger.info(curr.store.pp_reg_store());
+//            Utils.logger.info(curr.store.pp_mem_store());
             long address = curr.address;
+            if(address == 0x403da7) {
+            	System.exit(1);
+            }
             String inst = curr.inst;
             Store store = curr.store;
             Constraint constraint = curr.constraint;
@@ -247,7 +251,7 @@ public class ControlFlow {
                 if(inst.startsWith("jmp "))
                     construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, false);
                 else
-                    jump_to_block(block, newAddress, store, constraint);
+                	jump_to_block(block, newAddress, store, constraint);
             }
         }
     }
@@ -261,13 +265,13 @@ public class ControlFlow {
             Semantics.call_op(store, rip, block.block_id);
             long nextAddress = mainAddress;
             ExtHandler.ext__libc_start_main(store, rip, mainAddress, block.block_id);
-            newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extName, preConstraint, constraint);
+            newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extFuncName, preConstraint, constraint);
             jump_to_block(block, nextAddress, store, newConstraint);
         }
         else {
             if(extFuncName.startsWith("malloc") || extFuncName.startsWith("calloc") || extFuncName.startsWith("realloc")) {
-                ExtHandler.ext_alloc_mem_call(store, rip, extName, block.block_id);
-                newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extName, preConstraint, constraint);
+                ExtHandler.ext_alloc_mem_call(store, rip, extFuncName, block.block_id);
+                newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extFuncName, preConstraint, constraint);
             }
             else if(extFuncName.startsWith("free")) {
                 boolean succeed = ExtHandler.ext_free_mem_call(store, rip, block.block_id);
@@ -280,7 +284,7 @@ public class ControlFlow {
                     Utils.logger.info("The symbolic execution has been terminated at the path due to the call of the function " + extName + "\n");
                     return;
                 }
-                newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extName, preConstraint, constraint);
+                newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extFuncName, preConstraint, constraint);
             }
             build_ret_branch(block, address, "retn", store, newConstraint);
         }
@@ -685,9 +689,9 @@ public class ControlFlow {
         
     Constraint add_new_constraint(Store store, Constraint constraint, String inst, boolean val, String prefix) {
         Constraint newConstraint = constraint;
-        BoolExpr pred_expr = SMTHelper.parse_predicate(store, inst, val, prefix);
-        if(pred_expr != null)
-        	newConstraint = new Constraint(constraint, pred_expr);
+        BoolExpr predExpr = SMTHelper.parse_predicate(store, inst, val, prefix);
+        if(predExpr != null)
+        	newConstraint = new Constraint(constraint, predExpr);
         return newConstraint;
     }
 

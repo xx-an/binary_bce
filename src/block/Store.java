@@ -152,6 +152,10 @@ public class Store {
 		Node node = new Node(val, block_id);
 		g_StdoutStore.put(addr, node);
 	}
+	
+	public boolean containsSegKey(String seg, BitVecExpr name) {
+		return g_SegStore.get(seg).containsKey(name);
+	}
 
 	public BitVecExpr get_seg_val(String seg, BitVecExpr name) {
 		return g_SegStore.get(seg).get(name);

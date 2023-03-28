@@ -385,8 +385,8 @@ public class SemanticsTBMemAddr {
 	                funcCallPoint = false;
 	            }
 	        }
-	        else if(Lib.REG64_NAMES.contains(sym_name)) {
-	            if(!Lib.CALLEE_NOT_SAVED_REGS.contains(sym_name)) {
+	        else if(Lib.REG_NAMES.contains(sym_name)) {
+	            if(!Lib.CALLEE_NOT_SAVED_REGS.get(Config.MEM_ADDR_SIZE).contains(sym_name)) {
 	                funcCallPoint = false;
 	            }
 	        }

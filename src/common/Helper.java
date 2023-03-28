@@ -20,6 +20,7 @@ public class Helper {
 	
 	public static Context ctx = new Context();
 	public static final BitVecExpr STDOUT_ADDR = ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
+	public static final HashMap<Integer, BitVecExpr> TERMINAL_SYMBOL;
 	
 	public static BoolExpr SymTrue = ctx.mkTrue();
 	public static BoolExpr SymFalse = ctx.mkFalse();
@@ -40,6 +41,11 @@ public class Helper {
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("!=", arg -> not_equal(arg.x, arg.y));
+		
+		TERMINAL_SYMBOL = new HashMap<>();
+		TERMINAL_SYMBOL.put(32, ctx.mkBVConst("x", 32));
+		TERMINAL_SYMBOL.put(64, ctx.mkBVConst("x", 64));
+			
 	}
 
 	public static void cnt_init() {
@@ -58,7 +64,7 @@ public class Helper {
 	
 	public static BitVecExpr gen_mem_sym(int length) {
 	    String expr = Utils.generate_sym_expr(mem_cnt);
-	    BitVecExpr res = ctx.mkBVConst("m#" + expr, length);
+	    BitVecExpr res = ctx.mkBVConst("m_" + expr, length);
 	    mem_cnt += 1;
 	    return res;
 	}
@@ -67,26 +73,15 @@ public class Helper {
 	public static BitVecExpr gen_stdout_mem_sym(int length) {
 		BitVecExpr stdout = ctx.mkBVConst("stdout", length);
 		BitVecNum smc = ctx.mkBV(stdout_mem_cnt, length);
-		BitVecExpr res = ctx.mkBVAdd(stdout, smc);
+		BitVecExpr res = bv_add(stdout, smc);
 	    stdout_mem_cnt += 1;
-	    return res;
-	}
-
-	public static BitVecExpr gen_seg_reg_sym(String name, int length) {
-		BitVecExpr res = ctx.mkBVConst("_" + name, length);
 	    return res;
 	}
 	
 	
 	public static BitVecExpr substitute_sym_val(BitVecExpr arg, BitVecExpr prev_val, BitVecExpr new_val) {
-		BitVecExpr res = (BitVecExpr) arg.substitute(prev_val, new_val);
+		BitVecExpr res = (BitVecExpr) arg.substitute(prev_val, new_val).simplify();
 	    return res;
-	}
-	
-	
-	public static BitVecExpr gen_sym_x(int length) {
-		BitVecExpr res = ctx.mkBVConst("x", length);
-		return res;
 	}
 	
 	
@@ -153,19 +148,19 @@ public class Helper {
 	}
 	
 	public static BoolExpr is_less(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSLT(x, y);
+		return (BoolExpr) ctx.mkBVSLT(x, y).simplify();
 	}
 	
 	static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSGT(x, y);
+		return (BoolExpr) ctx.mkBVSGT(x, y).simplify();
 	}
 	
 	static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSLE(x, y);
+		return (BoolExpr) ctx.mkBVSLE(x, y).simplify();
 	}
 	
 	static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSGE(x, y);
+		return (BoolExpr) ctx.mkBVSGE(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_add(BitVecExpr x, BitVecExpr y) {
@@ -209,55 +204,55 @@ public class Helper {
 	}
 	
 	public static BitVecExpr bv_xor(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVXOR(x, y);
+		return (BitVecExpr) ctx.mkBVXOR(x, y).simplify();
 	}
 	
 	
 	public static BitVecExpr bv_lshift(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSHL(x, y);
+		return (BitVecExpr) ctx.mkBVSHL(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_lshift(BitVecExpr x, int y) {
 		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
-		return ctx.mkBVSHL(x, bv_y);
+		return bv_lshift(x, bv_y);
 	}
 	
 	public static BitVecExpr bv_arith_rshift(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVASHR(x, y);
+		return (BitVecExpr) ctx.mkBVASHR(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_arith_rshift(BitVecExpr x, int y) {
 		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
-		return ctx.mkBVASHR(x, bv_y);
+		return bv_arith_rshift(x, bv_y);
 	}
 	
 	public static BitVecExpr bv_logic_rshift(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVLSHR(x, y);
+		return (BitVecExpr) ctx.mkBVLSHR(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_logic_rshift(BitVecExpr x, int y) {
 		BitVecExpr bv_y = gen_bv_num(y, x.getSortSize());
-		return ctx.mkBVLSHR(x, bv_y);
+		return bv_logic_rshift(x, bv_y);
 	}
 	
 	public static BitVecExpr bv_mult(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVMul(x, y);
+		return (BitVecExpr) ctx.mkBVMul(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_udiv(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVUDiv(x, y);
+		return (BitVecExpr) ctx.mkBVUDiv(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_sdiv(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSDiv(x, y);
+		return (BitVecExpr) ctx.mkBVSDiv(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_umod(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVURem(x, y);
+		return (BitVecExpr) ctx.mkBVURem(x, y).simplify();
 	}
 	
 	public static BitVecExpr bv_smod(BitVecExpr x, BitVecExpr y) {
-		return ctx.mkBVSRem(x, y);
+		return (BitVecExpr) ctx.mkBVSRem(x, y).simplify();
 	}
 	
 	public static BoolExpr bv_and(BoolExpr... x) {
@@ -473,13 +468,12 @@ public class Helper {
 	    return extract(high * 8 - 1, low * 8, sym);
 	}
 	
-	
 	public static BitVecExpr neg(BitVecExpr sym) {
-		return ctx.mkBVNeg(sym);
+		return (BitVecExpr) ctx.mkBVNeg(sym).simplify();
 	}
 
 	public static BitVecExpr not_op(BitVecExpr sym) {
-		return ctx.mkBVNot(sym);
+		return (BitVecExpr) ctx.mkBVNot(sym).simplify();
 	}
 
 	BitVecExpr update_sym_expr(BitVecExpr expr, BitVecExpr new_expr, String rel) {
@@ -494,7 +488,7 @@ public class Helper {
 	}
 
 	public static boolean is_term_address(BitVecExpr address) {
-	    return address == ctx.mkBVConst("x", Config.MEM_ADDR_SIZE);
+	    return address.equals(TERMINAL_SYMBOL.get(Config.MEM_ADDR_SIZE));
 	}
 
 	boolean is_bv_sym_var(BitVecExpr arg) {
@@ -504,7 +498,7 @@ public class Helper {
 	static boolean bvnum_eq(BitVecExpr lhs, BitVecExpr rhs) {
 	    boolean res = false;
 	    if(lhs.getSort() == rhs.getSort()) {
-	        res = (lhs == rhs);
+	        res = (lhs.equals(rhs));
 	    }
 	    return res;
 	}

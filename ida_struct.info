@@ -137,6 +137,20 @@ DaylightDate: 152, SYSTEMTIME
 DaylightBias: 168, dd
 
 
+CPPEH_RECORD:
+old_esp: 0, dd
+exc_ptr: 4, dd
+registration: 8, _EH3_EXCEPTION_REGISTRATION
+
+
+_EH3_EXCEPTION_REGISTRATION:
+Next: 0, dd
+ExceptionHandler: 4, dd
+ScopeTable: 8, dd
+TryLevel: 12, dd
+
+
+
 SYSTEMTIME:
 wYear: 0, dw
 wMonth: 2, dw
@@ -307,6 +321,20 @@ Data1: 0, dd
 Data2: 4, dw
 Data3: 6, dw
 Data4: 8, db
+
+
+_EH4_SCOPETABLE:
+GSCookieOffset: 0, dd
+GSCookieXOROffset: 4, dd
+EHCookieOffset: 8, dd
+EHCookieXOROffset: 12, dd
+ScopeRecord: 16, _EH4_SCOPETABLE_RECORD
+
+
+_EH4_SCOPETABLE_RECORD:
+EnclosingLevel: 0, dd
+FilterFunc: 4, dd
+HandlerFunc: 8, dd
 
 
 NS_HELPER_ATTRIBUTES:

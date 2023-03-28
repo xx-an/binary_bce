@@ -146,7 +146,6 @@ public class Semantics {
 			BitVecExpr sym = SymEngine.get_mem_sym(store, symSP);
 			if(sym == null) {
 				sym = Helper.gen_sym(Config.MEM_ADDR_SIZE);
-				SymEngine.set_mem_sym(store, symSP, sym, block_id);
 			}
 			BitVecExpr little = Helper.extract(15, 0, sym);
 	        BitVecExpr big = Helper.extract(31, 16, sym);

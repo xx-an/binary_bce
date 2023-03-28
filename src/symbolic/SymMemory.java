@@ -2,7 +2,6 @@ package symbolic;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.microsoft.z3.BitVecExpr;
@@ -16,6 +15,7 @@ import common.GlobalVar;
 import common.Helper;
 import common.Lib;
 import common.Utils;
+import normalizer.NormHelper;
 
 public class SymMemory {
 
@@ -63,11 +63,11 @@ public class SymMemory {
 	}
 	
 
-	static void calc_mult(ArrayList<BitVecExpr> stack, ArrayList<String> op_stack) {
+	static void calc_mult(ArrayList<BitVecExpr> stack, ArrayList<String> opStack) {
 		BitVecExpr res = stack.get(0);
 		ArrayList<Integer> to_remove_idx = new ArrayList<Integer>();
-		for(int idx = 0; idx < op_stack.size(); idx++) {
-			String op = op_stack.get(idx);
+		for(int idx = 0; idx < opStack.size(); idx++) {
+			String op = opStack.get(idx);
 			if(op.equals("*")) {
 	            res = Helper.bv_mult(stack.get(idx), stack.get(idx + 1));
 	            stack.set(idx, res);
@@ -77,16 +77,16 @@ public class SymMemory {
 		Collections.reverse(to_remove_idx);
 		for(int idx : to_remove_idx) {
 			 stack.remove(idx + 1);
-			 op_stack.remove(idx);
+			 opStack.remove(idx);
 		}
 	}
 
 
-	static BitVecExpr eval_simple_formula(ArrayList<BitVecExpr> stack, ArrayList<String> op_stack) {
-	    calc_mult(stack, op_stack);
+	static BitVecExpr eval_simple_formula(ArrayList<BitVecExpr> stack, ArrayList<String> opStack) {
+	    calc_mult(stack, opStack);
 	    BitVecExpr res = stack.get(0);
-	    for(int idx = 0; idx < op_stack.size(); idx++) {
-	    	String op = op_stack.get(idx);
+	    for(int idx = 0; idx < opStack.size(); idx++) {
+	    	String op = opStack.get(idx);
 	    	if(op.equals("+"))
 	            res = Helper.bv_add(res, stack.get(idx+1));
 	        else if(op.equals("-"))
@@ -105,23 +105,20 @@ public class SymMemory {
 	    */
 	static BitVecExpr calc_effective_address(String arg, Store store, int length) {
 		ArrayList<BitVecExpr> stack = new ArrayList<BitVecExpr>();
-		ArrayList<String> op_stack = new ArrayList<String>();
-	    String line = arg.strip();
-	    while(line != "") {
-	        Matcher m = letter_num_neg_pat.matcher(line);
-	        String lsi = null;
-	        if(m.find()) {
-	            lsi = m.group();
-	            BitVecExpr val = get_sym_val(lsi, store, length);
+		ArrayList<String> opStack = new ArrayList<String>();
+	    String line = Utils.rmUnusedSpaces(arg.strip());
+	    String[] lineSplit = NormHelper.simple_op_split_pat.split(line);
+	    BitVecExpr val;
+	    for(String lsi : lineSplit) {
+	        lsi = lsi.strip();
+	        if(NormHelper.simple_operator_pat.matcher(lsi).matches())
+	            opStack.add(lsi);
+	        else {
+	            val = get_sym_val(lsi, store, length);
 	            stack.add(val);
 	        }
-	        else {
-	        	lsi = sym_pat.matcher(line).group();
-	            op_stack.add(lsi);
-	        }
-	        line = line.split(lsi, 2)[1].strip();
 	    }
-	    BitVecExpr res = eval_simple_formula(stack, op_stack);
+	    BitVecExpr res = eval_simple_formula(stack, opStack);
 	    return res;
 	}
 
@@ -137,20 +134,17 @@ public class SymMemory {
 	    String arg = Utils.extract_content(src, "[");
 	    ArrayList<BitVecExpr> stack = new ArrayList<BitVecExpr>();
 	    ArrayList<String> opStack = new ArrayList<String>();
-	    arg = arg.strip();
-	    while(arg != "") {
-	        Matcher ai = letter_num_neg_pat.matcher(arg);
-	        String as = "";
-	        if(ai.find()) {
-	        	as = ai.group(0);
-	            BitVecExpr val = get_idx_sym_val(store, as, srcSym, srcVal, length);
+	    String line = Utils.rmUnusedSpaces(arg.strip());
+	    String[] lineSplit = NormHelper.simple_op_split_pat.split(line);
+	    BitVecExpr val;
+	    for(String lsi : lineSplit) {
+	        lsi = lsi.strip();
+	        if(NormHelper.simple_operator_pat.matcher(lsi).matches())
+	            opStack.add(lsi);
+	        else {
+	            val = get_idx_sym_val(store, lsi, srcSym, srcVal, length);
 	            stack.add(val);
 	        }
-	        else {
-	        	as = sym_pat.matcher(arg).group(0).strip();
-	        	opStack.add(as);
-	        }
-	        arg = arg.split(as, 2)[1].strip();
 	    }
 	    BitVecExpr res = eval_simple_formula(stack, opStack);
 	    return res;
@@ -160,14 +154,14 @@ public class SymMemory {
 	public static BitVecExpr get_effective_address(Store store, long rip, String src, int length) {
 	    BitVecExpr res = null;
 	    if(src.endsWith("]")) {
-	        String tmp = Utils.extract_content(src, "[");
-	        if(Utils.imm_pat.matcher(tmp).matches()) {
-	        	long addr = Long.decode(tmp);
+	        String content = Utils.extract_content(src, "[");
+	        if(Utils.imm_pat.matcher(content).matches()) {
+	        	long addr = Long.decode(content);
 	            res = Helper.gen_bv_num(addr, length);
 	        }
-	        else if(tmp.contains("rip")) {  // "rip+0x2009a6"
-	            tmp = tmp.replace("rip", Utils.num_to_hex_string(rip));
-	            long addr = (long) Utils.eval(tmp);
+	        else if(content.contains("rip")) {  // "rip+0x2009a6"
+	        	content = content.replace("rip", Utils.num_to_hex_string(rip));
+	            long addr = (long) Utils.eval(content);
 	            if(Config.MEM_ADDR_SIZE == 64)
 	            	res = Helper.gen_bv_num(addr, length);
 	            else if(Config.MEM_ADDR_SIZE == 32)
@@ -176,7 +170,7 @@ public class SymMemory {
 	            	res = Helper.gen_bv_num(addr & 0xffff, length);
 	        }
 	        else {  // "rax + rbx * 1"
-	            res = calc_effective_address(tmp, store, length);
+	            res = calc_effective_address(content, store, length);
 	        }
 	    }
 	    else if(src.contains("s:")) {
@@ -386,8 +380,6 @@ public class SymMemory {
 	public static Integer get_mem_sym_block_id(Store store, BitVecExpr address) {
 	    Integer res = null;
 	    long intAddr = Helper.long_of_sym(address);
-	    if(intAddr == 16776716)
-	    	System.out.println(store.pp_mem_store());
 	    if(store.containsKey(address))
 	    	res = store.get_block_id(address);
 	    else {
@@ -402,7 +394,7 @@ public class SymMemory {
 
 	public static BitVecExpr get_seg_memory_val(Store store, BitVecExpr address, String seg, int length) {
 	    BitVecExpr res = null;
-	    if(store.containsKey(address)) {
+	    if(store.containsSegKey(seg, address)) {
 	    	res = store.get_seg_val(seg, address);
 	    }
 	    else {

@@ -55,17 +55,17 @@ public class SymEngine {
 	        res = Helper.gen_bv_num(val, length);
 	    }
 	    else if(src.contains("s:")) {       //fs:rax
-	        String[] src_split = src.split(":");
-	        String seg_reg = Utils.rsplit(src_split[0], " ")[1].strip();
-	        String src_split_1 = src_split[1].strip();
+	        String[] srcSplit = src.split(":");
+	        String segReg = Utils.rsplit(srcSplit[0], " ")[1].strip();
+	        String addrRep = srcSplit[1].strip();
 	        BitVecExpr val = null;
-	        if(src_split_1.endsWith("]")) {
-	            val = SymMemory.get_effective_address(store, rip, src_split_1, Config.MEM_ADDR_SIZE);
+	        if(addrRep.endsWith("]")) {
+	            val = SymMemory.get_effective_address(store, rip, addrRep, Config.MEM_ADDR_SIZE);
 	        }
 	        else
-	            val = get_sym(store, rip, src_split_1, block_id, Config.MEM_ADDR_SIZE);
+	            val = get_sym(store, rip, addrRep, block_id, Config.MEM_ADDR_SIZE);
 	        BitVecExpr address = val;
-	        res = SymMemory.get_seg_memory_val(store, address, seg_reg, length);
+	        res = SymMemory.get_seg_memory_val(store, address, segReg, length);
 	    }
 	    else if(src.endsWith("]")) { // byte ptr [rbx+rax*1]
 	        BitVecExpr address = SymMemory.get_effective_address(store, rip, src, Config.MEM_ADDR_SIZE);
@@ -195,7 +195,7 @@ public class SymEngine {
 		BitVecExpr sym_src = dest_src_sym.y;
 	    if(OPS_NEED_EXTENSION.contains(op) && dest_len != src_len)
 	        sym_src = extension_sym(sym_src, dest_len, src_len, false);
-	    BitVecExpr res = (BitVecExpr) func.apply(new Triplet<BitVecExpr, BitVecExpr, Integer>(sym_dest, sym_src, dest_len)).simplify();
+	    BitVecExpr res = func.apply(new Triplet<BitVecExpr, BitVecExpr, Integer>(sym_dest, sym_src, dest_len));
 	    res = (BitVecExpr) res.simplify();
 	    return res;
 	}

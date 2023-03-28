@@ -188,18 +188,6 @@ public class SMTHelper {
 //	    System.out.println(res);
 	    return res;
 	}
-	
-	
-	public static BoolExpr parse_predicate(Store store, String inst, BoolExpr val, String prefix) {
-	    String cond = inst.split(" ", 2)[0].split(prefix, 2)[1];
-	    String expr = Lib.FLAG_CONDITIONS.get(cond);
-	    BoolExpr res = parse_pred_expr(store, expr);
-	    if(res == null)
-	        return null;
-	    else if(val.equals(Helper.SymFalse))
-	    	res = Helper.bv_not(res);
-	    return res;
-	}
 
 
 	Long top_stack(Store store, long rip) {

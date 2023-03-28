@@ -433,6 +433,16 @@ public class Utils {
 		}
 		return result;	
 	}
+	
+	
+	public static String rmUnusedSpaces(String content) {
+	    String res = content.strip();
+	    res = res.replaceAll("[ ]*\\+[ ]*", "\\+");
+	    res = res.replaceAll("[ ]*-[ ]*", "-");
+	    res = res.replaceAll("[ ]*\\*[ ]*", "*");
+	    res = res.replaceAll("\\+-", "-");
+	    return res;
+	}
 
 	
 	public static ArrayList<String> get_executable_files(String fileDir) {

@@ -20,7 +20,6 @@ public class NormHelper {
 	
 	public static Pattern simple_op_split_pat = Pattern.compile("((?<=\\+)|(?=\\+)|(?<=-)|(?=-)|(?<=\\*)|(?=\\*))");
 	public static Pattern simple_operator_pat = Pattern.compile("(\\+|-|\\*)");
-	public static Pattern remote_addr_pat = Pattern.compile("0x2[0-9a-fA-F]{5}");
 	
 	public static HashMap<String, String> BYTE_LEN_REPS;
 	public static HashMap<Character, String> BYTE_REP_PTR_MAP;
@@ -218,68 +217,6 @@ public class NormHelper {
 		return res;
 	}
 	
-	
-	String remove_att_prefix(String arg) {
-	    String res = arg;
-	    if(arg.startsWith("%"))
-	        res = arg.split("%", 2)[1].strip();
-	    else if(arg.startsWith("*%"))
-	        res = arg.split("*%", 2)[1].strip();
-	    else if(arg.startsWith("$0x") || arg.startsWith("$-0x"))
-	        res = arg.split("$", 2)[1].strip();
-	    return res;
-	}
-	
-	
-	String reconstruct_att_memory_rep(String inst_name, String arg) {
-		StringBuilder sb = new StringBuilder();
-		sb.append("[");
-	    String[] arg_split = arg.split("(", 2);
-	    String[] arg_split_1 = Utils.rsplit(arg_split[1].strip(), ")")[0].split(",");
-	    String arg_split_1_0 = arg_split_1[0].strip();
-	    sb.append(remove_att_prefix(arg_split_1_0));
-	    if(arg_split_1.length > 1) {
-	        if(arg_split_1_0 != "")
-	        	sb.append("+");
-	        sb.append(remove_att_prefix(arg_split_1[1]));
-	        if(arg_split_1.length == 3)
-	        	sb.append("*" + remove_att_prefix(arg_split_1[2]));
-	    }
-	    if(arg_split[0].strip() != "")
-	        sb.append("+" + remove_att_prefix(arg_split[0].strip()));
-	    sb.append("]");
-	    return sb.toString();
-	}
-	
-
-	String rewrite_att_memory_rep(String inst_name, String arg) {
-	    String res = arg;
-	    if(arg.startsWith("*"))
-	        res = arg.split("*", 2)[1].strip();
-	    // %cs:(%rax,%rax)
-	    if(arg.contains("(")) {
-	        if(arg.contains("%st"))
-	            res = arg.split("%", 2)[1].strip();
-	        else if(arg.contains(":")) {
-	            String[] arg_split = arg.split(":");
-	            res = remove_att_prefix(arg_split[0]) + ":";
-	            res += reconstruct_att_memory_rep(inst_name, arg_split[1].strip());
-	        }
-	        else
-	            res = reconstruct_att_memory_rep(inst_name, arg);
-	    }
-	    // %fs:0x28
-	    else if(arg.contains(":")) {    
-	        String[] arg_split = arg.split(":");
-	        res = remove_att_prefix(arg_split[0]) + ":" + remove_att_prefix(arg_split[1]);
-	    }
-	    else
-	        res = remove_att_prefix(arg);
-	    if(res.endsWith("]"))
-	        res = res.replace("+-", "-");
-	    return res;
-	}
-
 
 	String rewrite_absolute_address_to_relative(String arg, int rip) {
 	    String res = arg;
@@ -378,16 +315,6 @@ public class NormHelper {
 			else if(!func_call_order.contains(func_name))
 				func_call_order.add(func_name);
 		}
-	}
-	
-	
-	public static String rmUnusedSpaces(String content) {
-	    String res = content.strip();
-	    res = res.replace("[ ]*\\+[ ]*", "+");
-	    res = res.replace("[ ]*-[ ]*", "-");
-	    res = res.replace("[ ]*\\*[ ]*", "*");
-	    res = res.replace("+-", "-");
-	    return res;
 	}
 	
 	
@@ -492,7 +419,7 @@ public class NormHelper {
 	public static String simulateEvalExpr(String content) {
 		ArrayList<String> stack = new ArrayList<String>();
 		ArrayList<String> opStack = new ArrayList<String>();
-	    String line = rmUnusedSpaces(content);
+	    String line = Utils.rmUnusedSpaces(content);
 	    String[] lineSplit = simple_op_split_pat.split(line);
 	    String val;
 	    for(String lsi : lineSplit) {
