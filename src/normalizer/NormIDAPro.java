@@ -26,11 +26,18 @@ public class NormIDAPro implements Normalizer {
 	String disasmPath;
 	HashMap<Long, String> addressInstMap;
 	HashMap<Long, Long> addressNextMap;
-	HashMap<Long, String> addressLabelMap;
-	HashMap<Long, String> address_func_map;
+	HashMap<Long, String> addressSymTable;
+	HashMap<String, Long> symTable;
 	HashMap<Long, String> addressExtFuncMap;
 	HashSet<Long> funcEndAddressSet;
 	HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
+	
+	public Long entryAddress = null; 
+	public Long mainAddress = null;
+	
+	public static HashMap<String, Long> secStartAddrMap;
+	public static HashMap<String, Long> secEndAddrMap;
+	public static HashMap<String, Long> secBaseAddrMap;
 	
 	HashMap<String, HashMap<String, Tuple<Integer, String>>> idaStructTable;
 	
@@ -67,10 +74,15 @@ public class NormIDAPro implements Normalizer {
 		this.disasmPath = disasmPath;
         addressInstMap = new HashMap<>();
         addressNextMap = new HashMap<>();
-        addressLabelMap = new HashMap<>();
+        addressSymTable = new HashMap<>();
+        symTable = new HashMap<>();
         addressExtFuncMap = new HashMap<>();
         funcEndAddressSet = new HashSet<>();
         globalJPTEntriesMap = new HashMap<>();
+        secStartAddrMap = new HashMap<>();
+        secEndAddrMap = new HashMap<>();
+        secBaseAddrMap = new HashMap<>();
+        
         varOffsetMap = new HashMap<>();
         varValueMap = new HashMap<>();
         procValueMap = new HashMap<>();
@@ -87,6 +99,15 @@ public class NormIDAPro implements Normalizer {
         	idaStructTypes.add(s);
         }
         read_asm_info();
+        readBinaryInfo();
+	}
+	
+	
+	void readBinaryInfo() {
+        entryAddress = this.procValueMap.get("start");
+        if(procValueMap.containsKey("main")) {
+        	mainAddress = procValueMap.get("main");
+        }
 	}
 	
 	
@@ -115,11 +136,6 @@ public class NormIDAPro implements Normalizer {
             }
 		}
 	}
-	
-	
-	public HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap() {
-		return globalJPTEntriesMap;
-	}
 	        
 
     public void read_asm_info() throws FileNotFoundException {
@@ -136,7 +152,27 @@ public class NormIDAPro implements Normalizer {
 			e.printStackTrace();
 		}
     	for(String line : lines) {
-            if(locatedAtDataSegments(line)) {
+//    		.text:00401000 ; Virtual size                  : 00003EE0 (  16096.)
+    		if(line.contains("; Virtual size")) {
+    			String[] lineSplit = line.split("; Virtual size");
+    			String secName = lineSplit[0].split(":", 2)[0].strip();
+    			String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
+    	        long address = Long.valueOf(addressStr, 16);
+    	        String secSizeStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
+    	        int secSize = Integer.valueOf(secSizeStr, 16);
+    	        secStartAddrMap.put(secName, address);
+    	        secEndAddrMap.put(secName, address + secSize + 1);
+    		}
+//    		.text:00401000 ; Offset to raw data for section: 00000400
+    		else if(line.contains("Offset to raw data for section")) {
+    			String[] lineSplit = line.split("; Offset to raw data for section");
+    			String secName = lineSplit[0].split(":", 2)[0].strip();
+    	        long address = secStartAddrMap.get(secName);
+    	        String secOffsetStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
+    	        int secOffset = Integer.valueOf(secOffsetStr, 16);
+    	        secBaseAddrMap.put(secName, address - secOffset);
+    		}
+    		else if(locatedAtDataSegments(line)) {
                 if(varExprPat.matcher(line).find()) {
                     String varName = retrieveVarName(line);
                     globalDataName.add(varName);
@@ -212,6 +248,8 @@ public class NormIDAPro implements Normalizer {
         String varName = Utils.rsplit(varSplit[1], ":")[0].strip();
         varValueMap.put(varName, address);
         this.addressExtFuncMap.put(address, varName);
+        this.addressSymTable.put(address, varName);
+        this.symTable.put(varName, address);
     }
 
 
@@ -249,8 +287,11 @@ public class NormIDAPro implements Normalizer {
         else if(varStr.contains(" proc ") || varStr.contains("xmmword")) {
             varOffsetMap.put(varName, address);
             varValueMap.put(varName, address);
-            if(varStr.contains(" proc "))
+            if(varStr.contains(" proc ")) {
                 procValueMap.put(varName, address);
+                symTable.put(varName, address);
+                addressSymTable.put(address, varName);
+            }
         }
         else if(varName.endsWith(":")) {
             varName = Utils.rsplit(varName, ":")[0].strip();
@@ -840,13 +881,6 @@ public class NormIDAPro implements Normalizer {
         }
     }
 
-
-	@Override
-	public HashMap<Long, String> getAddressLabelMap() {
-		return this.addressLabelMap;
-	}
-
-
 	@Override
 	public HashMap<Long, Long> getAddressNextMap() {
 		return addressNextMap;
@@ -864,8 +898,55 @@ public class NormIDAPro implements Normalizer {
 	}
 	
 	@Override
-	public HashSet<Long> getFuncEndAddrs() {
-		return this.funcEndAddressSet;
+	public HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap() {
+		return globalJPTEntriesMap;
+	}
+	
+	@Override
+	public HashSet<Long> getFuncEndAddrSet() {
+		return funcEndAddressSet;
+	}
+
+	
+	@Override
+	public Long getMainAddress() {
+		return mainAddress;
+	}
+
+
+	@Override
+	public Long getEntryAddress() {
+		return entryAddress;
+	}
+
+
+	@Override
+	public HashMap<Long, String> getAddressSymTbl() {
+		return addressSymTable;
+	}
+
+
+	@Override
+	public HashMap<String, Long> getSymTbl() {
+		return symTable;
+	}
+
+
+	@Override
+	public HashMap<String, Long> getSecStartAddr() {
+		return secStartAddrMap;
+	}
+
+
+	@Override
+	public HashMap<String, Long> getSecEndAddr() {
+		return secEndAddrMap;
+	}
+
+
+	@Override
+	public HashMap<String, Long> getSecBaseAddr() {
+		return secBaseAddrMap;
 	}
             		
 }

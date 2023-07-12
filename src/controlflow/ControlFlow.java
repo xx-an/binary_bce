@@ -34,8 +34,8 @@ public class ControlFlow {
     HashMap<Long, Integer> addressBlockCntMap;
     HashMap<Long, String> addressExtFuncMap;
     HashMap<String, Integer> memLenMap;
-    HashMap<String, BitVecExpr> symTable;
-    HashMap<BitVecExpr, ArrayList<String>> addressSymTable;
+    HashMap<String, Long> symTable;
+    HashMap<Long, String> addressSymTable;
     HashMap<Long, String> addressInstMap;
     HashMap<Long, Long> addressNextMap;
     HashMap<Long, String> dllFuncInfo;
@@ -48,7 +48,7 @@ public class ControlFlow {
     Block dummyBlock;
     public int[] cmcExecInfo;
     final long startAddress;
-    final long mainAddress;
+    final Long mainAddress;
     HashMap<Long, Long> retCallAddressMap;
     HashMap<Long, Triplet<String, String, ArrayList<BitVecExpr>>> addressJPTEntriesMap;
     HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
@@ -56,20 +56,21 @@ public class ControlFlow {
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
 
     
-    public ControlFlow(HashMap<String, BitVecExpr> symTable, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, long startAddress, long mainAddress, String func_name, HashMap<String, ArrayList<String>> gPreConstraint, HashMap<Long, String> dllFuncInfo, Normalizer norm) {
+    public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayList<>();
         addressBlockMap = new HashMap<>();
         addressBlockCntMap = new HashMap<>();
         loopTraceCounter = new HashMap<>();
         memLenMap = new HashMap<>();
-        this.symTable = symTable;
-        this.addressSymTable = addressSymTable;
-        this.startAddress = startAddress;
+        this.symTable = norm.getSymTbl();
+        this.addressSymTable = norm.getAddressSymTbl();
+        this.startAddress = norm.getEntryAddress();
         this.addressInstMap = norm.getAddressInstMap();
         this.addressNextMap = norm.getAddressNextMap();
+        this.funcEndAddressSet = norm.getFuncEndAddrSet();
         dummyBlock = new Block(-1, 0, "", null, null);
-        this.mainAddress = mainAddress;
+        this.mainAddress = norm.getMainAddress();
         this.gPreConstraint = gPreConstraint;
         retCallAddressMap = new HashMap<>();
         extFuncCallAddr = new ArrayList<>();
@@ -78,8 +79,7 @@ public class ControlFlow {
         extLibAssumptions = new HashMap<>();
         extMemPreserv = new ArrayList<>();
         this.addressExtFuncMap = norm.getAddressExtFuncMap();
-        this.funcEndAddressSet = norm.getFuncEndAddrs();
-        this.dllFuncInfo = dllFuncInfo;
+        this.dllFuncInfo = norm.getAddressExtFuncMap();
         this.globalJPTEntriesMap = norm.readGlobalJPTEntriesMap();
         Store store = new Store(null);
         cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
@@ -206,7 +206,7 @@ public class ControlFlow {
                     handle_internal_jumps(block, address, inst, store, constraint, newAddress);
                 }
             }
-            else if(addressSymTable.containsKey(nAddress)) {
+            else if(addressSymTable.containsKey(newAddress)) {
                 String extFuncName = CFHelper.get_function_name_from_addr_sym_table(addressSymTable, newAddress);
                 if(!extFuncCallAddr.contains(address)) {
                     extFuncCallAddr.add(address);
@@ -261,7 +261,7 @@ public class ControlFlow {
         Constraint newConstraint = constraint;
         String extName = extFuncName.split("@", 2)[0].strip();
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
-        if(extFuncName.startsWith("__libc_start_main")) {
+        if(extFuncName.startsWith("__libc_start_main") && mainAddress != null) {
             Semantics.call_op(store, rip, block.block_id);
             long nextAddress = mainAddress;
             ExtHandler.ext__libc_start_main(store, rip, mainAddress, block.block_id);

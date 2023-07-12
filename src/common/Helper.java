@@ -13,6 +13,8 @@ import java.util.function.Function;
 import com.microsoft.z3.*;
 import com.microsoft.z3.enumerations.Z3_sort_kind;
 
+import normalizer.NormFactory;
+
 public class Helper {
 	public static int cnt = 0;
 	public static int mem_cnt = 0;
@@ -570,9 +572,9 @@ public class Helper {
 	        long rhs_num = ((BitVecNum) rhs).getLong();
 	        if(!address_inst_map.containsKey(rhs_num)) {
 	            if(!bvnum_eq(lhs, rhs)) {
-	                if(lhs_num >= GlobalVar.binaryInfo.rodata_start_addr && lhs_num < GlobalVar.binaryInfo.rodata_end_addr)
+	                if(lhs_num >= NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) && lhs_num < NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC))
 	                    res = gen_sym(rhs.getSortSize());
-	                else if(rhs_num < GlobalVar.binaryInfo.rodata_start_addr || rhs_num >= GlobalVar.binaryInfo.rodata_end_addr)
+	                else if(rhs_num < NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) || rhs_num >= NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC))
 	                    res = gen_sym(rhs.getSortSize());
 	            }
 	        }

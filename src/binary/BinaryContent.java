@@ -11,16 +11,13 @@ import common.Utils;
 
 public class BinaryContent {
 	
-	public Path srcPath;
+	public static Path srcPath;
 	public static HashMap<Long, Byte> addressBytesMap;
 	
-	public BinaryContent(String src_path) {
+	
+	public static void readBinaryContent(String src_path) {
 		srcPath = Paths.get(src_path);
 		addressBytesMap = new HashMap<Long, Byte>();
-		readBinaryContent();
-	}
-	
-	void readBinaryContent() {
 		long idx = 0;
 		try {
 			byte[] content = Files.readAllBytes(srcPath);
@@ -33,7 +30,7 @@ public class BinaryContent {
 		}
 	}
 	
-	public long read_bytes(long address, int length) {
+	public static long read_bytes(long address, int length) {
 		ArrayList<Byte> res = new ArrayList<Byte>();
 		for(int i = length - 1; i >= 0; i--) {
 			long curr = address + i;

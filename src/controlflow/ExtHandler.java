@@ -74,7 +74,7 @@ public class ExtHandler {
 	};
 
 
-	static void ext__libc_start_main(Store store, long rip, long main_address, int block_id) {
+	static void ext__libc_start_main(Store store, long rip, Long main_address, int block_id) {
 		String regs = (Config.MEM_ADDR_SIZE==64)?"rcx, rdx, rsi, rdi, r8, r9, r10, r11":"ecx, edx, esi, edi";
 	    ArrayList<String> dests = regs_str_to_list(regs);
 	    set_reg_val(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", main_address, block_id);

@@ -5,9 +5,9 @@ import java.util.Set;
 import com.microsoft.z3.*;
 
 import common.Lib;
+import normalizer.NormFactory;
 import common.Helper;
 import common.Config;
-import common.GlobalVar;
 
 import block.Store;
 
@@ -94,16 +94,16 @@ public class SymHelper {
 
 
 	public static boolean addr_in_rodata_section(long int_addr) {
-	    return GlobalVar.binaryInfo.rodata_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.rodata_end_addr;
+	    return NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC);
 	}
 
 
 	public static boolean addr_in_data_section(long int_addr) {
-	    return GlobalVar.binaryInfo.data_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.data_end_addr;
+	    return NormFactory.norm.getSecStartAddr().get(Lib.DATASEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.DATASEC);
 	}
 	
 	public static boolean addr_in_text_section(long int_addr) {
-	    return GlobalVar.binaryInfo.text_start_addr <= int_addr && int_addr < GlobalVar.binaryInfo.text_end_addr;
+	    return NormFactory.norm.getSecStartAddr().get(Lib.TEXTSEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.TEXTSEC);
 	}
 
 

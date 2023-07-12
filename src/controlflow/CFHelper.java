@@ -82,9 +82,9 @@ public class CFHelper {
 	}
 
 
-	static long get_next_address(long address, HashMap<Long, Long> address_next_map, HashMap<BitVecExpr, ArrayList<String>> address_sym_table) {
+	static long get_next_address(long address, HashMap<Long, Long> address_next_map, HashMap<Long, String> address_sym_table) {
 	    long next_address = address_next_map.get(address);
-	    if(address_sym_table.containsKey(Helper.gen_bv_num(next_address, Config.MEM_ADDR_SIZE))) return -1;
+	    if(address_sym_table.containsKey(next_address)) return -1;
 	    return next_address;
 	}
 	
@@ -217,11 +217,10 @@ public class CFHelper {
 	}
 
 
-	static String get_unified_sym_name(HashMap<BitVecExpr, ArrayList<String>> address_sym_table, long address) {
+	static String get_unified_sym_name(HashMap<Long, String> address_sym_table, long address) {
 	    String res = "";
-	    BitVecExpr bv_address = Helper.gen_bv_num(address, Config.MEM_ADDR_SIZE);
-	    if(address_sym_table.containsKey(bv_address)) {
-	        String sym_name = address_sym_table.get(bv_address).get(0);
+	    if(address_sym_table.containsKey(address)) {
+	        String sym_name = address_sym_table.get(address);
 	        res = sym_name.split("@", 2)[0].strip();
 	    }
 	    return res;
@@ -509,7 +508,7 @@ public class CFHelper {
 		}
 	}
 
-	Tuple<String, Long> retrieve_call_inst_func_name(Block func_call_blk, HashMap<Long, String> address_inst_map, HashMap<BitVecExpr, ArrayList<String>> address_sym_table) {
+	Tuple<String, Long> retrieve_call_inst_func_name(Block func_call_blk, HashMap<Long, String> address_inst_map, HashMap<Long, String> address_sym_table) {
 	    String func_name = null;
 	    Store store = func_call_blk.store;
 	    long rip = store.rip;
@@ -518,55 +517,34 @@ public class CFHelper {
 	    long new_address = Helper.long_of_sym(n_address);
 	    if(address_inst_map.containsKey(new_address))
 	        func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-	    else {
-	    	BitVecExpr bv_addr = SymEngine.get_effective_address(store, rip, String.valueOf(new_address));
-	    	if(address_sym_table.containsKey(bv_addr))
-		        func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-            
-	    }
+	    else if(address_sym_table.containsKey(new_address))
+		    func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
 	    return new Tuple<String, Long>(func_name, new_address);
 	}
 
 
-	static void cfg_init_parameter(Store store, HashMap<String, BitVecExpr> sym_table) {
+	static void cfg_init_parameter(Store store, HashMap<String, Long> sym_table) {
 		int length = Config.MEM_ADDR_SIZE;
 	    if(sym_table.containsKey(Lib.STDIN)) {
-	        BitVecExpr stdin_address = sym_table.get(Lib.STDIN);
-	        store.g_StdinAddress = stdin_address;
-	        store.g_StdinHandler = SymEngine.get_memory_val(store, stdin_address, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
+	        Long stdin_address = sym_table.get(Lib.STDIN);
+	        store.g_StdinAddress = Helper.gen_bv_num(stdin_address, Config.MEM_ADDR_SIZE);
+	        store.g_StdinHandler = SymEngine.get_memory_val(store, store.g_StdinAddress, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
 	    }
 	    else {
 	        store.g_StdinAddress = Helper.gen_sym(length);
 	        store.g_StdinHandler = Helper.gen_sym(length);
 	    }
 	    if(sym_table.containsKey(Lib.STDOUT)) {
-	    	BitVecExpr stdout_address = sym_table.get(Lib.STDOUT);
-	    	store.g_StdoutAddress = stdout_address;
-	        store.g_StdoutHandler = SymEngine.get_memory_val(store, stdout_address, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
+	    	Long stdout_address = sym_table.get(Lib.STDOUT);
+	    	store.g_StdoutAddress = Helper.gen_bv_num(stdout_address, Config.MEM_ADDR_SIZE);
+	        store.g_StdoutHandler = SymEngine.get_memory_val(store, store.g_StdoutAddress, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
 	    }
 	    else {
 	    	store.g_StdoutAddress = Helper.gen_sym(length);
 	        store.g_StdoutHandler = Helper.gen_sym(length);
 	    }
 	}
-
-
-	Tuple<String, Long> retrieve_internal_call_inst_func_name(Block func_call_blk, HashMap<Long, String> address_inst_map, HashMap<BitVecExpr, ArrayList<String>> address_sym_table) {
-	    String func_name = null;
-	    Store store = func_call_blk.store;
-	    long rip = store.rip;
-	    String jump_address_str = func_call_blk.inst.split(" ", 2)[1].strip();
-	    BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
-	    long new_address = Helper.long_of_sym(n_address);
-	    if(address_inst_map.containsKey(new_address))
-	    	func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-	    else {
-	    	BitVecExpr bv_addr = SymEngine.get_effective_address(store, rip, String.valueOf(new_address));
-	    	if(address_sym_table.containsKey(bv_addr))
-	    		func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-	    }
-	    return new Tuple<String, Long>(func_name, new_address);
-	}
+	
 	
 	static Block getParentBlockInfo(HashMap<Integer, Block> blockMap, Block blk) {
 		Block pBlock = null;
@@ -620,15 +598,10 @@ public class CFHelper {
 	}
 
 
-	static String get_function_name_from_addr_sym_table(HashMap<BitVecExpr, ArrayList<String>> addressSymTable, long address) {
+	static String get_function_name_from_addr_sym_table(HashMap<Long, String> addressSymTable, long address) {
 		String res = "";
-		BitVecExpr bv_addr = Helper.gen_bv_num(address, Config.MEM_ADDR_SIZE);
-	    if(addressSymTable.containsKey(bv_addr)) {
-	    	ArrayList<String> val = addressSymTable.get(bv_addr);
-	        if(val.size() > 1)
-	            res = val.get(1);
-	        else
-	            res = val.get(0);
+	    if(addressSymTable.containsKey(address)) {
+	    	res = addressSymTable.get(address);
 	    }
 	    return res;
 	}
@@ -670,7 +643,7 @@ public class CFHelper {
 	                    }
 	                }
 	                else if(extName.equals("starting_point")) {
-	                    BoolExpr pred = parse_predicates(store, rip, block_id, extName, constr);
+	                	BoolExpr pred = parse_predicates(store, rip, block_id, extName, constr);
 	                    if(pred != null) {
 	                        if(predicates != null)
 	                            predicates = Helper.bv_and(predicates, pred);

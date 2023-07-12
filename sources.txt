@@ -1,7 +1,6 @@
 ./src/check/CheckNormalization.java
 ./src/common/Utils.java
 ./src/common/Config.java
-./src/common/GlobalVar.java
 ./src/common/Helper.java
 ./src/common/LogFormatter.java
 ./src/common/InstElement.java
@@ -15,7 +14,6 @@
 ./src/semantics/Semantics.java
 ./src/semantics/SemanticsTBMemAddr.java
 ./src/CMC.java
-./src/binary/BinaryInfo.java
 ./src/binary/BinaryContent.java
 ./src/controlflow/CFHelper.java
 ./src/controlflow/TraceBack.java
@@ -26,7 +24,6 @@
 ./src/block/Store.java
 ./src/block/Constraint.java
 ./src/block/Node.java
-./src/normalizer/NormObjdump.java
 ./src/normalizer/NormFactory.java
 ./src/normalizer/NormHelper.java
 ./src/normalizer/NormIDAPro.java

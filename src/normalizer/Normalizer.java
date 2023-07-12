@@ -13,14 +13,25 @@ public interface Normalizer {
 	
 	HashMap<Long, String> getAddressInstMap();
 	
-	HashMap<Long, String> getAddressLabelMap();
-	
 	HashMap<Long, Long> getAddressNextMap();
 	
 	HashMap<Long, String> getAddressExtFuncMap();
 	
 	HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap();
 	
-	HashSet<Long> getFuncEndAddrs();
+	HashSet<Long> getFuncEndAddrSet();
 	
+	Long getMainAddress();
+	
+	Long getEntryAddress();
+	
+	HashMap<Long, String> getAddressSymTbl();
+	
+	HashMap<String, Long> getSymTbl();
+	
+	HashMap<String, Long> getSecStartAddr();
+	
+	HashMap<String, Long> getSecEndAddr();
+	
+	HashMap<String, Long> getSecBaseAddr();
 }

@@ -23,7 +23,7 @@ public class SemanticsTBMemAddr {
 	static boolean funcCallPoint = false;
 	static boolean haltPoint = false;
 	static boolean concrete_val = false;
-	static HashMap<BitVecExpr, ArrayList<String>> addressSymTable = null;
+	static HashMap<Long, String> addressSymTable = null;
 	static HashMap<Long, String> addressInstMap = null;
 	static HashMap<String, Integer> mem_len_map = new HashMap<String, Integer>();
 	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
@@ -67,9 +67,9 @@ public class SemanticsTBMemAddr {
 
 	static Boolean addr_points_to_external_lib(BitVecExpr addr) {
 	    Boolean res = false;
-	    if(addressSymTable.containsKey(addr)) {
-	    	if(Helper.is_bit_vec_num(addr)) {
-	    		Long int_addr = Helper.long_of_sym(addr);
+	    if(Helper.is_bit_vec_num(addr)) {
+    		Long int_addr = Helper.long_of_sym(addr);
+    		if(addressSymTable.containsKey(int_addr)) {
 	    		if(!addressInstMap.containsKey(int_addr))
 	    			res = true;
 	    	}
@@ -401,7 +401,7 @@ public class SemanticsTBMemAddr {
 	}
 	
 	
-	public static TBRetInfo parse_sym_src(HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstTbl, HashMap<BitVecExpr, ArrayList<String>> address_sym_tbl, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
+	public static TBRetInfo parse_sym_src(HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstTbl, HashMap<Long, String> address_sym_tbl, Store store, long curr_rip, String inst, ArrayList<String> sym_names) {
 	    rip = curr_rip;
 	    funcCallPoint = false;
 	    haltPoint = false;

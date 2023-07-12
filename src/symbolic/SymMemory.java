@@ -9,12 +9,13 @@ import com.microsoft.z3.BoolExpr;
 import com.microsoft.z3.FuncDecl;
 import com.microsoft.z3.Model;
 
+import binary.BinaryContent;
 import block.Store;
 import common.Config;
-import common.GlobalVar;
 import common.Helper;
 import common.Lib;
 import common.Utils;
+import normalizer.NormFactory;
 import normalizer.NormHelper;
 
 public class SymMemory {
@@ -314,16 +315,16 @@ public class SymMemory {
 	    	Long val = null;
 	        long int_address = Helper.long_of_sym(address);
 	        if(SymHelper.addr_in_rodata_section(int_address)) {
-	            long rodata_base_addr = GlobalVar.binaryInfo.rodata_base_addr;
-	            val = GlobalVar.binaryContent.read_bytes(int_address - rodata_base_addr, length / 8);
+	            long rodata_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.RODATASEC);
+	            val = BinaryContent.read_bytes(int_address - rodata_base_addr, length / 8);
 	        }
 	        else if(SymHelper.addr_in_data_section(int_address)) {
-	            long data_base_addr = GlobalVar.binaryInfo.data_base_addr;
-	            val = GlobalVar.binaryContent.read_bytes(int_address - data_base_addr, length / 8);
+	            long data_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.DATASEC);
+	            val = BinaryContent.read_bytes(int_address - data_base_addr, length / 8);
 	        }
 	        else if(SymHelper.addr_in_text_section(int_address)) {
-	            long text_base_addr = GlobalVar.binaryInfo.text_base_addr;
-	            val = GlobalVar.binaryContent.read_bytes(int_address - text_base_addr, length / 8);
+	            long text_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.TEXTSEC);
+	            val = BinaryContent.read_bytes(int_address - text_base_addr, length / 8);
 	        }
 //	        else if(NormFactory.norm.getAddressExtFuncMap().containsKey(int_address)) {
 //	        	

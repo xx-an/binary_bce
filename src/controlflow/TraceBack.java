@@ -3,8 +3,6 @@ package controlflow;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import com.microsoft.z3.BitVecExpr;
-
 import block.Block;
 import block.Store;
 import common.Lib;
@@ -146,7 +144,7 @@ public class TraceBack {
     }
     
     
-    static void locatePointerRelatedError(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, HashMap<BitVecExpr, ArrayList<String>> addressSymTable, Block block, Store initStore, long address, String inst, ArrayList<String> symNames) {
+    static void locatePointerRelatedError(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, HashMap<Long, String> addressSymTable, Block block, Store initStore, long address, String inst, ArrayList<String> symNames) {
         // store, rip = store, store.rip
         Utils.logger.info("Trace back for pointer-related error");
         Utils.logger.info(Utils.num_to_hex_string(address) + ": " + block.inst);

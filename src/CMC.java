@@ -8,40 +8,25 @@ import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.microsoft.z3.BitVecExpr;
+import binary.BinaryContent;
+
 import org.apache.commons.cli.*;
 
-import common.GlobalVar;
 import common.Helper;
 import common.Utils;
 import controlflow.ControlFlow;
 import normalizer.NormFactory;
 import normalizer.NormHelper;
+import normalizer.Normalizer;
 
 public class CMC {
 	
 
 	static ControlFlow constructCF(String execPath) {
-		long mainAddress = GlobalVar.binaryInfo.main_address;
-		HashMap<String, BitVecExpr> symTable = GlobalVar.binaryInfo.sym_table;
-		HashMap<BitVecExpr, ArrayList<String>> addressSymTable = GlobalVar.binaryInfo.address_sym_table;
-		HashMap<Long, String> addressLableMap = NormFactory.norm.getAddressLabelMap();
-		for(long address : addressLableMap.keySet()) {
-			BitVecExpr bvAddr = Helper.gen_bv_num(address, 64);
-			if(addressSymTable.containsKey(bvAddr)) {
-				addressSymTable.get(bvAddr).add(addressLableMap.get(address));
-			}
-			else {
-				ArrayList<String> symList = new ArrayList<>();
-				symList.add(addressLableMap.get(address));
-				addressSymTable.put(bvAddr, symList);
-			}
-		}
-	    String funcName = "_start";
-	    long startAddress = GlobalVar.binaryInfo.entry_address;
+		Normalizer norm = NormFactory.norm;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
-	    ControlFlow cfg = new ControlFlow(symTable, addressSymTable, startAddress, mainAddress, funcName, preConstraint, GlobalVar.binaryInfo.dllFuncInfo, NormFactory.norm);
+	    ControlFlow cfg = new ControlFlow(preConstraint, norm);
 	    return cfg;
 	}
 	
@@ -80,7 +65,7 @@ public class CMC {
 	    set_logger(disasmPath, disasmType, verbose);
 	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
 	    NormFactory.setDisasm(disasmPath, disasmType);
-	    GlobalVar.getBinaryInfo(execPath);
+	    BinaryContent.readBinaryContent(execPath);
 		long startTime = System.nanoTime();
 	    ControlFlow cfg = constructCF(execPath);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
@@ -149,7 +134,7 @@ public class CMC {
                 .build();
         
         Option exeDirOpt = Option.builder("e").longOpt("executable_dir")
-                .argName("executable_dir")
+                .argName("exec_dir")
                 .hasArg()
                 .desc("Executable file library")
                 .build();
@@ -182,8 +167,8 @@ public class CMC {
 	    Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name", "basename.exe");
+	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
-	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("executable_dir", "benchmark/coreutils-bin")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
 	    boolean verbose = (line.hasOption("verbose")) ? true : false;
 	    if(batch) {
