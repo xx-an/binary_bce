@@ -67,8 +67,8 @@ public class SemanticsTBSym {
 	    if(!Helper.is_bit_vec_num(sym_src)) {
 	        if(src.contains(":")) {
 	            String[] src_split = src.split(":"); 
-	            SMTHelper.add_src_to_syms(store, symNames, src_split[0]);
-	            SMTHelper.add_src_to_syms(store, srcNames, src_split[1]);
+	            SMTHelper.addRegSrcToSyms(store, symNames, src_split[0]);
+	            SMTHelper.addRegSrcToSyms(store, srcNames, src_split[1]);
 	        }
 	        else if(src.endsWith("]")) {
 	        	Tuple<ArrayList<String>, Boolean> bottom_source = SMTHelper.get_bottom_source(src, store, rip, memLenMap);

@@ -374,13 +374,14 @@ public class SMTHelper {
 	}
 
 
-	static void add_src_to_syms(Store store, ArrayList<String> sym_names, String src) {
+	static ArrayList<String> addRegSrcToSyms(Store store, ArrayList<String> symNames, String src) {
 	    BitVecExpr sym_src = SymEngine.get_register_sym(store, src);
 	    if(!Helper.is_bit_vec_num(sym_src)) {
 	    	String root_reg = SymHelper.get_root_reg(src);
-	    	if(!sym_names.contains(root_reg))
-	    		sym_names.add(root_reg);
+	    	if(!symNames.contains(root_reg))
+	    		symNames.add(root_reg);
 	    }
+	    return symNames;
 	}
 
 

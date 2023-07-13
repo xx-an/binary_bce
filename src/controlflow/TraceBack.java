@@ -5,13 +5,10 @@ import java.util.HashMap;
 
 import block.Block;
 import block.Store;
-import common.Lib;
-import common.Triplet;
 import common.Tuple;
 import common.Lib.TRACE_BACK_RET_TYPE;
 import common.Utils;
 import semantics.SemanticsTBMemAddr;
-import semantics.SemanticsTB;
 import semantics.SemanticsTBSym;
 import semantics.TBRetInfo;
 
@@ -93,41 +90,7 @@ public class TraceBack {
         Utils.logger.info("Traceback ends\n");
         return new Tuple<>(count, funcCallPoint);
     }
-    
-    
-	static Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tracebackIndirectJumps(HashMap<Integer, Block> blockMap, Block blk, ArrayList<String> symNames, HashMap<String, Integer> memLenMap, ArrayList<Block> traceBlockList) {
-        Utils.logger.info("\nResolve indirect jump address");
-        for(int i = 0; i < Utils.MAX_TRACEBACK_COUNT; i++) {
-            Store pStore = CFHelper.getParentStore(blockMap, blk);
-            if(pStore == null) {
-                return new Triplet<>(Lib.TRACE_BACK_RET_TYPE.TB_PARENT_BLOCK_DOES_NOT_EXIST, symNames, 0);
-            }
-            TBRetInfo retInfo = SemanticsTB.parse_sym_src(pStore, blk.store.rip, blk.inst, symNames);
-            ArrayList<String> srcNames = retInfo.srcNames;
-            boolean haltPoint = retInfo.haltPoint;
-            Integer boundary = retInfo.boundary;
-            boolean stillTB = retInfo.stillTB;
-            HashMap<String, Integer> mLenMap = retInfo.memLenMap;
-            memLenMap.putAll(mLenMap);
-            Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
-            Utils.logger.info(srcNames.toString());
-            if(haltPoint && srcNames.size() == 1) {
-                return new Triplet<>(Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED, srcNames, boundary);
-            }
-            else if(stillTB) {
-            	traceBlockList.add(blk);
-                blk = blockMap.get(blk.parent_id);
-                symNames = srcNames;
-            }
-            else { 
-                Utils.logger.info("Traceback ends due to unresolved indirect jumps\n");
-                break;
-            }
-        }
-        return new Triplet<>(Lib.TRACE_BACK_RET_TYPE.JT_UNRESOLVED, symNames, 0);
-    }
-    
-    
+        
 
     static BlockNode updateBlockNode(HashMap<Integer, Block> blockMap, int blockID, String symName, Block prevBlock) {
     	BlockNode node = null;

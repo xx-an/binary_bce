@@ -317,7 +317,6 @@ public class ControlFlow {
     void handleUnresolvedIndirectJumps(Block block, long address, BitVecExpr newAddress, String inst, Constraint constraint) {
         if(inst.startsWith("jmp ")) {
         	Lib.TRACE_BACK_RET_TYPE res = null;
-            ArrayList<Block> trace_list = new ArrayList<>();
             if(addressJPTEntriesMap.containsKey(block.address)) {
             	Triplet<String, String, ArrayList<BitVecExpr>> addrJTEntry = addressJPTEntriesMap.get(block.address);
             	String instDest = addrJTEntry.x;
@@ -325,16 +324,6 @@ public class ControlFlow {
             	ArrayList<BitVecExpr> targetAddrs = addrJTEntry.z;
                 reconstructNewBranches(block, instDest, jptIdxRegName, targetAddrs);
                 res = Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED;
-            }
-            else {
-            	ArrayList<String> srcNames = CFHelper.retrieveSymSrcs(block);
-            	Triplet<Lib.TRACE_BACK_RET_TYPE, ArrayList<String>, Integer> tbInfo = TraceBack.tracebackIndirectJumps(blockMap, block, srcNames, memLenMap, trace_list);
-            	res = tbInfo.x;
-            	if(res == Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {
-	            	srcNames = tbInfo.y;
-	            	int boundary = tbInfo.z;
-	            	res = handle_unbounded_jump_table_w_tb(trace_list, srcNames, boundary);
-            	}
             }
             if(res != Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED) {
                 if(constraint != null) {
