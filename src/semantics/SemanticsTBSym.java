@@ -471,7 +471,7 @@ public class SemanticsTBSym {
 	}
 	
 	
-	public static TBRetInfo parse_sym_src(HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> dllFuncInfo, HashMap<Long, String> addressInstMap, Store store, long currRIP, String inst, ArrayList<String> symNames) {
+	public static TBRetInfo parse_sym_src(HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Store store, long currRIP, String inst, ArrayList<String> symNames) {
 	    rip = currRIP;
 	    funcCallPoint = false;
 	    if(inst.startsWith("lock ")) {
@@ -492,19 +492,19 @@ public class SemanticsTBSym {
 	    }
 	    else if(inst_name.startsWith("rep")) {
 	        inst = inst_split[1].strip();
-	        TBRetInfo ret_info = parse_sym_src(addressExtFuncMap, dllFuncInfo, addressInstMap, store, currRIP, inst, symNames);
+	        TBRetInfo ret_info = parse_sym_src(addressExtFuncMap, addressInstMap, store, currRIP, inst, symNames);
 	        srcNames = ret_info.srcNames;
 	        funcCallPoint = ret_info.funcCallPoint;
 	        memLenMap = ret_info.memLenMap;
 	    }
 	    else if(Utils.check_jmp_with_address(inst)) {
 	        String jump_address_str = inst.split(" ", 2)[1].strip();
-	        BitVecExpr new_addr = SMTHelper.get_jump_address(store, rip, jump_address_str);
+	        BitVecExpr new_addr = SMTHelper.get_jump_address(store, rip, jump_address_str, addressExtFuncMap);
 	        Long new_address = null;
 	        if(Helper.is_bit_vec_num(new_addr)) {
 	        	new_address = Helper.long_of_sym(new_addr);
 	        }
-	        if(new_address != null && (addressExtFuncMap.containsKey(new_address) || dllFuncInfo.containsKey(new_address))) {
+	        if(new_address != null && (addressExtFuncMap.containsKey(new_address))) {
 	            funcCallPoint = jmp_to_external_func(store, symNames);
 	        }
 	    }

@@ -15,6 +15,7 @@ import common.Utils;
 import block.Store;
 import symbolic.SymEngine;
 import symbolic.SymHelper;
+import symbolic.SymMemory;
 
 
 public class SMTHelper {
@@ -241,13 +242,14 @@ public class SMTHelper {
 	}
 
 
-	public static BitVecExpr get_jump_address(Store store, long rip, String operand) {
-//	    Long res = null;
+	public static BitVecExpr get_jump_address(Store store, long rip, String operand, HashMap<Long, String> extFuncInfo) {
 	    int length = Utils.get_sym_length(operand, Config.MEM_ADDR_SIZE);
+        BitVecExpr address = SymMemory.get_effective_address(store, rip, operand, Config.MEM_ADDR_SIZE);
+        if(Helper.is_bit_vec_num(address)) {
+        	long intAddr = Helper.long_of_sym(address);
+        	if(extFuncInfo.containsKey(intAddr)) return address;
+        }
 	    BitVecExpr result = SymEngine.get_sym(store, rip, operand, Utils.INIT_BLOCK_NO, length);
-//	    if(Helper.is_bit_vec_num(result)) {
-//	    	res = Helper.long_of_sym(result);
-//	    }
 	    return result;
 	}
 	

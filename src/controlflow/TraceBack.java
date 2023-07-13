@@ -38,7 +38,7 @@ public class TraceBack {
 	}
 	
 	
-	static Tuple<Integer, Boolean> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> dllFuncInfo, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
+	static Tuple<Integer, Boolean> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
         Utils.logger.info("Trace back for symbolized memory address");
         Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
         Store store = blk.store;
@@ -68,7 +68,7 @@ public class TraceBack {
                     return new Tuple<>(-1, true);
                 ArrayList<String> tmpSymList = new ArrayList<>();
                 tmpSymList.add(currSymName);
-                TBRetInfo tbInfo = SemanticsTBSym.parse_sym_src(addressExtFuncMap, dllFuncInfo, addressInstMap, pBlock.store, currRIP, currInst, tmpSymList);
+                TBRetInfo tbInfo = SemanticsTBSym.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currRIP, currInst, tmpSymList);
                 srcNames = tbInfo.srcNames;
                 funcCallPoint = tbInfo.funcCallPoint;
                 HashMap<String, Integer> mLenMap = tbInfo.memLenMap;
@@ -108,7 +108,6 @@ public class TraceBack {
     
     
     static void locatePointerRelatedError(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, HashMap<Long, String> addressSymTable, Block block, Store initStore, long address, String inst, ArrayList<String> symNames) {
-        // store, rip = store, store.rip
         Utils.logger.info("Trace back for pointer-related error");
         Utils.logger.info(Utils.num_to_hex_string(address) + ": " + block.inst);
         Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Utils.num_to_hex_string(block.address) + ": " + block.inst);

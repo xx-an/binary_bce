@@ -508,20 +508,6 @@ public class CFHelper {
 		}
 	}
 
-	Tuple<String, Long> retrieve_call_inst_func_name(Block func_call_blk, HashMap<Long, String> address_inst_map, HashMap<Long, String> address_sym_table) {
-	    String func_name = null;
-	    Store store = func_call_blk.store;
-	    long rip = store.rip;
-	    String jump_address_str = func_call_blk.inst.split(" ", 2)[1].strip();
-	    BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
-	    long new_address = Helper.long_of_sym(n_address);
-	    if(address_inst_map.containsKey(new_address))
-	        func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-	    else if(address_sym_table.containsKey(new_address))
-		    func_name = get_function_name_from_addr_sym_table(address_sym_table, new_address);
-	    return new Tuple<String, Long>(func_name, new_address);
-	}
-
 
 	static void cfg_init_parameter(Store store, HashMap<String, Long> sym_table) {
 		int length = Config.MEM_ADDR_SIZE;

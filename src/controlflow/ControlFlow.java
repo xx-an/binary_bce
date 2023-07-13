@@ -38,7 +38,6 @@ public class ControlFlow {
     HashMap<Long, String> addressSymTable;
     HashMap<Long, String> addressInstMap;
     HashMap<Long, Long> addressNextMap;
-    HashMap<Long, String> dllFuncInfo;
     HashMap<Tuple<Long, Long>, Integer> loopTraceCounter;
     HashMap<String, ArrayList<String>> gPreConstraint;
     HashSet<Long> funcEndAddressSet;
@@ -79,7 +78,6 @@ public class ControlFlow {
         extLibAssumptions = new HashMap<>();
         extMemPreserv = new ArrayList<>();
         this.addressExtFuncMap = norm.getAddressExtFuncMap();
-        this.dllFuncInfo = norm.getAddressExtFuncMap();
         this.globalJPTEntriesMap = norm.readGlobalJPTEntriesMap();
         Store store = new Store(null);
         cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
@@ -188,7 +186,7 @@ public class ControlFlow {
         }
         else {
             String jumpAddrStr = inst.split(" ", 2)[1].strip();
-            BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr);
+            BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr, addressExtFuncMap);
 //            Utils.logger.info(Long.toHexString(address) + ": " + inst + " :: " + nAddress.toString());
             Long newAddress = null;
 	        if(Helper.is_bit_vec_num(nAddress)) {
@@ -213,8 +211,8 @@ public class ControlFlow {
                 }
                 handle_external_function(extFuncName, block, address, inst, store, constraint);
             }
-            else if(dllFuncInfo.containsKey(newAddress)) {
-                String extFuncName = dllFuncInfo.get(newAddress);
+            else if(addressExtFuncMap.containsKey(newAddress)) {
+                String extFuncName = addressExtFuncMap.get(newAddress);
                 if(!extFuncCallAddr.contains(address))
                     extFuncCallAddr.add(address);
                 handle_external_function(extFuncName, block, address, inst, store, constraint);
@@ -349,7 +347,7 @@ public class ControlFlow {
             }
             ArrayList<String> newSrcs = CFHelper.retrieveSymSrcs(block);
             ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
-            TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, newSrcs);
+            TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addressInstMap, block, traceBIDSymList, memLenMap, newSrcs);
             // num_of_unresolved_indirects
             cmcExecInfo[2] += 1;
             Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
@@ -572,7 +570,7 @@ public class ControlFlow {
 
     void _update_external_assumptions(Store store, long rip, String inst, ArrayList<String> srcNames) {
         String jumpAddrStr = inst.split(" ", 2)[1].strip();
-        BitVecExpr newAddress = SMTHelper.get_jump_address(store, rip, jumpAddrStr);
+        BitVecExpr newAddress = SMTHelper.get_jump_address(store, rip, jumpAddrStr, addressExtFuncMap);
         extLibAssumptions.put(newAddress.toString(), srcNames);
         if(!extMemPreserv.contains(newAddress)) {
             for(String srcName : srcNames) {
@@ -693,7 +691,7 @@ public class ControlFlow {
         ArrayList<String> symNames = CFHelper.retrieveSymSrcs(block);
         ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
         HashMap<String, Integer> memLenMap = new HashMap<>();
-        Tuple<Integer, Boolean> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, dllFuncInfo, addressInstMap, block, traceBIDSymList, memLenMap, symNames);
+        Tuple<Integer, Boolean> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addressInstMap, block, traceBIDSymList, memLenMap, symNames);
         int count = tbInfo.x;
         if(count == -1) {
         	Utils.logger.info("Parent block does not exist.");
@@ -763,7 +761,7 @@ public class ControlFlow {
             String preInst = addressInstMap.get(preAddress);
             if(preInst.startsWith("call")) {
                 Block blk = addressBlockMap.get(preAddress);
-                BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, address, preInst.split(" ", 2)[1].strip());
+                BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, address, preInst.split(" ", 2)[1].strip(), addressExtFuncMap);
                 if(Helper.is_bit_vec_num(jmpTarget)) {
                     target = Helper.long_of_sym(jmpTarget);
                 }

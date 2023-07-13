@@ -444,7 +444,7 @@ public class SemanticsTBMemAddr {
 	    }
 	    else if(Utils.check_jmp_with_address(inst)) {
 	        String jump_address_str = inst.split(" ", 2)[1].strip();
-	        BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str);
+	        BitVecExpr n_address = SMTHelper.get_jump_address(store, rip, jump_address_str, addressExtFuncMap);
 	        Long new_address = Helper.long_of_sym(n_address);
 	        if(addressExtFuncMap.containsKey(new_address)) {
 	            funcCallPoint = jmp_to_external_func(store, sym_names);
