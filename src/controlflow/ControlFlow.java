@@ -12,7 +12,6 @@ import com.microsoft.z3.BoolExpr;
 import block.Block;
 import block.Constraint;
 import block.Store;
-import common.Config;
 import common.Helper;
 import common.InstElement;
 import common.Lib;
@@ -432,19 +431,6 @@ public class ControlFlow {
     }
 
 
-    int get_operand_size(String inst, String arg) {
-        int res = Config.MEM_ADDR_SIZE;
-        InstElement instElem = new InstElement(inst);
-        if(instElem.inst_args.size() == 2) {
-            String operand = instElem.inst_args.get(1);
-            res = Utils.get_sym_length(operand);
-        }
-        else
-            res = CFHelper.get_real_length(memLenMap, arg);
-        return res;
-    }
-
-
     // example) { mov eax,DWORD PTR [rip+0x205a28]        // <optind@@GLIBC_2.2.5>
     Constraint _sym_src_from_mov_with_ext_env(Block blk, Constraint constraint) {
     	Store store = blk.store;
@@ -484,7 +470,7 @@ public class ControlFlow {
                 newConstraint = _sym_src_from_mov_with_ext_env(currBlock, newConstraint);
                 Store store = currBlock.store;
         		for(String symArg: symInfo) {
-	                int length = get_operand_size(currBlock.inst, symArg);
+	                int length = CFHelper.getOperandSize(currBlock.inst, symArg, memLenMap);
 	                BitVecExpr symVal = CFHelper.get_inv_arg_val(store, store.rip, symArg, blockID, length);
 	                if(!symAddrValuesetMap.containsKey(symVal)) {
 	                	symValues.add(symVal);

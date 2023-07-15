@@ -26,6 +26,7 @@ import semantics.SMTHelper;
 import symbolic.SymEngine;
 import symbolic.SymHelper;
 import common.Helper;
+import common.InstElement;
 import common.Tuple;
 
 public class CFHelper {
@@ -227,10 +228,10 @@ public class CFHelper {
 	}
 
 
-	static int get_real_length(HashMap<String, Integer> mem_len_map, String arg) {
+	static int getRealLength(HashMap<String, Integer> memLenMap, String arg) {
 	    int length = Config.MEM_ADDR_SIZE;
 	    if(!Lib.REG_NAMES.contains(arg))
-	        length = mem_len_map.get(arg);
+	        length = memLenMap.get(arg);
 	    return length;
 	}
 
@@ -451,10 +452,8 @@ public class CFHelper {
 	        }
 	    }
 	    else {
-	    	if(Config.MEM_ADDR_SIZE == 64)
-	    		symNames.add("rdi");
-	    	else
-	    		symNames.add("edi");
+	    	String symName = (Config.MEM_ADDR_SIZE == 64) ? "rdi": "edi";
+	    	symNames.add(symName);
 	    }
 	    return symNames;
 	}
@@ -755,6 +754,19 @@ public class CFHelper {
 	    }
 	    return new_constraint;
 	}
+	
+	
+    static int getOperandSize(String inst, String arg, HashMap<String, Integer> memLenMap) {
+        int res = Config.MEM_ADDR_SIZE;
+        InstElement instElem = new InstElement(inst);
+        if(instElem.inst_args.size() == 2) {
+            String operand = instElem.inst_args.get(1);
+            res = Utils.get_sym_length(operand);
+        }
+        else
+            res = getRealLength(memLenMap, arg);
+        return res;
+    }
 
 
 }
