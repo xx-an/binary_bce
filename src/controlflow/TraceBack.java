@@ -8,8 +8,7 @@ import block.Store;
 import common.Tuple;
 import common.Lib.TRACE_BACK_RET_TYPE;
 import common.Utils;
-import semantics.SemanticsTBMemAddr;
-import semantics.SemanticsTBSym;
+import semantics.SemanticsTB;
 import semantics.TBRetInfo;
 
 public class TraceBack {
@@ -68,7 +67,7 @@ public class TraceBack {
                     return new Tuple<>(-1, true);
                 ArrayList<String> tmpSymList = new ArrayList<>();
                 tmpSymList.add(currSymName);
-                TBRetInfo tbInfo = SemanticsTBSym.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currRIP, currInst, tmpSymList);
+                TBRetInfo tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currRIP, currInst, tmpSymList);
                 srcNames = tbInfo.srcNames;
                 funcCallPoint = tbInfo.funcCallPoint;
                 HashMap<String, Integer> mLenMap = tbInfo.memLenMap;
@@ -133,16 +132,14 @@ public class TraceBack {
             for(String symName : symNames) {
             	ArrayList<String> tmpNames = new ArrayList<>();
             	tmpNames.add(symName);
-            	TBRetInfo tbInfo = SemanticsTBMemAddr.parse_sym_src(addressExtFuncMap, addressInstMap, addressSymTable, pBlock.store, currStore.rip, inst, tmpNames);
+            	TBRetInfo tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currStore.rip, inst, tmpNames);
             	srcNames = tbInfo.srcNames;
-            	boolean funcCallPoint = tbInfo.funcCallPoint;
             	boolean haltPoint = tbInfo.haltPoint;
-            	boolean concrete_val = tbInfo.concrete_val;
                 Utils.logger.info(Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
                 Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, pBlock.store.rip, srcNames);
-                if(funcCallPoint || haltPoint || concrete_val) continue;
+                if(haltPoint) continue;
                 else {
                 	for(Integer bID : bIDSymMap.keySet()) {
                 		if(bID != null) {

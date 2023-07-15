@@ -46,7 +46,7 @@ public class NormObjdump implements Normalizer {
         funcAddrCallMap = new HashMap<String, ArrayList<Long>>(); 
         funcCallMap = new HashMap<String, ArrayList<String>>(); 
         
-        read_asm_info();
+        readASMInfo();
 	}
 
 
@@ -55,7 +55,7 @@ public class NormObjdump implements Normalizer {
 	}
 
 
-	public void read_asm_info() throws FileNotFoundException {
+	public void readASMInfo() throws FileNotFoundException {
 		File f = new File(disasmPath);
     	ArrayList<String> lines = new ArrayList<>();
     	try (BufferedReader br = new BufferedReader(new FileReader(f))) {

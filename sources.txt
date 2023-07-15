@@ -8,10 +8,9 @@
 ./src/common/Tuple.java
 ./src/common/Triplet.java
 ./src/semantics/SMTHelper.java
-./src/semantics/SemanticsTBSym.java
+./src/semantics/SemanticsTB.java
 ./src/semantics/TBRetInfo.java
 ./src/semantics/Semantics.java
-./src/semantics/SemanticsTBMemAddr.java
 ./src/CMC.java
 ./src/binary/BinaryContent.java
 ./src/controlflow/CFHelper.java

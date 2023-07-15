@@ -261,6 +261,7 @@ public class Lib {
 			    "g_abort",
 			    "obstack_alloc_failed_handler",
 			    "pthread_exit"
+//			    "__imp_exit"
 			};
 		TERMINATION_FUNCTIONS = Arrays.asList(t_functions);
 		

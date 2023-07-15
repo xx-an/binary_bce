@@ -9,7 +9,7 @@ import com.microsoft.z3.BitVecExpr;
 
 public interface Normalizer {
 	
-	void read_asm_info() throws FileNotFoundException;
+	void readASMInfo() throws FileNotFoundException;
 	
 	HashMap<Long, String> getAddressInstMap();
 	

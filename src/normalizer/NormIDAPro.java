@@ -49,7 +49,6 @@ public class NormIDAPro implements Normalizer {
 	HashMap<String, Long> procValueMap;
 	HashMap<String, String> varPtrRepMap;
 	HashMap<Long, Boolean> addedPtrRepMap;
-	HashMap<Long, String> addressLineMap;
 	HashMap<String, String> varIdaStructTypeMap;
 	ArrayList<String> idaStructTypes;
 	HashSet<String> globalDataName;
@@ -93,52 +92,16 @@ public class NormIDAPro implements Normalizer {
         addedPtrRepMap = new HashMap<>();
         idaStructTable = NormHelper.init_ida_struct_info();
         varIdaStructTypeMap = new HashMap<>();
-        addressLineMap = new HashMap<>();
         idaStructTypes = new ArrayList<>();
         for(String s : idaStructTable.keySet()) {
         	idaStructTypes.add(s);
         }
-        read_asm_info();
+        readASMInfo();
         readBinaryInfo();
-	}
-	
-	
-	void readBinaryInfo() {
-        entryAddress = this.procValueMap.get("start");
-        if(procValueMap.containsKey("main")) {
-        	mainAddress = procValueMap.get("main");
-        }
-	}
-	
-	
-	void readInstInfo(ArrayList<String> lines) {
-		for(String line : lines) {
-            if(line.contains(" extrn "))
-                storeExtFuncInfo(line);
-            else if(varExprPat.matcher(line).find()) {
-                readVariableValue(line);
-            }
-            else if(locatedAtCodeSegments(line)) {
-                if(!line.contains("UnwindMapEntry")) {
-                    if(addrInstPat.matcher(line).find()) {
-                    	Tuple<Long, String> lineInfo = parseLine(line);
-                    	long address = lineInfo.x;
-                    	String inst = lineInfo.y;
-                        if(inst != null && !Utils.startsWith(inst, nonInstPrefix)) {
-//                        	System.out.println(inst);
-                            inst = replaceInstVarArg(address, inst, line);
-                            addressInstMap.put(address, inst);
-                            addressLineMap.put(address, line);
-                            valid_address_no += 1;
-                        }
-                    }
-                }
-            }
-		}
 	}
 	        
 
-    public void read_asm_info() throws FileNotFoundException {
+    public void readASMInfo() throws FileNotFoundException {
     	File f = new File(disasmPath);
     	ArrayList<String> lines = new ArrayList<>();
     	try (BufferedReader br = new BufferedReader(new FileReader(f))) {
@@ -152,25 +115,11 @@ public class NormIDAPro implements Normalizer {
 			e.printStackTrace();
 		}
     	for(String line : lines) {
-//    		.text:00401000 ; Virtual size                  : 00003EE0 (  16096.)
     		if(line.contains("; Virtual size")) {
-    			String[] lineSplit = line.split("; Virtual size");
-    			String secName = lineSplit[0].split(":", 2)[0].strip();
-    			String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
-    	        long address = Long.valueOf(addressStr, 16);
-    	        String secSizeStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
-    	        int secSize = Integer.valueOf(secSizeStr, 16);
-    	        secStartAddrMap.put(secName, address);
-    	        secEndAddrMap.put(secName, address + secSize + 1);
+    			saveSecSEAddrInfo(line);
     		}
-//    		.text:00401000 ; Offset to raw data for section: 00000400
     		else if(line.contains("Offset to raw data for section")) {
-    			String[] lineSplit = line.split("; Offset to raw data for section");
-    			String secName = lineSplit[0].split(":", 2)[0].strip();
-    	        long address = secStartAddrMap.get(secName);
-    	        String secOffsetStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
-    	        int secOffset = Integer.valueOf(secOffsetStr, 16);
-    	        secBaseAddrMap.put(secName, address - secOffset);
+    			saveSecBaseAddrInfo(line);
     		}
     		else if(locatedAtDataSegments(line)) {
                 if(varExprPat.matcher(line).find()) {
@@ -204,6 +153,64 @@ public class NormIDAPro implements Normalizer {
         }
 		readGlobalJPTInfo(lines);
     }
+    
+    
+    void readBinaryInfo() {
+        entryAddress = procValueMap.get("start");
+        if(procValueMap.containsKey("main")) {
+        	mainAddress = procValueMap.get("main");
+        }
+	}
+    
+	// line: .text:00401000 ; Virtual size                  : 00003EE0 (  16096.)
+	// Read the start and end address information for different sections, such as .text, .data. idata
+	void saveSecSEAddrInfo(String line) {
+		String[] lineSplit = line.split("; Virtual size");
+		String secName = lineSplit[0].split(":", 2)[0].strip();
+		String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
+        long address = Long.valueOf(addressStr, 16);
+        String secSizeStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
+        int secSize = Integer.valueOf(secSizeStr, 16);
+        secStartAddrMap.put(secName, address);
+        secEndAddrMap.put(secName, address + secSize + 1);
+	}
+	
+	// line: .text:00401000 ; Offset to raw data for section: 00000400
+	// Read the base address information for different sections, such as .text, .data. idata
+	void saveSecBaseAddrInfo(String line) {
+		String[] lineSplit = line.split("; Offset to raw data for section");
+		String secName = lineSplit[0].split(":", 2)[0].strip();
+        long address = secStartAddrMap.get(secName);
+        String secOffsetStr = Utils.rsplit(lineSplit[1], ":")[1].strip().split(" ", 2)[0].strip();
+        int secOffset = Integer.valueOf(secOffsetStr, 16);
+        secBaseAddrMap.put(secName, address - secOffset);
+	}
+	
+	
+	void readInstInfo(ArrayList<String> lines) {
+		for(String line : lines) {
+            if(line.contains(" extrn "))
+                storeExtFuncInfo(line);
+            else if(varExprPat.matcher(line).find()) {
+                readVariableValue(line);
+            }
+            else if(locatedAtCodeSegments(line) && !line.contains("UnwindMapEntry")) {
+                if(addrInstPat.matcher(line).find()) {
+                	Tuple<Long, String> lineInfo = parseLine(line);
+                	long address = lineInfo.x;
+                	String inst = lineInfo.y;
+                    if(inst != null && !Utils.startsWith(inst, nonInstPrefix)) {
+//                        	System.out.println(inst);
+                        inst = replaceInstVarArg(address, inst, line);
+                        if(!inst.equals("nop")) {
+	                        addressInstMap.put(address, inst);
+	                        valid_address_no += 1;
+                        }
+                    }
+                }
+            }
+		}
+	}
     
     
 	void readGlobalJPTInfo(ArrayList<String> lines) {
@@ -473,8 +480,10 @@ public class NormIDAPro implements Normalizer {
             String prefix = argSplit[0].strip();
             String memAddrStr = Utils.rsplit(argSplit[1].strip(), "]")[0].strip();
             String memAddr = replaceEachExpr(instName, memAddrStr);
-            if(prefix.contains("ptr"))
+            if(prefix.contains("ptr") && !prefix.contains("s:"))
                 res = prefix + " [" + memAddr + "]";
+            else if(prefix.contains("ptr") && prefix.contains("s:"))
+                res = prefix + "[" + memAddr + "]";
             else if(prefix.contains("s:")) {
                 String[] prefixSplit = prefix.split(":", 2);
                 if(prefixSplit.length == 2) {
@@ -588,8 +597,16 @@ public class NormIDAPro implements Normalizer {
                         res = "[" + prefix + ":" + NormHelper.convertImmEndHToHex(remaining) + "]";
                     }
                 }
-                else
-                    res = prefix + ":" + NormHelper.convertImmEndHToHex(remaining);
+                else {
+                	if(prefix.contains(" ptr")) {
+                        String[] prefixSplit = Utils.rsplit(prefix, " ");
+                        String ptrRep = prefixSplit[0];
+                        String segName = prefixSplit[1];
+                        res = ptrRep.strip() + " [" + segName + ":" + NormHelper.convertImmEndHToHex(remaining) + "]";
+                    }
+                	else
+                		res = prefix + ":" + NormHelper.convertImmEndHToHex(remaining);
+                }
             }
             else {
                 if(prefix.contains(" ptr ")) {
@@ -888,13 +905,13 @@ public class NormIDAPro implements Normalizer {
 
 	@Override
 	public HashMap<Long, String> getAddressInstMap() {
-		return this.addressInstMap;
+		return addressInstMap;
 	}
 
 
 	@Override
 	public HashMap<Long, String> getAddressExtFuncMap() {
-		return this.addressExtFuncMap;
+		return addressExtFuncMap;
 	}
 	
 	@Override

@@ -244,11 +244,13 @@ public class SMTHelper {
 
 	public static BitVecExpr get_jump_address(Store store, long rip, String operand, HashMap<Long, String> extFuncInfo) {
 	    int length = Utils.get_sym_length(operand, Config.MEM_ADDR_SIZE);
-        BitVecExpr address = SymMemory.get_effective_address(store, rip, operand, Config.MEM_ADDR_SIZE);
-        if(Helper.is_bit_vec_num(address)) {
-        	long intAddr = Helper.long_of_sym(address);
-        	if(extFuncInfo.containsKey(intAddr)) return address;
-        }
+	    if(operand.endsWith("]")) {
+	        BitVecExpr address = SymMemory.get_effective_address(store, rip, operand, Config.MEM_ADDR_SIZE);
+	        if(Helper.is_bit_vec_num(address)) {
+	        	long intAddr = Helper.long_of_sym(address);
+	        	if(extFuncInfo.containsKey(intAddr)) return address;
+	        }
+	    }
 	    BitVecExpr result = SymEngine.get_sym(store, rip, operand, Utils.INIT_BLOCK_NO, length);
 	    return result;
 	}
