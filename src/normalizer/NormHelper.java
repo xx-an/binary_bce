@@ -22,8 +22,10 @@ public class NormHelper {
 	public static Pattern simple_operator_pat = Pattern.compile("(\\+|-|\\*)");
 	
 	public static HashMap<String, String> BYTE_LEN_REPS;
-	public static HashMap<Character, String> BYTE_REP_PTR_MAP;
 	public static HashMap<Integer, String> BYTELEN_REP_MAP;
+	public static HashMap<String, String> IDA_BYTEREP_PTR_MAP;
+	
+	public static String[] IDAWordTypes = new String[]{" db ", " dq ", " dw ", " dd ", " dt ", " xmmword "};
 	
 	static {
 		BYTE_LEN_REPS = new HashMap<>();
@@ -36,14 +38,16 @@ public class NormHelper {
 		BYTE_LEN_REPS.put("tword", "tbyte");
 		BYTE_LEN_REPS.put("xword", "tbyte");
 		BYTE_LEN_REPS.put("xmmword", "xmmword");
+				
 		
-		BYTE_REP_PTR_MAP = new HashMap<>();
-		BYTE_REP_PTR_MAP.put('q', "qword ptr");
-		BYTE_REP_PTR_MAP.put('d', "dword ptr");
-		BYTE_REP_PTR_MAP.put('l', "dword ptr");
-		BYTE_REP_PTR_MAP.put('w', "word ptr");
-		BYTE_REP_PTR_MAP.put('b', "byte ptr");
-		BYTE_REP_PTR_MAP.put('t', "tbyte ptr");
+		IDA_BYTEREP_PTR_MAP = new HashMap<>();
+		IDA_BYTEREP_PTR_MAP.put("dq", "qword ptr");
+		IDA_BYTEREP_PTR_MAP.put("dd", "dword ptr");
+		IDA_BYTEREP_PTR_MAP.put("dw", "word ptr");
+		IDA_BYTEREP_PTR_MAP.put("db", "byte ptr");
+		IDA_BYTEREP_PTR_MAP.put("dt", "tbyte ptr");
+		IDA_BYTEREP_PTR_MAP.put("xmmword", "xmmword ptr");
+		
 		
 		BYTELEN_REP_MAP = new HashMap<>();
 		BYTELEN_REP_MAP.put(64, "qword ptr");
@@ -131,9 +135,8 @@ public class NormHelper {
 	
 	public static String getIdaPtrRepFromItemType(String itemType) {
 	    String res = null;
-	    if(itemType.equals("dd") || itemType.equals("dq") || itemType.equals("db") || itemType.equals("dw")) {
-	        char suffix = itemType.charAt(itemType.length() - 1);
-	        res = BYTE_REP_PTR_MAP.get(suffix);
+	    if(itemType.equals("dd") || itemType.equals("dq") || itemType.equals("db") || itemType.equals("dw") || itemType.equals("dt") || itemType.equals("xmmword")) {
+	        res = IDA_BYTEREP_PTR_MAP.get(itemType);
 	    }
 	    return res;
 	}

@@ -10,8 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.regex.Pattern;
 
-import com.microsoft.z3.BitVecExpr;
-
 import common.InstElement;
 import common.Triplet;
 import common.Tuple;
@@ -193,7 +191,7 @@ public class NormObjdump implements Normalizer {
 
 
 	@Override
-	public HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap() {
+	public HashMap<Long, ArrayList<Long>> readGlobalJPTEntriesMap() {
 		return null;
 	}
 
@@ -229,19 +227,7 @@ public class NormObjdump implements Normalizer {
 
 
 	@Override
-	public HashMap<String, Long> getSecStartAddr() {
-		return null;
-	}
-
-
-	@Override
-	public HashMap<String, Long> getSecEndAddr() {
-		return null;
-	}
-
-
-	@Override
-	public HashMap<String, Long> getSecBaseAddr() {
+	public HashMap<String, Long> getSecStartAddrMap() {
 		return null;
 	}
 

@@ -152,16 +152,6 @@ public class SymEngine {
 	}
 
 
-	public static BitVecExpr get_jump_table_address(Store store, String arg, BitVecExpr src_sym, BitVecExpr src_val, int length) {
-	    return SymMemory.get_jump_table_address(store, arg, src_sym, src_val, length);
-	}
-
-
-	public static BitVecExpr read_memory_val(Store store, BitVecExpr address, int block_id, int length) {
-	    return SymMemory.read_memory_val(store, address, block_id, length);
-	}
-
-
 	void reset_mem_content_pollute(Store store, int block_id) {
 	    SymHelper.reset_mem_content_pollute(store, block_id);
 	}

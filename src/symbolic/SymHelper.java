@@ -5,7 +5,6 @@ import java.util.Set;
 import com.microsoft.z3.*;
 
 import common.Lib;
-import normalizer.NormFactory;
 import common.Helper;
 import common.Config;
 
@@ -92,21 +91,6 @@ public class SymHelper {
 		store.remove_mem_val(mem_address);
 	}
 
-
-	public static boolean addr_in_rodata_section(long int_addr) {
-	    return NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC);
-	}
-
-
-	public static boolean addr_in_data_section(long int_addr) {
-	    return NormFactory.norm.getSecStartAddr().get(Lib.DATASEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.DATASEC);
-	}
-	
-	public static boolean addr_in_text_section(long int_addr) {
-	    return NormFactory.norm.getSecStartAddr().get(Lib.TEXTSEC) <= int_addr && int_addr < NormFactory.norm.getSecEndAddr().get(Lib.TEXTSEC);
-	}
-
-
 	public static boolean addr_in_heap(long int_addr) {
 	    return Config.MIN_HEAP_ADDR <= int_addr && int_addr < Config.MAX_HEAP_ADDR;
 	}
@@ -132,16 +116,5 @@ public class SymHelper {
 	    }
 	    return overlapping;
 	}
-
-	    
-	boolean check_buffer_overflow(Store store, BitVecExpr address, int length) {
-	    boolean overflow = false;
-	    int byte_len = length / 8;
-	    long int_address = Helper.long_of_sym(address);
-//	    Long stack_top = top_stack_addr(store);
-	    if(addr_in_data_section(int_address) || addr_in_heap(int_address)) {
-	        overflow = check_mem_addr_overlapping(store, address, byte_len);
-	    }
-	    return overflow;
-	}
+	
 }

@@ -149,6 +149,15 @@ public class Utils {
 		return res;
 	}
 	
+	
+	public static boolean contains(String arg, String[] regs) {
+		boolean res = false;
+		for(String reg : regs) {
+			res = res || (arg.contains(reg));
+		}
+		return res;
+	}
+	
 
 	void make_dir(String path) {
 	    File f = new File(path);
@@ -180,13 +189,6 @@ public class Utils {
 	    return res;
 	}
 	
-	boolean check_executable_file(String file_path) {
-		String cmd = "file " + file_path + " | grep \"ELF 64-bit LSB shared object\"";
-		String out = execute_command(cmd);
-		if(out.length() != 0) return true;
-		else
-			return false;
-	}
 	
 	public static String get_file_name(String path) {
 		String file_name = rsplit(path, "/")[1].split(".", 2)[0];
@@ -268,12 +270,6 @@ public class Utils {
 		}
 	}
 
-
-	void convert_dot_to_png(String name) {
-		String cmd = "dot -Tpng " + name + ".dot > " + name + ".png";
-		execute_command(cmd);
-	}
-	
 	
 	public static String bytes_to_hex(ArrayList<Byte> bytes) {
 		StringBuilder sb = new StringBuilder();
@@ -445,13 +441,12 @@ public class Utils {
 	}
 
 	
-	public static ArrayList<String> get_executable_files(String fileDir) {
-		String cmd = "ls -d -1 \"" + fileDir + "/\"* | xargs file | grep -e \"ELF 64-bit LSB shared object\" -e \" PE32 executable \"";
+	public static ArrayList<String> getASMFiles(String fileDir, String disasmType) {
+		String cmd = "ls -d -1 \"" + fileDir + "/\"*." + disasmType;
 		String out = execute_command(cmd);
 		String[] outSplit = out.split("\n");
 		ArrayList<String> files = new ArrayList<String>();
-		for(String fileInfo : outSplit) {
-			String filePath = fileInfo.split(":", 2)[0].strip();
+		for(String filePath : outSplit) {
 	        if(filePath.strip() != null)
 	            files.add(filePath);
 		}

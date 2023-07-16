@@ -76,15 +76,15 @@ public class CMC {
 	
 	
 	static void cmc_batch(String execDir, String disasmDir, String disasmType, boolean verbose) throws Exception {
-	    ArrayList<String> execFiles = Utils.get_executable_files(execDir);
-	    Collections.sort(execFiles);
-	    for(String execPath : execFiles) {
-	        String fileName = Utils.get_file_name(execPath);
+	    ArrayList<String> asmFiles = Utils.getASMFiles(disasmDir, disasmType);
+	    Collections.sort(asmFiles);
+	    for(String asmPath : asmFiles) {
+	        String fileName = Utils.get_file_name(asmPath);
 	        // if file_name in ["cp.exe", "cut.exe", "dir.exe", "fmt.exe", "grmdir.exe", "gsort.exe", "id.exe", "ls.exe", "md5sum.exe", "mv.exe", "nl.exe", "pathchk.exe", "readlink.exe", "rmdir.exe", "sha1sum.exe", "shred.exe", "sort.exe", "split.exe", "su.exe", "uname.exe", "vdir.exe", "who.exe"]:
 	        System.out.println(fileName);
-	        String disasmPath = Paths.get(disasmDir, fileName + "." + disasmType).toString();
+	        String execPath = Paths.get(execDir, Utils.rsplit(fileName, "\\.")[0]).toString();
 	        try {
-	            cmc_main(execPath, disasmPath, disasmType, verbose);
+	            cmc_main(execPath, asmPath, disasmType, verbose);
 	            Thread.sleep(15);
 	        }
 	        catch(InterruptedException e) {
@@ -133,7 +133,7 @@ public class CMC {
                 .desc("Benchmark library")
                 .build();
         
-        Option exeDirOpt = Option.builder("e").longOpt("executable_dir")
+        Option execDirOpt = Option.builder("e").longOpt("exec_dir")
                 .argName("exec_dir")
                 .hasArg()
                 .desc("Executable file library")
@@ -156,21 +156,21 @@ public class CMC {
         options.addOption(verboseOpt);
         options.addOption(disasmTypeOpt);
         options.addOption(logDirOpt);
-        options.addOption(exeDirOpt);
+        options.addOption(execDirOpt);
         options.addOption(fileNameOpt);
         options.addOption(cmcBoundOpt);
         
-        
         CommandLineParser parser = new DefaultParser();
         CommandLine line = parser.parse(options, args);
-	    
-	    Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
+        
+        Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name", "basename.exe");
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
 	    boolean verbose = (line.hasOption("verbose")) ? true : false;
+	    
 	    if(batch) {
 	    	cmc_batch(execDir, logDir, disasmType, verbose);
 	    }

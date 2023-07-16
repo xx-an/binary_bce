@@ -12,6 +12,7 @@ import com.microsoft.z3.BoolExpr;
 import block.Block;
 import block.Constraint;
 import block.Store;
+import common.Config;
 import common.Helper;
 import common.InstElement;
 import common.Lib;
@@ -45,11 +46,11 @@ public class ControlFlow {
     String disasmType;
     Block dummyBlock;
     public int[] cmcExecInfo;
-    final long startAddress;
+    final Long startAddress;
     final Long mainAddress;
     HashMap<Long, Long> retCallAddressMap;
-    HashMap<Long, Triplet<String, String, ArrayList<BitVecExpr>>> addressJPTEntriesMap;
-    HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap;
+    HashMap<Long, Triplet<String, String, ArrayList<Long>>> addressJPTEntriesMap;
+    HashMap<Long, ArrayList<Long>> globalJPTEntriesMap;
     HashMap<String, ArrayList<String>> extLibAssumptions;
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
 
@@ -83,9 +84,15 @@ public class ControlFlow {
         Constraint constraint = null;
         SymHelper.cnt_init();
         CFHelper.cfg_init_parameter(store, symTable);
-        CFHelper.start_init(store, startAddress, Utils.INIT_BLOCK_NO);
+        if(startAddress == null)
+        	CFHelper.start_init(store, mainAddress, Utils.INIT_BLOCK_NO);
+        else
+        	CFHelper.start_init(store, startAddress, Utils.INIT_BLOCK_NO);
         constraint = CFHelper.handlePreConstraint(store, store.rip, constraint, Utils.INIT_BLOCK_NO, gPreConstraint, extLibAssumptions);
-        build_cfg(startAddress, store, constraint);
+        if(startAddress == null)
+        	build_cfg(mainAddress, store, constraint);
+        else
+        	build_cfg(startAddress, store, constraint);
         pp_unreachable_instrs();
     }
 
@@ -288,23 +295,23 @@ public class ControlFlow {
     }
     
     
-    void reconstructNewBranches(Block blk, String symName, String jptIdxRegName, ArrayList<BitVecExpr> targetAddrs) {
+    void reconstructNewBranches(Block blk, String symName, String jptIdxRegName, ArrayList<Long> targetAddrs) {
         int blkID = blk.block_id;
     	Long address = blk.address;
         String inst = blk.inst;
         Store store = blk.store;
         long rip = store.rip;
         Constraint constraint = blk.constraint;
-        Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> unifiedJPTInfo = CFHelper.setNewJPTConstraint(store, rip, constraint, blkID, jptIdxRegName, targetAddrs);
+        Tuple<ArrayList<Constraint>, ArrayList<Long>> unifiedJPTInfo = CFHelper.setNewJPTConstraint(store, rip, constraint, blkID, jptIdxRegName, targetAddrs);
         ArrayList<Constraint> constraintList = unifiedJPTInfo.x;
-    	ArrayList<BitVecExpr> unifiedTargetAddrs = unifiedJPTInfo.y;
+    	ArrayList<Long> unifiedTargetAddrs = unifiedJPTInfo.y;
     	int length = unifiedTargetAddrs.size();
     	for(int idx = 0; idx < length; idx++) {
-    		BitVecExpr tAddr = unifiedTargetAddrs.get(idx);
+    		Long tAddr = unifiedTargetAddrs.get(idx);
     		constraint = constraintList.get(idx);
             Store newStore = new Store(store, rip);
             int block_id = addNewBlock(blk, address, inst, newStore, constraint, false);
-            SymEngine.set_sym(newStore, rip, symName, tAddr, block_id);
+            SymEngine.set_sym(newStore, rip, symName, Helper.gen_bv_num(tAddr, Config.MEM_ADDR_SIZE), block_id);
             newStore.g_NeedTraceBack = false;
             newStore.g_PointerRelatedError = null;
         }
@@ -315,10 +322,10 @@ public class ControlFlow {
         if(inst.startsWith("jmp ")) {
         	Lib.TRACE_BACK_RET_TYPE res = null;
             if(addressJPTEntriesMap.containsKey(block.address)) {
-            	Triplet<String, String, ArrayList<BitVecExpr>> addrJTEntry = addressJPTEntriesMap.get(block.address);
+            	Triplet<String, String, ArrayList<Long>> addrJTEntry = addressJPTEntriesMap.get(block.address);
             	String instDest = addrJTEntry.x;
             	String jptIdxRegName = addrJTEntry.y;
-            	ArrayList<BitVecExpr> targetAddrs = addrJTEntry.z;
+            	ArrayList<Long> targetAddrs = addrJTEntry.z;
                 reconstructNewBranches(block, instDest, jptIdxRegName, targetAddrs);
                 res = Lib.TRACE_BACK_RET_TYPE.JT_SUCCEED;
             }
@@ -332,8 +339,6 @@ public class ControlFlow {
                 handle_cmc_path_termination(block.store);
                 Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address));
                 Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
-//                Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
-                // sys.exit("Can!resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
             }
         }
         else {
@@ -431,7 +436,7 @@ public class ControlFlow {
     }
 
 
-    // example) { mov eax,DWORD PTR [rip+0x205a28]        // <optind@@GLIBC_2.2.5>
+    // example: mov eax,DWORD PTR [rip+0x205a28]        // <optind@@GLIBC_2.2.5>
     Constraint _sym_src_from_mov_with_ext_env(Block blk, Constraint constraint) {
     	Store store = blk.store;
     	long rip = store.rip;
@@ -493,9 +498,9 @@ public class ControlFlow {
         Integer cjmpBlkIdx = jtUpperboundInfo.x, jtUpperbound = jtUpperboundInfo.y;
         if(jtUpperbound == null) 
         	return TRACE_BACK_RET_TYPE.JT_NO_UPPERBOUND;
-        Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = CFHelper.readJPTTargetAddrs(traceList, cjmpBlkIdx, globalJPTEntriesMap);
+        Tuple<String, ArrayList<Long>> jptTargetInfo = CFHelper.readJPTTargetAddrs(traceList, cjmpBlkIdx, globalJPTEntriesMap);
         String jptIdxRegName = jptTargetInfo.x;
-        ArrayList<BitVecExpr> targetAddrs = jptTargetInfo.y;
+        ArrayList<Long> targetAddrs = jptTargetInfo.y;
         if(targetAddrs == null) 
         	return TRACE_BACK_RET_TYPE.JT_NOT_CORRECT_ASSIGN_INST;
         if(targetAddrs.size() != jtUpperbound)
@@ -507,8 +512,8 @@ public class ControlFlow {
 	        String dest = instSplit[1].strip();
 	        ArrayList<String> addrsInfo = new ArrayList<>();
 	        String targetAddr = "";
-	        for(BitVecExpr tAddr : targetAddrs) {
-	        	targetAddr = Utils.num_to_hex_string(Helper.long_of_sym(tAddr));
+	        for(Long tAddr : targetAddrs) {
+	        	targetAddr = Long.toHexString(tAddr);
 	        	if(!addrsInfo.contains(targetAddr))
 	        		addrsInfo.add(targetAddr);
 	        }

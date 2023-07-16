@@ -13,7 +13,7 @@ import java.util.function.Function;
 import com.microsoft.z3.*;
 import com.microsoft.z3.enumerations.Z3_sort_kind;
 
-import normalizer.NormFactory;
+import binary.BinaryContent;
 
 public class Helper {
 	public static int cnt = 0;
@@ -563,6 +563,43 @@ public class Helper {
 	        res = false;
 	    return res;
 	}
+	
+	
+	public static boolean addrAtRODataSection(long addr) {
+		boolean result = false;
+		for(String secName : BinaryContent.secStartAddrMap.keySet()) {
+			if(!Lib.RWDATA_SECTIONS.contains(secName)) {
+				result = BinaryContent.secStartAddrMap.get(secName) <= addr && addr < BinaryContent.secEndAddrMap.get(secName);
+				if(result) break;
+			}
+		}
+		return result;
+	}
+
+	
+	public static boolean addrAtDataSection(long addr) {
+		boolean result = false;
+		for(String secName : Lib.RWDATA_SECTIONS) {
+			if(BinaryContent.secStartAddrMap.containsKey(secName)) {
+				result = BinaryContent.secStartAddrMap.get(secName) <= addr && addr < BinaryContent.secEndAddrMap.get(secName);
+				if(result) break;
+			}
+		}
+		return result;
+	}
+
+	public static String getAddrSecName(long addr) {
+		String result = null;
+		boolean tmp = false;
+		for(String secName : BinaryContent.secStartAddrMap.keySet()) {
+			tmp = BinaryContent.secStartAddrMap.get(secName) <= addr && addr < BinaryContent.secEndAddrMap.get(secName);
+			if(tmp) {
+				result = secName;
+				break;
+			}
+		}
+		return result;
+	}
 
 
 	public static BitVecExpr merge_sym(BitVecExpr lhs, BitVecExpr rhs, HashMap<Long, String> address_inst_map) {
@@ -572,10 +609,10 @@ public class Helper {
 	        long rhs_num = ((BitVecNum) rhs).getLong();
 	        if(!address_inst_map.containsKey(rhs_num)) {
 	            if(!bvnum_eq(lhs, rhs)) {
-	                if(lhs_num >= NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) && lhs_num < NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC))
+	            	if(addrAtRODataSection(lhs_num))
 	                    res = gen_sym(rhs.getSortSize());
-	                else if(rhs_num < NormFactory.norm.getSecStartAddr().get(Lib.RODATASEC) || rhs_num >= NormFactory.norm.getSecEndAddr().get(Lib.RODATASEC))
-	                    res = gen_sym(rhs.getSortSize());
+	            	else if(!addrAtRODataSection(rhs_num))
+	            		res = gen_sym(rhs.getSortSize());
 	            }
 	        }
 	    }

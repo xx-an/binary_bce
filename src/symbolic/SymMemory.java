@@ -15,7 +15,6 @@ import common.Config;
 import common.Helper;
 import common.Lib;
 import common.Utils;
-import normalizer.NormFactory;
 import normalizer.NormHelper;
 
 public class SymMemory {
@@ -309,32 +308,22 @@ public class SymMemory {
 	}
 
 
-	public static BitVecExpr read_memory_val(Store store, BitVecExpr address, int block_id, int length) {
+	public static BitVecExpr readMemContent(Store store, BitVecExpr address, int block_id, int length) {
 		BitVecExpr res = null;
 	    if(Helper.is_bit_vec_num(address)) {
 	    	Long val = null;
-	        long int_address = Helper.long_of_sym(address);
-	        if(SymHelper.addr_in_rodata_section(int_address)) {
-	            long rodata_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.RODATASEC);
-	            val = BinaryContent.read_bytes(int_address - rodata_base_addr, length / 8);
+	        long intAddr = Helper.long_of_sym(address);
+	        String secName = Helper.getAddrSecName(intAddr);
+	        if(secName != null) {
+	            long baseAddr = BinaryContent.secBaseAddrMap.get(secName);
+	            val = BinaryContent.read_bytes(intAddr - baseAddr, length / 8);
 	        }
-	        else if(SymHelper.addr_in_data_section(int_address)) {
-	            long data_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.DATASEC);
-	            val = BinaryContent.read_bytes(int_address - data_base_addr, length / 8);
-	        }
-	        else if(SymHelper.addr_in_text_section(int_address)) {
-	            long text_base_addr = NormFactory.norm.getSecBaseAddr().get(Lib.TEXTSEC);
-	            val = BinaryContent.read_bytes(int_address - text_base_addr, length / 8);
-	        }
-//	        else if(NormFactory.norm.getAddressExtFuncMap().containsKey(int_address)) {
-//	        	
-//	        }
 	        else
-	            read_mem_error_report(store, int_address);
+	            read_mem_error_report(store, intAddr);
 	        if(val != null)
 	        	res = Helper.gen_bv_num(val, length);
 	        else {
-	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.num_to_hex_string(int_address), length);
+	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.num_to_hex_string(intAddr), length);
 	        }
 	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }
@@ -372,7 +361,7 @@ public class SymMemory {
 //	        System.out.println("Effective addr " + address.toString());
 //	        System.out.println(res);
 	        if(res == null)
-	            res = read_memory_val(store, address, block_id, length);
+	            res = readMemContent(store, address, block_id, length);
 	    }
 	    return res;
 	}
@@ -384,9 +373,9 @@ public class SymMemory {
 	    if(store.containsKey(address))
 	    	res = store.get_block_id(address);
 	    else {
-	        if(SymHelper.addr_in_rodata_section(intAddr))
+	        if(Helper.addrAtRODataSection(intAddr))
 	            res = Utils.INIT_BLOCK_NO;
-	        else if(SymHelper.addr_in_data_section(intAddr))
+	        else if(Helper.addrAtDataSection(intAddr))
 	            res = store.g_MemPolluted;
 	    }
 	    return res;

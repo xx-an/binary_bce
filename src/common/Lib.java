@@ -29,8 +29,13 @@ public class Lib {
 	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
 	
-	public static String[] CODE_SEGMENTS = new String[] {".plt.got", ".plt", ".text"};
-	public static String[] DATA_SEGMENTS = new String[] {".rodata", ".idata", ".data", ".bss"};
+	public static String[] CODE_SECTIONS = new String[] {".plt.got", ".plt", ".text"};
+	public static String[] DATA_SECTIONS = new String[] {".rodata", ".idata", ".data", ".bss", ".got", ".eh_frame"};
+	public static String[] RODATA_SECTIONS = new String[] {".plt.got", ".plt", ".text", ".rodata", ".idata", ".got", ".eh_frame"};
+	public static HashSet<String> RWDATA_SECTIONS = new HashSet<>(Arrays.asList(".data", ".bss"));
+	
+	public static String[] SECTIONS = new String[] {".plt.got", ".plt", ".text", ".rodata", ".idata", ".data", ".bss", ".got", "extern", ".eh_frame"};
+	
 	
 	public static final String TEXTSEC = ".text";
 	public static final String DATASEC = ".data";

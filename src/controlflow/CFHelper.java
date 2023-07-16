@@ -89,8 +89,8 @@ public class CFHelper {
 	    return next_address;
 	}
 	
-	static Tuple<String, ArrayList<BitVecExpr>> readJPTTargets(String instArg, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
-		ArrayList<BitVecExpr> targetAddrs = null;
+	static Tuple<String, ArrayList<Long>> readJPTTargets(String instArg, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
+		ArrayList<Long> targetAddrs = null;
 		String jptIdxRegName = "";
 		if(instArg.endsWith("]") && !(instArg.contains("rip")) && instArg.contains("*") && (instArg.contains("+"))) {
 			String arg = Utils.extract_content(instArg, "[");
@@ -110,8 +110,8 @@ public class CFHelper {
 	    return new Tuple<>(jptIdxRegName, targetAddrs);
 	}
 	
-	static Tuple<String, ArrayList<BitVecExpr>> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<BitVecExpr>> globalJPTEntriesMap) {
-		ArrayList<BitVecExpr> targetAddrs = null;
+	static Tuple<String, ArrayList<Long>> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
+		ArrayList<Long> targetAddrs = null;
 		String jptIdxRegName = "";
 		int aIdx = 0;
 		for(aIdx = 0; aIdx < idx; aIdx++) {
@@ -124,14 +124,14 @@ public class CFHelper {
 			        String instArg0 = instArgs[0].strip();
 			        String instArg1 = instArgs[1].strip();
 			        if(Lib.REG_NAMES.contains(instArg0)) {
-			        	Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = readJPTTargets(instArg1, globalJPTEntriesMap);
+			        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTTargets(instArg1, globalJPTEntriesMap);
 			        	jptIdxRegName = jptTargetInfo.x;
 			        	targetAddrs = jptTargetInfo.y;
 			        }
 			    }
 	        }
 	        else if(inst.startsWith("jmp")) {
-	        	Tuple<String, ArrayList<BitVecExpr>> jptTargetInfo = readJPTTargets(instArg, globalJPTEntriesMap);
+	        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTTargets(instArg, globalJPTEntriesMap);
 	        	jptIdxRegName = jptTargetInfo.x;
 	        	targetAddrs = jptTargetInfo.y;
 	        }
@@ -151,15 +151,15 @@ public class CFHelper {
 	    * @param  targetAddrs		a list that contains all the jump table entries
 	    * @return			new constrains and unified jump table entries
 	    */
-	static Tuple<ArrayList<Constraint>, ArrayList<BitVecExpr>> setNewJPTConstraint(Store store, long rip, Constraint constraint, int blkID, String jptIdxRegName, ArrayList<BitVecExpr> targetAddrs) {
+	static Tuple<ArrayList<Constraint>, ArrayList<Long>> setNewJPTConstraint(Store store, long rip, Constraint constraint, int blkID, String jptIdxRegName, ArrayList<Long> targetAddrs) {
     	ArrayList<Constraint> constraintList = new ArrayList<>();
-    	ArrayList<BitVecExpr> unifiedTargetAddrs = new ArrayList<BitVecExpr>();
-    	HashMap<BitVecExpr, Integer> tAddrFistIdxMap = new HashMap<BitVecExpr, Integer>();
+    	ArrayList<Long> unifiedTargetAddrs = new ArrayList<>();
+    	HashMap<Long, Integer> tAddrFistIdxMap = new HashMap<>();
     	BitVecExpr symIdxReg = SymEngine.get_sym(store, rip, jptIdxRegName, blkID);
     	int jptUpperbound = targetAddrs.size();
     	int index = 0;
     	for(int idx = 0; idx < jptUpperbound; idx++) {
-    		BitVecExpr tAddr = targetAddrs.get(idx);
+    		Long tAddr = targetAddrs.get(idx);
     		if(!unifiedTargetAddrs.contains(tAddr)) {
     			unifiedTargetAddrs.add(tAddr);
     			BoolExpr predicate = Helper.is_equal(symIdxReg, idx);

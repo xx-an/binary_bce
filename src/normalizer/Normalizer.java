@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-import com.microsoft.z3.BitVecExpr;
-
 public interface Normalizer {
 	
 	void readASMInfo() throws FileNotFoundException;
@@ -17,7 +15,7 @@ public interface Normalizer {
 	
 	HashMap<Long, String> getAddressExtFuncMap();
 	
-	HashMap<Long, ArrayList<BitVecExpr>> readGlobalJPTEntriesMap();
+	HashMap<Long, ArrayList<Long>> readGlobalJPTEntriesMap();
 	
 	HashSet<Long> getFuncEndAddrSet();
 	
@@ -25,13 +23,9 @@ public interface Normalizer {
 	
 	Long getEntryAddress();
 	
+	HashMap<String, Long> getSecStartAddrMap();
+	
 	HashMap<Long, String> getAddressSymTbl();
 	
 	HashMap<String, Long> getSymTbl();
-	
-	HashMap<String, Long> getSecStartAddr();
-	
-	HashMap<String, Long> getSecEndAddr();
-	
-	HashMap<String, Long> getSecBaseAddr();
 }
