@@ -20,8 +20,8 @@ import symbolic.SymHelper;
 public class SemanticsTB {
 
 	static long rip = 0;
-	static Boolean haltPoint = false;
-	static HashMap<Long, String> addressExtFuncMap = null;
+	static int haltPoint = -1;
+	static HashMap<Long, String> addrExtFuncMap = null;
 	static HashMap<String, Integer> memLenMap = new HashMap<String, Integer>();
 	static HashMap<String, Function<Triplet<Store, ArrayList<String>, ArrayList<String>>, ArrayList<String>>> INSTRUCTION_SEMANTICS_MAP;
 	
@@ -63,8 +63,8 @@ public class SemanticsTB {
 	static Boolean addrPointsToExtLib(BitVecExpr addr) {
 	    Boolean res = false;
 	    if(Helper.is_bit_vec_num(addr)) {
-    		Long int_addr = Helper.long_of_sym(addr);
-    		if(addressExtFuncMap.containsKey(int_addr)) {
+    		Long intAddr = Helper.long_of_sym(addr);
+    		if(addrExtFuncMap.containsKey(intAddr)) {
 	    		res = true;
 	    	}
 	    }
@@ -74,9 +74,9 @@ public class SemanticsTB {
 	
 	static ArrayList<String> sym_bin_on_src(Store store, ArrayList<String> symNames, String src) {
 		ArrayList<String> srcNames = symNames;
-	    int src_len = Utils.get_sym_length(src);
-	    BitVecExpr sym_src = SymEngine.get_sym(store, rip, src, Utils.TB_DEFAULT_BLOCK_NO, src_len);
-	    if(!Helper.is_bit_vec_num(sym_src)) {
+	    int src_len = Utils.getSymLength(src);
+	    BitVecExpr symSrc = SymEngine.get_sym(store, rip, src, Utils.TB_DEFAULT_BLOCK_NO, src_len);
+	    if(!Helper.is_bit_vec_num(symSrc)) {
 	        if(src.contains(":")) {
 	            String[] src_split = src.split(":"); 
 	            SMTHelper.addRegSrcToSyms(store, symNames, src_split[0]);
@@ -84,37 +84,37 @@ public class SemanticsTB {
 	        }
 	        else if(src.endsWith("]")) {
 	        	Tuple<ArrayList<String>, Boolean> bottom_source = SMTHelper.get_bottom_source(src, store, rip, memLenMap);
-	        	ArrayList<String> new_srcs = bottom_source.x;
-	        	boolean is_reg_bottom = bottom_source.y;
-	        	if(is_reg_bottom) {
-	                srcNames.addAll(new_srcs);
+	        	ArrayList<String> newSrcs = bottom_source.x;
+	        	boolean bottomSrcIsReg = bottom_source.y;
+	        	if(bottomSrcIsReg) {
+	                srcNames.addAll(newSrcs);
 	            }
 	            else {
 	                BitVecExpr addr = SymEngine.get_effective_address(store, rip, src);
 	                if(addrPointsToExtLib(addr)) {
-	                	haltPoint = true;
+	                	haltPoint = 0;
 	                }
 	                srcNames.add(addr.toString());
-	                int length = Utils.get_sym_length(src);
+	                int length = Utils.getSymLength(src);
 	                memLenMap.put(addr.toString(), length);
 	            }
 	        }
 	        else {
-	            srcNames.add(SymHelper.get_root_reg(src));
+	            srcNames.add(SymHelper.getRootReg(src));
 	        }
 	    }
 	    else {
 	        if(src.contains(":")) {
 	        	String[] src_split = src.split(":"); 
-	            SMTHelper.remove_reg_from_sym_srcs(src_split[0], srcNames);
-	            SMTHelper.remove_reg_from_sym_srcs(src_split[1], srcNames);
+	            SMTHelper.rmRegFromSymSrcs(src_split[0], srcNames);
+	            SMTHelper.rmRegFromSymSrcs(src_split[1], srcNames);
 	        }
 	        else if(src.endsWith("]")) {
-	        	ArrayList<String> new_srcs = SMTHelper.get_mem_reg_source(src);
-	            srcNames.removeAll(new_srcs);
+	        	ArrayList<String> newSrcs = SMTHelper.getMemRegSrcs(src);
+	            srcNames.removeAll(newSrcs);
 	        }
 	        else {
-	            SMTHelper.remove_reg_from_sym_srcs(src, srcNames);
+	            SMTHelper.rmRegFromSymSrcs(src, srcNames);
 	        }
 	    }
 	    return srcNames;
@@ -133,7 +133,7 @@ public class SemanticsTB {
 	
 	static ArrayList<String> sym_bin_oprt(Store store, ArrayList<String> symNames, String dest, String src1, String src2) {
 		ArrayList<String> srcNames = symNames;
-	    if(SMTHelper.check_source_is_sym(store, rip, dest, symNames)) {
+	    if(SMTHelper.srcIsSymbolic(store, rip, dest, symNames)) {
 	        if(src2 == null) 
 	        	src2 = dest;
 	        srcNames = sym_bin_on_src(store, symNames, src1);
@@ -152,23 +152,23 @@ public class SemanticsTB {
 	
 	static ArrayList<String> mov(Store store, ArrayList<String> symNames, String dest, String src) {
 		ArrayList<String> srcNames = symNames;
-	    if(SMTHelper.check_source_is_sym(store, rip, dest, symNames)) {
+	    if(SMTHelper.srcIsSymbolic(store, rip, dest, symNames)) {
 	        if(Lib.REG_NAMES.contains(src)) {
-	        	String dest_reg = null;
+	        	String destInfo = null;
 	            if(dest.endsWith("]")) {
 	                BitVecExpr addr = SymEngine.get_effective_address(store, rip, dest);
-	                dest_reg = addr.toString();
+	                destInfo = addr.toString();
 	            }
 	            else {
-	                dest_reg = SymHelper.get_root_reg(dest);
+	            	destInfo = SymHelper.getRootReg(dest);
 	            }
-	            if(srcNames.contains(dest_reg)) {
-	                srcNames.remove(dest_reg);
+	            if(srcNames.contains(destInfo)) {
+	                srcNames.remove(destInfo);
 	            }
-	            srcNames.add(SymHelper.get_root_reg(src));
+	            srcNames.add(SymHelper.getRootReg(src));
 	        }
 	        else if(src.endsWith("]")) {
-	            SMTHelper.remove_reg_from_sym_srcs(dest, srcNames);
+	            SMTHelper.rmRegFromSymSrcs(dest, srcNames);
 	            Tuple<ArrayList<String>, Boolean> bottom_source = SMTHelper.get_bottom_source(src, store, rip, memLenMap);
 	        	ArrayList<String> new_srcs = bottom_source.x;
 	        	boolean is_reg_bottom = bottom_source.y;
@@ -178,16 +178,16 @@ public class SemanticsTB {
 	            else {
 	                BitVecExpr addr = SymEngine.get_effective_address(store, rip, src);
 	                if(addrPointsToExtLib(addr)) {
-	                	haltPoint = true;
+	                	haltPoint = 0;
 	                }
 	                srcNames.add(addr.toString());
-	                int length = Utils.get_sym_length(src);
+	                int length = Utils.getSymLength(src);
 	                memLenMap.put(addr.toString(), length);
 	            }
 	        }
 	    }
 	    else {
-	        haltPoint = true;
+	        haltPoint = 1;
 	    }
 	    return srcNames;
 	}
@@ -293,8 +293,8 @@ public class SemanticsTB {
 	
 	static ArrayList<String> pop(Store store, ArrayList<String> symNames, BitVecExpr symSP, String dest) {
 		ArrayList<String> srcNames = symNames;
-		if(SMTHelper.check_source_is_sym(store, rip, dest, symNames)) {
-		    SMTHelper.remove_reg_from_sym_srcs(dest, srcNames);
+		if(SMTHelper.srcIsSymbolic(store, rip, dest, symNames)) {
+		    SMTHelper.rmRegFromSymSrcs(dest, srcNames);
 		    String symSPStr = symSP.toString();
 		    if(!srcNames.contains(symSPStr)) {
 			    srcNames.add(symSP.toString());
@@ -314,8 +314,8 @@ public class SemanticsTB {
 	
 	static ArrayList<String> xchg(Store store, ArrayList<String> symNames, String dest, String src) {
 		ArrayList<String> srcNames = symNames;
-	    if(SMTHelper.check_source_is_sym(store, rip, dest, symNames)) {
-	    	SMTHelper.add_new_reg_src(srcNames, dest, src);
+	    if(SMTHelper.srcIsSymbolic(store, rip, dest, symNames)) {
+	    	SMTHelper.addNewRegSrc(srcNames, dest, src);
 	    }
 	    return srcNames;
 	}
@@ -329,7 +329,7 @@ public class SemanticsTB {
 	
 	static ArrayList<String> mul(Store store, ArrayList<String> symNames, String src) {
 		ArrayList<String> srcNames = symNames;
-	    int bits_len = Utils.get_sym_length(src);
+	    int bits_len = Utils.getSymLength(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
 	    String a_reg = reg_info.x;
 	    String dest = reg_info.z;
@@ -373,7 +373,7 @@ public class SemanticsTB {
 	
 	
 	static ArrayList<String> div(Store store, ArrayList<String> symNames, String src) {
-	    int bits_len = Utils.get_sym_length(src);
+	    int bits_len = Utils.getSymLength(src);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
 	    String qreg = reg_info.x;
 	    String rreg = reg_info.y;
@@ -397,7 +397,7 @@ public class SemanticsTB {
 	
 	static ArrayList<String> cmpxchg(Store store, ArrayList<String> symNames, String dest, String src) {
 		ArrayList<String> srcNames = symNames;
-	    int bits_len = Utils.get_sym_length(dest);
+	    int bits_len = Utils.getSymLength(dest);
 	    Triplet<String,String,String> reg_info = Lib.AUX_REG_INFO.get(bits_len);
 	    String a_reg = reg_info.x;
 	    BitVecExpr sym_lhs = SymEngine.get_sym(store, rip, a_reg, Utils.TB_DEFAULT_BLOCK_NO, bits_len);
@@ -428,37 +428,35 @@ public class SemanticsTB {
 		return sym_bin_on_src(store, symNames, dest);
 	}
 	
-	static Tuple<ArrayList<String>, ArrayList<String>> jmp_op(ArrayList<String> symNames) {
-		ArrayList<String> sym_in_stack = new ArrayList<String>();
-		ArrayList<String> rest = new ArrayList<String>();
+	static ArrayList<String> jmp_op(ArrayList<String> symNames) {
+		ArrayList<String> symsNotAtStack = new ArrayList<String>();
 	    for(String sym : symNames) {
-	        boolean res = SMTHelper.check_sym_is_stack_addr(sym);
-	        if(res) {
-	            sym_in_stack.add(sym);
-	        }
-	        else {
-	            rest.add(sym);
+	        if(!SMTHelper.isSymAddrAtStack(sym)) {
+	        	symsNotAtStack.add(sym);
 	        }
 	    }
-	    return new Tuple<>(sym_in_stack, rest);
+	    return symsNotAtStack;
 	}
 	
 	
-	static Boolean call(Store store, ArrayList<String> symNames) {
-		Tuple<ArrayList<String>, ArrayList<String>> jmp_op_res = jmp_op(symNames);
-//		ArrayList<String> sym_in_stack = jmp_op_res.x;
-		ArrayList<String> sym_not_in_stack = jmp_op_res.y;
-	    haltPoint = true;
-	    for(String sym_name : sym_not_in_stack) {
+	static int jumpToExtFunc(Store store, ArrayList<String> symNames) {
+		ArrayList<String> symsNotAtStack = jmp_op(symNames);
+	    haltPoint = 0;
+	    for(String symName : symsNotAtStack) {
 	        int length = Config.MEM_ADDR_SIZE;
-	        if(!Lib.REG_NAMES.contains(sym_name)) {
-	            length = memLenMap.get(sym_name);
+	        if(!Lib.REG_NAMES.contains(symName)) {
+	            length = memLenMap.get(symName);
 	        }
-	        if(Utils.imm_start_pat.matcher(sym_name).matches()) {
-	            String s_name = "[" + sym_name + "]";
-	            BitVecExpr val = SymEngine.get_sym(store, rip, s_name, Utils.TB_DEFAULT_BLOCK_NO, length);
+	        if(Utils.imm_start_pat.matcher(symName).matches()) {
+	            String sName = "[" + symName + "]";
+	            BitVecExpr val = SymEngine.get_sym(store, rip, sName, Utils.TB_DEFAULT_BLOCK_NO, length);
 	            if(!Helper.is_bit_vec_num(val)) {
-	                haltPoint = false;
+	                haltPoint = -1;
+	            }
+	        }
+	        else if(Lib.REG_NAMES.contains(symName)) {
+	            if(!Lib.CALLEE_NOT_SAVED_REGS.get(Config.MEM_ADDR_SIZE).contains(symName)) {
+	                haltPoint = -1;
 	            }
 	        }
 	    }
@@ -466,36 +464,10 @@ public class SemanticsTB {
 	}
 	
 	
-	static boolean jmp_to_external_func(Store store, ArrayList<String> symNames) {
-		Tuple<ArrayList<String>, ArrayList<String>> jmp_op_res = jmp_op(symNames);
-		ArrayList<String> sym_not_in_stack = jmp_op_res.y;
-	    haltPoint = true;
-	    for(String sym_name : sym_not_in_stack) {
-	        int length = Config.MEM_ADDR_SIZE;
-	        if(!Lib.REG_NAMES.contains(sym_name)) {
-	            length = memLenMap.get(sym_name);
-	        }
-	        if(Utils.imm_start_pat.matcher(sym_name).matches()) {
-	            String s_name = "[" + sym_name + "]";
-	            BitVecExpr val = SymEngine.get_sym(store, rip, s_name, Utils.TB_DEFAULT_BLOCK_NO, length);
-	            if(!Helper.is_bit_vec_num(val)) {
-	                haltPoint = false;
-	            }
-	        }
-	        else if(Lib.REG_NAMES.contains(sym_name)) {
-	            if(!Lib.CALLEE_NOT_SAVED_REGS.get(Config.MEM_ADDR_SIZE).contains(sym_name)) {
-	                haltPoint = false;
-	            }
-	        }
-	    }
-	    return haltPoint;
-	}
-	
-	
-	public static TBRetInfo parse_sym_src(HashMap<Long, String> addressExtFuncTbl, HashMap<Long, String> addressInstMap, Store store, long currRIP, String inst, ArrayList<String> symNames) {
+	public static Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> parse_sym_src(HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Store store, long currRIP, String inst, ArrayList<String> symNames) {
 	    rip = currRIP;
-	    haltPoint = false;
-	    addressExtFuncMap = addressExtFuncTbl;
+	    haltPoint = -1;
+	    addrExtFuncMap = addressExtFuncMap;
 	    if(inst.startsWith("lock ")) {
 	        inst = inst.split(" ", 2)[1];
 	    }
@@ -514,28 +486,28 @@ public class SemanticsTB {
 	    }
 	    else if(inst_name.startsWith("rep")) {
 	        inst = inst_split[1].strip();
-	        TBRetInfo ret_info = parse_sym_src(addressExtFuncMap, addressInstMap, store, currRIP, inst, symNames);
-	        srcNames = ret_info.srcNames;
-	        haltPoint = ret_info.haltPoint;
-	        memLenMap = ret_info.memLenMap;
+	        Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> retInfo = parse_sym_src(addrExtFuncMap, addressInstMap, store, currRIP, inst, symNames);
+	        haltPoint = retInfo.x;
+	        srcNames = retInfo.y;
+	        memLenMap = retInfo.z;
 	    }
 	    else if(Utils.check_jmp_with_address(inst)) {
-	        String jump_address_str = inst.split(" ", 2)[1].strip();
-	        BitVecExpr new_addr = SMTHelper.get_jump_address(store, rip, jump_address_str, addressExtFuncMap);
-	        Long new_address = null;
-	        if(Helper.is_bit_vec_num(new_addr)) {
-	        	new_address = Helper.long_of_sym(new_addr);
+	        String jmpAddrStr = inst.split(" ", 2)[1].strip();
+	        BitVecExpr jumpAddr = SMTHelper.get_jump_address(store, rip, jmpAddrStr, addrExtFuncMap);
+	        Long newAddr = null;
+	        if(Helper.is_bit_vec_num(jumpAddr)) {
+	        	newAddr = Helper.long_of_sym(jumpAddr);
 	        }
-	        if(new_address != null && (addressExtFuncMap.containsKey(new_address))) {
-	            haltPoint = jmp_to_external_func(store, symNames);
+	        if(newAddr != null && addrExtFuncMap.containsKey(newAddr)) {
+	            haltPoint = jumpToExtFunc(store, symNames);
 	        }
 	    }
-	    ArrayList<String> res = new ArrayList<String>();
+	    ArrayList<String> newSrcs = new ArrayList<String>();
 	    for(String srcName : srcNames) {
-	    	if(!res.contains(srcName))
-	    		res.add(srcName);
+	    	if(!newSrcs.contains(srcName))
+	    		newSrcs.add(srcName);
 	    }
-	    return new TBRetInfo(res, haltPoint, memLenMap);
+	    return new Triplet<>(haltPoint, newSrcs, memLenMap);
 	}
 
 }

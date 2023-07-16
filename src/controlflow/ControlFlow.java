@@ -30,14 +30,14 @@ public class ControlFlow {
 	
 	HashMap<Integer, Block> blockMap;
 	ArrayList<Block> blockStack;
-    HashMap<Long, Block> addressBlockMap;
+    HashMap<Long, Block> addrBlockMap;
     HashMap<Long, Integer> addressBlockCntMap;
     HashMap<Long, String> addressExtFuncMap;
     HashMap<String, Integer> memLenMap;
     HashMap<String, Long> symTable;
-    HashMap<Long, String> addressSymTable;
-    HashMap<Long, String> addressInstMap;
-    HashMap<Long, Long> addressNextMap;
+    HashMap<Long, String> addrSymMap;
+    HashMap<Long, String> addrInstMap;
+    HashMap<Long, Long> addrNextMap;
     HashMap<Tuple<Long, Long>, Integer> loopTraceCounter;
     HashMap<String, ArrayList<String>> gPreConstraint;
     HashSet<Long> funcEndAddressSet;
@@ -58,15 +58,15 @@ public class ControlFlow {
     public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayList<>();
-        addressBlockMap = new HashMap<>();
+        addrBlockMap = new HashMap<>();
         addressBlockCntMap = new HashMap<>();
         loopTraceCounter = new HashMap<>();
         memLenMap = new HashMap<>();
         this.symTable = norm.getSymTbl();
-        this.addressSymTable = norm.getAddressSymTbl();
+        this.addrSymMap = norm.getAddressSymTbl();
         this.startAddress = norm.getEntryAddress();
-        this.addressInstMap = norm.getAddressInstMap();
-        this.addressNextMap = norm.getAddressNextMap();
+        this.addrInstMap = norm.getAddressInstMap();
+        this.addrNextMap = norm.getAddressNextMap();
         this.funcEndAddressSet = norm.getFuncEndAddrSet();
         dummyBlock = new Block(-1, 0, "", null, null);
         this.mainAddress = norm.getMainAddress();
@@ -98,7 +98,7 @@ public class ControlFlow {
 
         
     void build_cfg(long startAddress, Store startStore, Constraint startConstraint) {
-    	String startInst = addressInstMap.get(startAddress);
+    	String startInst = addrInstMap.get(startAddress);
     	add_new_block(null, startAddress, startInst, startStore, startConstraint);
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
@@ -129,20 +129,20 @@ public class ControlFlow {
     void construct_conditional_branches(Block block, long address, String inst, long newAddress, Store store, Constraint constraint) {
         BoolExpr res = SMTHelper.parse_predicate(store, inst, true, "j");
         if(res == null) {
-        	long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+        	long nextAddress = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
             construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
             construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
         }
         else {
 	        if(res.equals(Helper.SymFalse)) {
-	            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+	            long nextAddress = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
 	            construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
 	        }
 	        else if(res.equals(Helper.SymTrue)) {
 	            construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
 	        }
 	        else {
-	            long nextAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+	            long nextAddress = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
 	            construct_conditional_jump_block(block, address, inst, nextAddress, store, constraint, false, true);
 	            construct_conditional_jump_block(block, address, inst, newAddress, store, constraint, true, true);
 	        }
@@ -150,7 +150,7 @@ public class ControlFlow {
     }
 
     void construct_conditional_jump_block(Block block, long address, String inst, long newAddress, Store store, Constraint constraint, boolean val, boolean need_new_constraint) {
-        if(addressBlockMap.containsKey(address)) {
+        if(addrBlockMap.containsKey(address)) {
         	Tuple<Long, Long> traceKey = new Tuple<>(address, newAddress);
             if(loopTraceCounter.containsKey(traceKey)) {
                 int counter = loopTraceCounter.get(traceKey);
@@ -181,7 +181,7 @@ public class ControlFlow {
         if(need_new_constraint) {
             new_constraint = add_new_constraint(store, constraint, inst, val, "j");
         }
-        String new_inst = addressInstMap.get(newAddress);
+        String new_inst = addrInstMap.get(newAddress);
         int blockID = add_new_block(block, newAddress, new_inst, store, new_constraint);
         return blockID;
     }
@@ -198,21 +198,21 @@ public class ControlFlow {
 	        if(Helper.is_bit_vec_num(nAddress)) {
 	        	newAddress = Helper.long_of_sym(nAddress);
 	        }
-            if(addressInstMap.containsKey(newAddress)) {
+            if(addrInstMap.containsKey(newAddress)) {
                 if(addressExtFuncMap.containsKey(newAddress)) {
                     if(!extFuncCallAddr.contains(address)) {
                         extFuncCallAddr.add(address);
                     }
-                    String extFuncName = CFHelper.get_function_name_from_addr_sym_table(addressSymTable, newAddress);
+                    String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
                     handle_external_function(extFuncName, block, address, inst, store, constraint);
                 }
                 else {
                     handle_internal_jumps(block, address, inst, store, constraint, newAddress);
                 }
             }
-            else if(addressSymTable.containsKey(newAddress)) {
-                String extFuncName = CFHelper.get_function_name_from_addr_sym_table(addressSymTable, newAddress);
-                if(!extFuncCallAddr.contains(address)) {
+            else if(addrSymMap.containsKey(newAddress)) {
+            	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
+            	if(!extFuncCallAddr.contains(address)) {
                     extFuncCallAddr.add(address);
                 }
                 handle_external_function(extFuncName, block, address, inst, store, constraint);
@@ -241,7 +241,7 @@ public class ControlFlow {
             construct_conditional_branches(block, address, inst, newAddress, store, constraint);
         }
         else {
-            if(addressBlockMap.containsKey(newAddress) && retCallAddressMap.containsValue(newAddress)) {
+            if(addrBlockMap.containsKey(newAddress) && retCallAddressMap.containsValue(newAddress)) {
                 if(isFuncBlockExplored(store, newAddress)) {
                     if(!extFuncCallAddr.contains(newAddress))
                         build_ret_branch(block, newAddress, "retn", store, constraint);
@@ -264,6 +264,7 @@ public class ControlFlow {
         long rip = store.rip;
         Constraint newConstraint = constraint;
         String extName = extFuncName.split("@", 2)[0].strip();
+        Utils.logger.info("Call the external function " + extName + " at address " + Long.toHexString(address));
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
         if(extFuncName.startsWith("__libc_start_main") && mainAddress != null) {
             Semantics.call_op(store, rip, block.block_id);
@@ -274,7 +275,7 @@ public class ControlFlow {
         }
         else {
             if(extFuncName.startsWith("malloc") || extFuncName.startsWith("calloc") || extFuncName.startsWith("realloc")) {
-                ExtHandler.ext_alloc_mem_call(store, rip, extFuncName, block.block_id);
+            	ExtHandler.ext_alloc_mem_call(store, rip, extFuncName, block.block_id);
                 newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extFuncName, preConstraint, constraint);
             }
             else if(extFuncName.startsWith("free")) {
@@ -351,7 +352,7 @@ public class ControlFlow {
             }
             ArrayList<String> newSrcs = CFHelper.retrieveSymSrcs(block);
             ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
-            TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addressInstMap, block, traceBIDSymList, memLenMap, newSrcs);
+            TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addrInstMap, block, traceBIDSymList, memLenMap, newSrcs);
             // num_of_unresolved_indirects
             cmcExecInfo[2] += 1;
             Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.num_to_hex_string(address) + "\n");
@@ -364,7 +365,7 @@ public class ControlFlow {
     Integer exec_ret_operation(Block block, long address, Store store, Constraint constraint, long newAddress) {
         Integer block_id = null;
         Utils.logger.info(Utils.num_to_hex_string(address) + ": the return address is " + Utils.num_to_hex_string(newAddress));
-        if(addressInstMap.containsKey(newAddress)) {
+        if(addrInstMap.containsKey(newAddress)) {
             if(!retCallAddressMap.containsKey(newAddress)) {
                 Long callTarget = _get_prev_inst_target(newAddress);
                 if(callTarget != null) {
@@ -424,11 +425,11 @@ public class ControlFlow {
    }
 
 
-    TRACE_BACK_RET_TYPE handle_sym_memwrite_addr(Block blk, int count, boolean func_call_point, ArrayList<HashMap<Integer,ArrayList<String>>> traceList, ArrayList<String> symNames) {
+    TRACE_BACK_RET_TYPE concrSymMemAddr(Block blk, int tbCount, int haltPoint, ArrayList<HashMap<Integer,ArrayList<String>>> traceBIDSymList, ArrayList<String> symNames) {
     	Lib.TRACE_BACK_RET_TYPE res;
-    	if(func_call_point)
-            res = _handle_sym_addr_w_concretize(blk, traceList, symNames);
-        else if(count >= Utils.MAX_TRACEBACK_COUNT)
+    	if(haltPoint >= 0)
+            res = handleSymAddrWConcretize(blk, traceBIDSymList, symNames, haltPoint);
+        else if(tbCount >= Utils.MAX_TRACEBACK_COUNT)
             res = TRACE_BACK_RET_TYPE.TB_COUNT_EXCEEDS_LIMITATION;
         else
             res = TRACE_BACK_RET_TYPE.TB_BLOCK_DOES_NOT_EXIST;
@@ -437,7 +438,7 @@ public class ControlFlow {
 
 
     // example: mov eax,DWORD PTR [rip+0x205a28]        // <optind@@GLIBC_2.2.5>
-    Constraint _sym_src_from_mov_with_ext_env(Block blk, Constraint constraint) {
+    Constraint constrFromMovWExtSrc(Block blk, Constraint constraint) {
     	Store store = blk.store;
     	long rip = store.rip;
     	String inst = blk.inst;
@@ -449,7 +450,7 @@ public class ControlFlow {
                 BitVecExpr eAddr = SymEngine.get_effective_address(store, rip, inst_args.get(1));
                 if(Helper.is_bit_vec_num(eAddr)) {
                     long address = Helper.long_of_sym(eAddr);
-                    String symName = CFHelper.get_unified_sym_name(addressSymTable, address);
+                    String symName = CFHelper.getNormalizedSymName(addrSymMap, address);
                     if(symName != null) {
                         if(gPreConstraint.containsKey(symName)) {
                             ArrayList<String> preConstraint = gPreConstraint.getOrDefault(symName, null);
@@ -463,20 +464,20 @@ public class ControlFlow {
     }
 
 
-    TRACE_BACK_RET_TYPE _handle_sym_addr_w_concretize(Block restartBlk, ArrayList<HashMap<Integer, ArrayList<String>>> traceList, ArrayList<String> sym_names) {
+    TRACE_BACK_RET_TYPE handleSymAddrWConcretize(Block restartBlk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, ArrayList<String> symNames, int haltPoint) {
         Utils.logger.info("Handle symbolized memory address with concretization");
         ArrayList<BitVecExpr> symValues = new ArrayList<>();
         ArrayList<Integer> symLengths = new ArrayList<>();
         Constraint newConstraint = restartBlk.constraint;
-        for(HashMap<Integer, ArrayList<String>> bIDSymMap : traceList) {
+        for(HashMap<Integer, ArrayList<String>> bIDSymMap : traceBIDSymList) {
         	for(Integer blockID : bIDSymMap.keySet()) {
-        		ArrayList<String> symInfo = bIDSymMap.get(blockID);
+        		ArrayList<String> srcNames = bIDSymMap.get(blockID);
         		Block currBlock = blockMap.get(blockID);
-                newConstraint = _sym_src_from_mov_with_ext_env(currBlock, newConstraint);
+                newConstraint = constrFromMovWExtSrc(currBlock, newConstraint);
                 Store store = currBlock.store;
-        		for(String symArg: symInfo) {
-	                int length = CFHelper.getOperandSize(currBlock.inst, symArg, memLenMap);
-	                BitVecExpr symVal = CFHelper.get_inv_arg_val(store, store.rip, symArg, blockID, length);
+        		for(String srcName: srcNames) {
+	                int length = CFHelper.getOperandSize(currBlock.inst, srcName, memLenMap);
+	                BitVecExpr symVal = CFHelper.get_inv_arg_val(store, store.rip, srcName, blockID, length);
 	                if(!symAddrValuesetMap.containsKey(symVal)) {
 	                	symValues.add(symVal);
 	                	symLengths.add(length);
@@ -484,11 +485,11 @@ public class ControlFlow {
         		}
             }
         }
-        HashMap<BitVecExpr, ArrayList<BitVecExpr>> concrete_res = CFHelper.concretize_sym_arg(symValues, symLengths, newConstraint);
+        HashMap<BitVecExpr, ArrayList<BitVecExpr>> concrRes = CFHelper.concretizeSymArg(restartBlk.store, symValues, symLengths, newConstraint, haltPoint);
         Utils.logger.info("The following symbolic values are concretized: " + symValues.toString());
-        Utils.logger.info(concrete_res.toString());
-        CFHelper.update_sym_addr_valueset_map(symAddrValuesetMap, concrete_res);
-        TRACE_BACK_RET_TYPE res = _reconstruct_new_branches_w_valueset(restartBlk, symValues, sym_names);
+        Utils.logger.info(concrRes.toString());
+        CFHelper.update_sym_addr_valueset_map(symAddrValuesetMap, concrRes);
+        TRACE_BACK_RET_TYPE res = reconstructNewBranchesWValueSet(restartBlk, symValues, symNames);
         return res;
     }
     
@@ -528,7 +529,7 @@ public class ControlFlow {
     }
 
 
-    TRACE_BACK_RET_TYPE _reconstruct_new_branches_w_valueset(Block block, ArrayList<BitVecExpr> symValues, ArrayList<String> sym_names) {
+    TRACE_BACK_RET_TYPE reconstructNewBranchesWValueSet(Block block, ArrayList<BitVecExpr> symValues, ArrayList<String> sym_names) {
         Store store = block.store;
         Utils.logger.info("Reconstruct new branches with concretized value\n");
         for(int i = 0; i < Utils.REBUILD_BRANCHES_NUM; i++) {
@@ -537,8 +538,9 @@ public class ControlFlow {
             newStore.g_PointerRelatedError = null;
             int block_id = addNewBlock(block, block.address, block.inst, newStore, block.constraint, false);
             for(BitVecExpr symVal : symValues) {
-                if(symAddrValuesetMap.containsKey(symVal))
+                if(symAddrValuesetMap.containsKey(symVal)) {
                     _substitute_sym_arg(newStore, newStore.rip, symVal, symAddrValuesetMap.get(symVal).get(i), block_id, sym_names);
+                }
                 else
                     return TRACE_BACK_RET_TYPE.SYMADDR_SYM_NOT_IN_GLOBAL_VALUTSET;
             }
@@ -574,7 +576,7 @@ public class ControlFlow {
 
 
     Integer jump_to_block(Block block, long newAddress, Store store, Constraint constraint) {
-        String new_inst = addressInstMap.get(newAddress);
+        String new_inst = addrInstMap.get(newAddress);
         Integer block_id = add_new_block(block, newAddress, new_inst, store, constraint);
         return block_id;
     }
@@ -586,7 +588,7 @@ public class ControlFlow {
         
 
     int add_new_block(Block parent_blk, long address, String inst, Store store, Constraint constraint) {
-    	long rip = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+    	long rip = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
         Integer block_id = null;
         if(inst.startsWith("bnd ")) {
             inst = inst.strip().split(" ", 2)[1];
@@ -650,14 +652,14 @@ public class ControlFlow {
             }
             if(parent_blk != null)
                 parent_blk.add_to_children_list(block_id);
-            if(addressBlockMap.containsKey(address)) {
+            if(addrBlockMap.containsKey(address)) {
             	int cnt = addressBlockCntMap.get(address);
             	addressBlockCntMap.put(address, cnt + 1);
             }
             else {
             	addressBlockCntMap.put(address, 1);
             }
-            addressBlockMap.put(address, block);
+            addrBlockMap.put(address, block);
             blockStack.add(block);
         }
         return block_id;
@@ -682,14 +684,14 @@ public class ControlFlow {
         ArrayList<String> symNames = CFHelper.retrieveSymSrcs(block);
         ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
         HashMap<String, Integer> memLenMap = new HashMap<>();
-        Tuple<Integer, Boolean> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addressInstMap, block, traceBIDSymList, memLenMap, symNames);
-        int count = tbInfo.x;
-        if(count == -1) {
+        Tuple<Integer, Integer> tbInfo = TraceBack.tracebackSymAddr(blockMap, addressExtFuncMap, addrInstMap, block, traceBIDSymList, memLenMap, symNames);
+        int tbCount = tbInfo.x;
+        if(tbCount == -1) {
         	Utils.logger.info("Parent block does not exist.");
         }
         else {
-	        boolean funcCallPoint = tbInfo.y;
-	        TRACE_BACK_RET_TYPE res = handle_sym_memwrite_addr(block, count, funcCallPoint, traceBIDSymList, symNames);
+	        int haltPoint = tbInfo.y;
+	        TRACE_BACK_RET_TYPE res = concrSymMemAddr(block, tbCount, haltPoint, traceBIDSymList, symNames);
 	        if(res != TRACE_BACK_RET_TYPE.SYMADDR_SUCCEED) {
 	            String printInfo = TraceBack.pp_tb_debug_info(res, address, inst);
 	            Utils.logger.info(printInfo);
@@ -713,7 +715,7 @@ public class ControlFlow {
         Utils.logger.info(error_msg);
         ArrayList<String> symNames = CFHelper.retrieve_source_for_memaddr(inst, common);
         if(symNames != null)
-            TraceBack.locatePointerRelatedError(blockMap, addressExtFuncMap, addressInstMap, addressSymTable, block, store, address, inst, symNames);
+            TraceBack.locatePointerRelatedError(blockMap, addressExtFuncMap, addrInstMap, addrSymMap, block, store, address, inst, symNames);
         // number of paths
         cmcExecInfo[0] += 1;
         // number of negative paths
@@ -747,11 +749,11 @@ public class ControlFlow {
 
     Long _get_prev_inst_target(long address) {
     	Long target = null;
-        Long preAddress = CFHelper.get_prev_address(address, addressInstMap);
+        Long preAddress = CFHelper.get_prev_address(address, addrInstMap);
         if(preAddress != null) {
-            String preInst = addressInstMap.get(preAddress);
+            String preInst = addrInstMap.get(preAddress);
             if(preInst.startsWith("call")) {
-                Block blk = addressBlockMap.get(preAddress);
+                Block blk = addrBlockMap.get(preAddress);
                 BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, address, preInst.split(" ", 2)[1].strip(), addressExtFuncMap);
                 if(Helper.is_bit_vec_num(jmpTarget)) {
                     target = Helper.long_of_sym(jmpTarget);
@@ -763,22 +765,22 @@ public class ControlFlow {
 
 
     boolean isFuncBlockExplored(Store store, long newAddress) {
-    	Block blk = addressBlockMap.get(newAddress);
+    	Block blk = addrBlockMap.get(newAddress);
     	int cnt = addressBlockCntMap.get(newAddress);
         if(cnt > Utils.MAX_VISIT_COUNT) return true;
         else if(cnt == 0) return false;
         Store preStore = blk.store;
-        String newInst = addressInstMap.get(newAddress);
+        String newInst = addrInstMap.get(newAddress);
         Store newStore = new Store(store, preStore.rip);
         if(!Utils.check_branch_inst_wo_call(newInst) && !newInst.startsWith("cmov"))
         	Semantics.parse_semantics(newStore, newStore.rip, newInst, -1);
-        boolean res = newStore.state_ith_eq(preStore, addressInstMap, Lib.REG);
+        boolean res = newStore.state_ith_eq(preStore, addrInstMap, Lib.REG);
         return res;
     }
 
 
     void _jump_to_next_block(Block block, long address, Store store, Constraint constraint) {
-        long newAddress = CFHelper.get_next_address(address, addressNextMap, addressSymTable);
+        long newAddress = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
         if(newAddress != -1) {
             jump_to_block(block, newAddress, store, constraint);
         }
@@ -787,8 +789,8 @@ public class ControlFlow {
 
 
     Triplet<Boolean, Integer, Store> checkBlockVisitedTimes(Store store, Constraint constraint, long newAddress, String new_inst) {
-        if(addressBlockMap.containsKey(newAddress)) {
-        	Block blk = addressBlockMap.get(newAddress);
+        if(addrBlockMap.containsKey(newAddress)) {
+        	Block blk = addrBlockMap.get(newAddress);
         	int cnt = addressBlockCntMap.get(newAddress);
             if(cnt == 0) {
                 return new Triplet<>(false, blk.block_id, null);
@@ -801,8 +803,8 @@ public class ControlFlow {
                 Store prevStore = blk.store;
                 long rip = prevStore.rip;
                 Store newStore = new Store(store, rip);
-                newStore.merge_store(prevStore, addressInstMap);
-                if(newStore.state_equal(prevStore, addressInstMap) && cnt > 10) {
+                newStore.merge_store(prevStore, addrInstMap);
+                if(newStore.state_equal(prevStore, addrInstMap) && cnt > 10) {
                     Utils.logger.info("Block exists: " + new_inst + " at address " + Utils.num_to_hex_string(newAddress) + " is visited for " + Integer.toString(cnt) + " times\n");
                     // Utils.logger.debug(prev_sym_store.pp_store())
                     // Utils.logger.debug(sym_store.pp_store())
@@ -829,21 +831,21 @@ public class ControlFlow {
     }
 
     public int reachable_addresses_num() {
-        int res = addressBlockMap.keySet().size();
+        int res = addrBlockMap.keySet().size();
         return res;
     }
             
     
     void pp_unreachable_instrs() {
-        Set<Long> reachableAddrs = addressBlockMap.keySet();
-        Set<Long> instAddrs = addressInstMap.keySet();
+        Set<Long> reachableAddrs = addrBlockMap.keySet();
+        Set<Long> instAddrs = addrInstMap.keySet();
         ArrayList<Long> sortedAddrs = new ArrayList<Long>(instAddrs);
         Collections.sort(sortedAddrs);
         Utils.logger.info("\n");
         Utils.logger.info(Utils.LOG_UNREACHABLE_INDICATOR);
         for(Long address : sortedAddrs) {
             if(!reachableAddrs.contains(address)) {
-                Utils.logger.info(Utils.num_to_hex_string(address) + ": " + addressInstMap.get(address));
+                Utils.logger.info(Utils.num_to_hex_string(address) + ": " + addrInstMap.get(address));
             }
         }
     }

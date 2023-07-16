@@ -46,10 +46,10 @@ public class NormIDAPro implements Normalizer {
 	HashSet<String> globalDataName;
 	String currPtrRep;
 	
-	Pattern addrInstPat = Pattern.compile("^[.a-zA-Z]+:[0-9a-fA-F]+[ ]{17}[a-zA-Z]|^[.a-zA-Z]+\\.__x86.get_pc_thunk\\.[a-z]+:[0-9a-fA-F]+[ ]{17}[a-zA-Z]");
+	Pattern addrInstPat = Pattern.compile("^[.a-zA-Z0-9_]+:[0-9a-fA-F]+[ ]{17}[a-zA-Z]");
 	Pattern immPat = Pattern.compile("^0x[0-9a-fA-F]+$|^[0-9]+$|^-[0-9]+$|^-0x[0-9a-fA-F]+$|^[0-9a-fA-F]+$|^-[0-9a-fA-F]+$");
 
-	Pattern varExprPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-fA-F]{16} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-fA-F]{8} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+\\.__x86.get_pc_thunk\\.[a-z]+:[0-9a-fA-F]{16} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+\\.__x86.get_pc_thunk\\.[a-z]+:[0-9a-fA-F]{8} [a-zA-Z0-9_@?$]+");
+	Pattern varExprPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-fA-F]{16} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-fA-F]{8} [a-zA-Z0-9_@?$]+");
 	Pattern idaImmPat = Pattern.compile("^[0-9A-F]+h$|^[0-9]$");
 	Pattern jptStartPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} jpt_[a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} jpt_[a-zA-Z0-9_@?$]+");
 	Pattern jptEndPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} ; [-]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} ; [-]+");
@@ -61,6 +61,7 @@ public class NormIDAPro implements Normalizer {
 	String[] nonInstPrefix = new String[]{"dd ", "dw ", "db ", "dq ", "dt ", "text ", "align", "start", "type"};
 	String[] offsetSpecPrefix = new String[]{"off_", "loc_", "byte_", "stru_", "dword_", "qword_", "unk_", "sub_", "asc_", "def_", "xmmword_", "word_"};
 	String[] nonValidInstInfo = new String[]{"UnwindMapEntry", " assume ", " public "};	
+	String[] preProcKeyword = new String[] {" extrn ", " proc "};
 	
 	public NormIDAPro(String disasmPath) throws FileNotFoundException {
 		this.disasmPath = disasmPath;
@@ -109,10 +110,17 @@ public class NormIDAPro implements Normalizer {
     		if(line.contains("; Segment type:")) {
     			storeSecStartAddr(line);
     		}
+    		// line: extern:000000000021C718                 extrn abort:near        ; CODE XREF: _abort↑j
+    		else if(line.contains(" extrn ")) {
+    			storeFuncInfo(line, "extrn");
+    		}
+    		// line: .text:08000034 free_g2         proc near
+            else if(line.contains(" proc ")) {
+            	storeFuncInfo(line, "proc");
+            }
     		else if(locatedAtDataSegments(line)) {
                 if(varExprPat.matcher(line).find()) {
-                    String varName = retrieveVarName(line);
-                    globalDataName.add(varName);
+                	saveGlobalVarInfo(line);
                 }
             }
     	}
@@ -144,7 +152,18 @@ public class NormIDAPro implements Normalizer {
     }
     
     
-    void readBinaryInfo() {
+    void saveGlobalVarInfo(String arg) {
+		String line = Utils.remove_multiple_spaces(arg).strip();
+        line = line.split(";", 2)[0].strip();
+        String[] lineSplit = line.split(" ", 2);
+        long address = Long.valueOf(Utils.rsplit(lineSplit[0], ":")[1].strip(), 16);
+        String varName = lineSplit[1].strip().split(" ", 2)[0];
+        globalDataName.add(varName);
+        varOffsetMap.put(varName, address);	
+	}
+
+
+	void readBinaryInfo() {
     	if(procValueMap.containsKey("start")) {
     		entryAddress = procValueMap.get("start");
         }
@@ -167,8 +186,7 @@ public class NormIDAPro implements Normalizer {
 	
 	void readInstInfo(ArrayList<String> lines) {
 		for(String line : lines) {
-            if(line.contains(" extrn "))
-                storeExtFuncInfo(line);
+            if(Utils.contains(line, preProcKeyword)) {}
             else if(varExprPat.matcher(line).find()) {
                 readVariableValue(line);
             }
@@ -220,21 +238,28 @@ public class NormIDAPro implements Normalizer {
             	readJPTEntryAddr(lineSplit[2].strip(), jtpEntryList);
             }
 		}
-	}
-
-        
-
-    void storeExtFuncInfo(String arg) {
+	}    
+    
+	
+	// arg: extern:000000000021C718                 extrn abort:near
+    void storeFuncInfo(String arg, String funcType) {
         String line = Utils.remove_multiple_spaces(arg).strip();
         line = line.split(";", 2)[0].strip();
         String[] lineSplit = line.split(" ", 2);
-        String addressStr = Utils.rsplit(lineSplit[0], ":")[1].strip();
-        long address = Long.valueOf(addressStr, 16);
-        String varStr = lineSplit[1].strip();
-        String[] varSplit = varStr.split(" ", 2);
-        String varName = Utils.rsplit(varSplit[1], ":")[0].strip();
+        long address = Long.valueOf(Utils.rsplit(lineSplit[0], ":")[1].strip(), 16);
+        String varName = null;
+        if(funcType == "extrn") {
+        	varName = lineSplit[1].strip().split("extrn ", 2)[1].strip();
+        	varName = Utils.rsplit(varName, ":")[0].strip();
+        	addressExtFuncMap.put(address, varName);
+        }
+        else {
+        	//arg: .text:0000000000012720 rpl_fts_open    proc near
+        	varName = lineSplit[1].strip().split(" ", 2)[0].strip();
+        	procValueMap.put(varName, address);
+        }
         varValueMap.put(varName, address);
-        addressExtFuncMap.put(address, varName);
+        varOffsetMap.put(varName, address);
         addressSymTable.put(address, varName);
         symTable.put(varName, address);
     }
@@ -261,14 +286,6 @@ public class NormIDAPro implements Normalizer {
         // line: .text:08000034 var_4           = dword ptr -4
         else if(varStr.contains("= "))
             parseVarValueInAssignExpr(line, varStr, address);
-        // line: .text:08000034 free_g2         proc near
-        else if(varStr.contains(" proc ")) {
-            varOffsetMap.put(varName, address);
-            varValueMap.put(varName, address);
-            procValueMap.put(varName, address);
-            symTable.put(varName, address);
-            addressSymTable.put(address, varName);
-        }
         // line: .text:0000000000005CEE loc_5CEE:
         else if(varName.endsWith(":")) {
             varName = Utils.rsplit(varName, ":")[0].strip();
@@ -386,8 +403,9 @@ public class NormIDAPro implements Normalizer {
             res = NormHelper.convertImmEndHToHex(symbol);
         }
         else if(Utils.check_jmp_with_address(instName)) {
+        	// The symbol represents an internal function name
             if(procValueMap.containsKey(symbol))
-                res = Utils.num_to_hex_string(procValueMap.get(symbol));
+                res = Utils.num_to_hex_string(procValueMap.get(symbol)); //Replace the symbol with the function address
             else if(varValueMap.containsKey(symbol)) {
                 res = Utils.num_to_hex_string(varValueMap.get(symbol));
                 if(varPtrRepMap.containsKey(symbol))
@@ -488,6 +506,8 @@ public class NormIDAPro implements Normalizer {
             else if(Utils.startsWith(prefix, offsetSpecPrefix)) {
                 res = "[" + prefix + "+" + memAddr + "]";
             }
+            else if(prefix.startsWith("(") && prefix.endsWith(")"))
+                res = "[" + memAddr + "+" + Utils.extract_content(prefix, "(") + "]";
             else
                 res = "[" + memAddr + "]";
         }
@@ -640,7 +660,7 @@ public class NormIDAPro implements Normalizer {
         for(int idx = 0; idx < instNum; idx++) {
         	arg = instArgs.get(idx);
         	if(Lib.REG_NAMES.contains(arg)) {
-                length = Utils.get_sym_length(arg);
+                length = Utils.getSymLength(arg);
                 break;
         	}
         }
@@ -806,6 +826,15 @@ public class NormIDAPro implements Normalizer {
         else {
 	    	if(secName.equals(".bss") && varValue.equals("?"))
 	    		varValueMap.put(varName, (long) 0);
+	    	else if(varValue.startsWith("offset ")) {
+	    		String tmp = varValue.split(" ", 2)[1].strip();
+	    		if(varOffsetMap.containsKey(tmp)) {
+	    			varValueMap.put(varName, varOffsetMap.get(tmp));
+	    		}
+	    		else
+		    		// In doubt, could be modified later
+		    		varValueMap.put(varName, address);
+	    	}
 	    	else
 	    		// In doubt, could be modified later
 	    		varValueMap.put(varName, address);
@@ -856,13 +885,6 @@ public class NormIDAPro implements Normalizer {
 
     boolean locatedAtDataSegments(String line) {
         return Utils.startsWith(line, Lib.DATA_SECTIONS);
-    }
-
-
-    String retrieveVarName(String arg) {
-        String line = Utils.remove_multiple_spaces(arg).strip();
-        String varName = line.split(" ", 3)[1].strip();
-        return varName;
     }
 
     

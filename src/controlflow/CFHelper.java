@@ -218,10 +218,10 @@ public class CFHelper {
 	}
 
 
-	static String get_unified_sym_name(HashMap<Long, String> address_sym_table, long address) {
+	static String getNormalizedSymName(HashMap<Long, String> addrSymMap, long address) {
 	    String res = "";
-	    if(address_sym_table.containsKey(address)) {
-	        String sym_name = address_sym_table.get(address);
+	    if(addrSymMap.containsKey(address)) {
+	        String sym_name = addrSymMap.get(address);
 	        res = sym_name.split("@", 2)[0].strip();
 	    }
 	    return res;
@@ -341,66 +341,77 @@ public class CFHelper {
     }
 	    
 
-	static void repeated_random_concretization(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, BitVecExpr sym_val, int sym_len, int count, Random random) {
-	    while(conc_res.get(sym_val).size() < count) {
+	static void repeated_random_concretization(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, BitVecExpr symValue, int sym_len, int count, Random random, int haltPoint) {
+	    while(conc_res.get(symValue).size() < count) {
 	        // rand_val = random.randint(0, 2**sym_len - 1)
-	        int rand_val = random.nextInt(Config.MAX_ARGC_NUM);
-	        if(!conc_res.containsKey(sym_val)) {
+	    	int concrValue = random.nextInt(Config.MAX_ARGC_NUM);
+	        if(!conc_res.containsKey(symValue)) {
 	        	conc_res.clear();
 	        	ArrayList<BitVecExpr> tmp = new ArrayList<BitVecExpr>();
-	        	tmp.add(Helper.gen_bv_num(rand_val, sym_len));
-	        	conc_res.put(sym_val, tmp);
+	        	tmp.add(Helper.gen_bv_num(concrValue, sym_len));
+	        	conc_res.put(symValue, tmp);
 	        }
 	        else
-	            conc_res.get(sym_val).add(Helper.gen_bv_num(rand_val, sym_len));
+	            conc_res.get(symValue).add(Helper.gen_bv_num(concrValue, sym_len));
 	    }
 	}
 
 
 
-	static void ramdom_concretize_sym(HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res, ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, int count, Random random) {
-	    for(int idx = 0; idx < sym_vals.size(); idx++) {
-	    	BitVecExpr sym_val = sym_vals.get(idx);
+	static void ramdom_concretize_sym(Store store, HashMap<BitVecExpr, ArrayList<BitVecExpr>> concrRes, ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, int count, Random random, int haltPoint) {
+		Utils.REBUILD_BRANCHES_NUM = (haltPoint == 0) ? 1 : 2;
+		for(int idx = 0; idx < sym_vals.size(); idx++) {
+	    	BitVecExpr symValue = sym_vals.get(idx);
 	        int sym_len = sym_lens.get(idx);
-	        if(conc_res.containsKey(sym_val))
-	            repeated_random_concretization(conc_res, sym_val, sym_len, count, random);
-	        else {
-	            // rand_val = random.randint(0, 2**sym_len - 1)
-	            int rand_val = random.nextInt(Config.MAX_ARGC_NUM);
-	            conc_res.clear();
-	            ArrayList<BitVecExpr> tmp = new ArrayList<BitVecExpr>();
-	            tmp.add(Helper.gen_bv_num(rand_val, sym_len));
-	        	conc_res.put(sym_val, tmp);
-	            repeated_random_concretization(conc_res, sym_val, sym_len, count, random);
+	        if(haltPoint == 2) {
+		        if(concrRes.containsKey(symValue))
+		            repeated_random_concretization(concrRes, symValue, sym_len, count, random, haltPoint);
+		        else {
+		            // rand_val = random.randint(0, 2**sym_len - 1)
+		            int rand_val = random.nextInt(Config.MAX_ARGC_NUM);
+		            concrRes.clear();
+		            ArrayList<BitVecExpr> tmp = new ArrayList<BitVecExpr>();
+		            tmp.add(Helper.gen_bv_num(rand_val, sym_len));
+		            concrRes.put(symValue, tmp);
+		            repeated_random_concretization(concrRes, symValue, sym_len, count, random, haltPoint);
+		        }
+	        }
+	        else if(haltPoint == 0) {
+	        	if(!concrRes.containsKey(symValue)) {
+		    		long concrValue = ExtHandler.genFreshHeapPointer(store);
+		        	ArrayList<BitVecExpr> tmp = new ArrayList<BitVecExpr>();
+		        	tmp.add(Helper.gen_bv_num(concrValue, sym_len));
+		        	concrRes.put(symValue, tmp);
+	        	}
 	        }
 	    }
 	}
 
 	            
 
-	static HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretize_sym_arg(ArrayList<BitVecExpr> sym_vals, ArrayList<Integer> sym_lens, Constraint constraint) {
+	static HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretizeSymArg(Store store, ArrayList<BitVecExpr> symValues, ArrayList<Integer> symLengths, Constraint constraint, int haltPoint) {
 		HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res = new HashMap<BitVecExpr, ArrayList<BitVecExpr>>();
 	    Random random = new Random();
-	    ArrayList<String> sym_val_strs = new ArrayList<String>();
-	    for(BitVecExpr sym_val : sym_vals) {
-	    	sym_val_strs.add(sym_val.toString());
+	    ArrayList<String> symValueStrs = new ArrayList<String>();
+	    for(BitVecExpr sym_val : symValues) {
+	    	symValueStrs.add(sym_val.toString());
 	    }
 	    boolean sym_exist_in_constraint = false;
 	    ArrayList<BoolExpr> predicates = constraint.get_asserts();
-	    ArrayList<Model> m_list = Helper.repeated_check_pred_satisfiable(predicates, Config.REBUILD_BRANCHES_NUM);
+	    ArrayList<Model> m_list = Helper.checkPredsSatisfiable(predicates, Config.REBUILD_BRANCHES_NUM);
 	    if(m_list != null) {
 	    	for(Model m : m_list) {
 	    		for(FuncDecl<?> d : m.getDecls()) {
-	    			String d_name = d.getName().toString();
-	    			if(sym_val_strs.contains(d_name)) {
-	    				int idx = sym_val_strs.indexOf(d_name);
-	    				BitVecExpr sym_val = sym_vals.get(idx);
-	    				if(conc_res.containsKey(sym_val)) {
-	    					conc_res.get(sym_val).add((BitVecExpr) m.getConstInterp(d));
+	    			String dName = d.getName().toString();
+	    			if(symValueStrs.contains(dName)) {
+	    				int idx = symValueStrs.indexOf(dName);
+	    				BitVecExpr symValue = symValues.get(idx);
+	    				if(conc_res.containsKey(symValue)) {
+	    					conc_res.get(symValue).add((BitVecExpr) m.getConstInterp(d));
 	    				}
 	    				else {
 	    					ArrayList<BitVecExpr> tmp = new ArrayList<BitVecExpr>();
-	    					conc_res.put(sym_val, tmp);
+	    					conc_res.put(symValue, tmp);
 	    					tmp.add((BitVecExpr) m.getConstInterp(d));
 	    				}
 	    			}
@@ -408,7 +419,7 @@ public class CFHelper {
 	    		if(!sym_exist_in_constraint) break;
 	    	}
 	    }
-	    ramdom_concretize_sym(conc_res, sym_vals, sym_lens, Config.REBUILD_BRANCHES_NUM, random);
+	    ramdom_concretize_sym(store, conc_res, symValues, symLengths, Config.REBUILD_BRANCHES_NUM, random, haltPoint);
 	    return conc_res;
 	}
 
@@ -432,7 +443,7 @@ public class CFHelper {
 	    for(String asi : argSplit) {
 	        String as = asi.strip();
 	        if(Lib.REG_NAMES.contains(as))
-	            res.add(SymHelper.get_root_reg(as));
+	            res.add(SymHelper.getRootReg(as));
 	    }
 	    return res;
 	}
@@ -583,7 +594,7 @@ public class CFHelper {
 	}
 
 
-	static String get_function_name_from_addr_sym_table(HashMap<Long, String> addressSymTable, long address) {
+	static String readFuncName(HashMap<Long, String> addressSymTable, long address) {
 		String res = "";
 	    if(addressSymTable.containsKey(address)) {
 	    	res = addressSymTable.get(address);
@@ -761,7 +772,7 @@ public class CFHelper {
         InstElement instElem = new InstElement(inst);
         if(instElem.inst_args.size() == 2) {
             String operand = instElem.inst_args.get(1);
-            res = Utils.get_sym_length(operand);
+            res = Utils.getSymLength(operand);
         }
         else
             res = getRealLength(memLenMap, arg);

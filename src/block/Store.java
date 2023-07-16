@@ -186,8 +186,8 @@ public class Store {
 		return g_HeapAddr;
 	}
 	
-	public void set_heap_addr(long head_addr) {
-		g_HeapAddr = head_addr;
+	public void set_heap_addr(long heapAddr) {
+		g_HeapAddr = heapAddr;
 	}
 	
 	public String pp_reg_store() {
@@ -206,7 +206,7 @@ public class Store {
         String res_str = "";
         for (BitVecExpr ki : g_MemStore.keySet()) {
         	BitVecExpr vi = g_MemStore.get(ki).expr;
-        	res_str += ki + ": " + pp_val(vi) + ",\n";
+        	res_str += pp_val(ki) + ": " + pp_val(vi) + ",\n";
         }
         sb.append("Mem: {\n" + res_str + "}\n");
 		return sb.toString();

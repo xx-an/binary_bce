@@ -367,7 +367,7 @@ public class Utils {
 	}
 	    
 
-	public static int get_sym_length(String sym_name, int length) {
+	public static int getSymLength(String sym_name, int length) {
 		int res = length;
 		if(Lib.REG64_NAMES.contains(sym_name)) res = 64;
 		else if(Lib.REG_INFO_DICT.containsKey(sym_name))
@@ -377,15 +377,15 @@ public class Utils {
 		// sym_name: "rax:rdx"
 		else if(sym_name.contains(":")) {
 			String[] regs = sym_name.split(":");
-	        int left_len = get_sym_length(regs[0], length / 2);
-	        int right_len = get_sym_length(regs[1], length / 2);
+	        int left_len = getSymLength(regs[0], length / 2);
+	        int right_len = getSymLength(regs[1], length / 2);
 	        res = left_len + right_len;
 		}
 	    return res;
 	}
 	
-	public static int get_sym_length(String sym_name) {
-		return get_sym_length(sym_name, Config.MEM_ADDR_SIZE);
+	public static int getSymLength(String sym_name) {
+		return getSymLength(sym_name, Config.MEM_ADDR_SIZE);
 	}
 	
 	

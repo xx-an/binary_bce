@@ -32,21 +32,21 @@ public class ExtHandler {
 
 	static void set_regs_sym(Store store, long rip, List<String> dests, int block_id) {
 		for(String dest : dests) {
-			int length = Utils.get_sym_length(dest);
+			int length = Utils.getSymLength(dest);
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(length), block_id);
 		}
 	}
 	
 	static void set_regs_sym(Store store, long rip, ArrayList<String> dests, int block_id) {
 		for(String dest : dests) {
-			int length = Utils.get_sym_length(dest);
+			int length = Utils.getSymLength(dest);
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(length), block_id);
 		}
 	}
 	
 	void set_regs_sym(Store store, long rip, String[] dests, int block_id) {
 		for(String dest : dests) {
-			int length = Utils.get_sym_length(dest);
+			int length = Utils.getSymLength(dest);
 	        SymEngine.set_sym(store, rip, dest, Helper.gen_sym(length), block_id);
 		}
 	}
@@ -112,6 +112,17 @@ public class ExtHandler {
 	}
 	
 	
+	static long genFreshHeapPointer(Store store) {
+	    long headAddr = store.g_HeapAddr;
+	    long memAddr = headAddr;
+	    int memSize = Config.MAX_MALLOC_SIZE;
+	    headAddr += memSize;
+	    Config.MAX_HEAP_ADDR = Math.max(Config.MAX_HEAP_ADDR, headAddr);
+	    store.g_HeapAddr = headAddr;
+	    return memAddr;
+	}
+	
+	
 	HashMap<String, ArrayList<String>> parse_predefined_constraint(String constraint_config_file) throws FileNotFoundException {
 		HashMap<String, ArrayList<String>> res = new HashMap<String, ArrayList<String>>();
 		File f = new File(constraint_config_file);
@@ -143,30 +154,30 @@ public class ExtHandler {
 	}	
 	    
 
-	static void ext_alloc_mem_call(Store store, long rip, String ext_func_name, int block_id) {
-	    long heap_addr = store.get_heap_addr();
-//	    Utils.logger.info(heap_addr)
-	    BitVecExpr bv_mem_size = (ext_func_name.startsWith("malloc") || ext_func_name.startsWith("calloc")) ? SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id) : SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rsi":"esi", block_id);
-	    BitVecExpr mem_addr = Helper.gen_bv_num(heap_addr, Config.MEM_ADDR_SIZE);
-	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", mem_addr, block_id);
-	    int mem_size = 0;
-	    if(Helper.is_bit_vec_num(bv_mem_size))
-	        mem_size = Helper.int_of_sym(bv_mem_size);
+	static void ext_alloc_mem_call(Store store, long rip, String extFuncName, int block_id) {
+	    long heapAddr = store.get_heap_addr();
+	    BitVecExpr memSizeBV = (extFuncName.startsWith("malloc") || extFuncName.startsWith("calloc")) ? SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id) : SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rsi":"esi", block_id);
+	    BitVecExpr memAddr = Helper.gen_bv_num(heapAddr, Config.MEM_ADDR_SIZE);
+	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rax":"eax", memAddr, block_id);
+	    int memSize = 0;
+	    if(Helper.is_bit_vec_num(memSizeBV))
+	    	memSize = Helper.int_of_sym(memSizeBV);
 	    else
-	        mem_size = Config.MAX_MALLOC_SIZE;
-	    if(mem_size == 0) {
-	    	Utils.logger.info("The allocation size for " + ext_func_name + " function cannot be zero");
+	    	memSize = Config.MAX_MALLOC_SIZE;
+	    if(memSize == 0) {
+	    	Utils.logger.info("The allocation size for " + extFuncName + " function cannot be zero");
 	    	System.exit(0);
 	    }
-	    BitVecExpr mem_val = (!ext_func_name.startsWith("calloc")) ? Helper.bottom(mem_size) : Helper.gen_bv_num(0, mem_size);
-	    heap_addr += mem_size;
-	    Config.MAX_HEAP_ADDR = (Config.MAX_HEAP_ADDR < heap_addr) ? heap_addr : Config.MAX_HEAP_ADDR;
-	    SymEngine.set_mem_sym(store, mem_addr, mem_val, mem_size);
-	    String regs = (Config.MEM_ADDR_SIZE==64)?"rcx, rdx, rsi, rdi, r8, r9, r10, r11":"ecx, edx, esi, edi";
+	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rcx":"ecx", Helper.gen_bv_num(memSize - 1, Config.MEM_ADDR_SIZE), block_id);
+	    BitVecExpr memVal = (!extFuncName.startsWith("calloc")) ? Helper.bottom(memSize) : Helper.gen_bv_num(0, memSize);
+	    heapAddr += memSize;
+	    Config.MAX_HEAP_ADDR = (Config.MAX_HEAP_ADDR < heapAddr) ? heapAddr : Config.MAX_HEAP_ADDR;
+	    SymEngine.set_mem_sym(store, memAddr, memVal, memSize);
+	    String regs = (Config.MEM_ADDR_SIZE==64)?"rdx, rsi, rdi, r8, r9, r10, r11":"edx, esi, edi";
 	    ArrayList<String> dests = regs_str_to_list(regs);
 	    set_regs_sym(store, rip, dests, block_id);
 	    clear_flags(store);
-	    store.set_heap_addr(heap_addr);
+	    store.set_heap_addr(heapAddr);
 	}
 
 

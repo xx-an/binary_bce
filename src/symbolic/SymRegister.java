@@ -23,7 +23,7 @@ public class SymRegister {
 	public static BitVecExpr get_register_sym(Store store, String name) {
 	    BitVecExpr sym = null;
 	    if(Lib.REG_INFO_DICT.containsKey(name)) {
-	    	String p_name = SymHelper.get_root_reg(name);
+	    	String p_name = SymHelper.getRootReg(name);
 	    	if(p_name.equals(name)) {
 	    		sym = store.get_val(name);
 	    	}
@@ -61,7 +61,7 @@ public class SymRegister {
 	public static Integer get_reg_sym_block_id(Store store, String name) {
 	    Integer res = null;
 	    if(Lib.REG_INFO_DICT.containsKey(name)) {
-	    	String p_name = SymHelper.get_root_reg(name);
+	    	String p_name = SymHelper.getRootReg(name);
 	    	res = store.get_block_id(p_name);
 	    }
 	    else if(Lib.REG64_NAMES.contains(name))
@@ -86,7 +86,7 @@ public class SymRegister {
 
 	public static void set_register_sym(Store store, String name, BitVecExpr sym, int block_id) {
 		if(Lib.REG_INFO_DICT.containsKey(name)) {
-			String p_name = SymHelper.get_root_reg(name);
+			String p_name = SymHelper.getRootReg(name);
 			if(p_name.equals(name)) {
 				store.set_val(name, sym, block_id);
 	    	}

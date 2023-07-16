@@ -347,7 +347,7 @@ public class Helper {
 
 
 	@SuppressWarnings("unchecked")
-	public static ArrayList<Model> repeated_check_pred_satisfiable(ArrayList<BoolExpr> predicates, int num) {
+	public static ArrayList<Model> checkPredsSatisfiable(ArrayList<BoolExpr> predicates, int num) {
 	    ArrayList<Model> res = new ArrayList<Model>();
 	    Solver s = ctx.mkSolver();
 	    for(BoolExpr pred : predicates)
@@ -440,7 +440,7 @@ public class Helper {
 
 
 	BitVecExpr truncate_to_size(String dest, BitVecExpr sym) {
-		int dest_len = Utils.get_sym_length(dest, Config.MEM_ADDR_SIZE);
+		int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
 		return (BitVecExpr) extract(dest_len - 1, 0, sym).simplify();
 	}
 

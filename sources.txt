@@ -9,7 +9,6 @@
 ./src/common/Triplet.java
 ./src/semantics/SMTHelper.java
 ./src/semantics/SemanticsTB.java
-./src/semantics/TBRetInfo.java
 ./src/semantics/Semantics.java
 ./src/CMC.java
 ./src/binary/BinaryContent.java

@@ -37,7 +37,7 @@ public class SymHelper {
     }
 	
 	
-	public static String get_root_reg(String src) {
+	public static String getRootReg(String src) {
 	    String res = null;
 	    if(Lib.REG64_NAMES.contains(src))
 	        res = src;

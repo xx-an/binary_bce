@@ -5,11 +5,11 @@ import java.util.HashMap;
 
 import block.Block;
 import block.Store;
+import common.Triplet;
 import common.Tuple;
 import common.Lib.TRACE_BACK_RET_TYPE;
 import common.Utils;
 import semantics.SemanticsTB;
-import semantics.TBRetInfo;
 
 public class TraceBack {
 
@@ -37,57 +37,58 @@ public class TraceBack {
 	}
 	
 	
-	static Tuple<Integer, Boolean> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
-        Utils.logger.info("Trace back for symbolized memory address");
+	static Tuple<Integer, Integer> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
+        Utils.logger.info("\nTrace back for symbolized memory address");
         Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
         Store store = blk.store;
         long rip = store.rip;
-        boolean funcCallPoint = false;
-        int count = 0;
+        int haltPoint = -1;
+        int tbCount = 0;
         ArrayList<String> srcNames = null;
         HashMap<Integer, ArrayList<String>> bIDSymMap = new HashMap<Integer, ArrayList<String>>();
         bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, store, rip, symNames);
         ArrayList<Integer> bIDList = null;
         ArrayList<String> symList = null;
-        while(bIDSymMap != null && bIDSymMap.size() > 0 && count < Utils.MAX_TRACEBACK_COUNT) {
+        while(bIDSymMap != null && bIDSymMap.size() > 0 && tbCount < Utils.MAX_TRACEBACK_COUNT) {
         	bIDList = new ArrayList<Integer>();
         	bIDList.addAll(bIDSymMap.keySet());
         	Integer currBlockID = bIDList.get(bIDList.size() - 1);
         	symList = bIDSymMap.get(currBlockID);
-        	String currSymName = symList.remove(0);
-        	if(symList == null || symList.size() == 0) 
-        		bIDSymMap.remove(currBlockID);
+        	String currSymName = symList.get(0);
             if(currBlockID != -1) {
                 Block currBlk = blockMap.get(currBlockID);
-                Store currStore = currBlk.store;
-                long currRIP = currStore.rip;
-                String currInst = currBlk.inst;
                 Block pBlock = CFHelper.getParentBlockInfo(blockMap, currBlk);
-                if(pBlock == null)
-                    return new Tuple<>(-1, true);
-                ArrayList<String> tmpSymList = new ArrayList<>();
-                tmpSymList.add(currSymName);
-                TBRetInfo tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currRIP, currInst, tmpSymList);
-                srcNames = tbInfo.srcNames;
-                funcCallPoint = tbInfo.funcCallPoint;
-                HashMap<String, Integer> mLenMap = tbInfo.memLenMap;
+                if(pBlock == null) 
+                	return new Tuple<>(-1, 0);
+                ArrayList<String> tmpSymNames = new ArrayList<>();
+                tmpSymNames.add(currSymName);
+                Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currBlk.store.rip, currBlk.inst, tmpSymNames);
+                haltPoint = tbInfo.x;
+                srcNames = tbInfo.y;
+                HashMap<String, Integer> mLenMap = tbInfo.z;
                 memLenMap.putAll(mLenMap);
-                Utils.logger.info("Block id " + Integer.toString(currBlockID) + ": " + Utils.num_to_hex_string(currBlk.address) + "  " + currInst);
+                Utils.logger.info("Block " + Integer.toString(currBlockID) + " at address " + Utils.num_to_hex_string(currBlk.address) + " with instruction " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
-                if(funcCallPoint) {
+                if(haltPoint >= 0) {
                 	traceBIDSymList.add(bIDSymMap);
+                	break;
                 }
                 else if(reach_traceback_halt_point(bIDSymMap)) {
+                	haltPoint = 2;
                 	traceBIDSymList.add(bIDSymMap);
+                	break;
                 }
                 else {
-                	bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, pBlock.store, currRIP, srcNames);
+                	bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, pBlock.store, currBlk.store.rip, srcNames);
                 }
             }
-            count += 1;
+            symList.remove(0);
+        	if(symList == null || symList.size() == 0) 
+        		bIDSymMap.remove(currBlockID);
+            tbCount += 1;
         }
         Utils.logger.info("Traceback ends\n");
-        return new Tuple<>(count, funcCallPoint);
+        return new Tuple<>(tbCount, haltPoint);
     }
         
 
@@ -132,14 +133,14 @@ public class TraceBack {
             for(String symName : symNames) {
             	ArrayList<String> tmpNames = new ArrayList<>();
             	tmpNames.add(symName);
-            	TBRetInfo tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currStore.rip, inst, tmpNames);
-            	srcNames = tbInfo.srcNames;
-            	boolean haltPoint = tbInfo.haltPoint;
+            	Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currStore.rip, inst, tmpNames);
+            	int haltPoint = tbInfo.x;
+            	srcNames = tbInfo.y;
                 Utils.logger.info(Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
                 Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
                 bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, pBlock.store.rip, srcNames);
-                if(haltPoint) continue;
+                if(haltPoint >= 0) continue;
                 else {
                 	for(Integer bID : bIDSymMap.keySet()) {
                 		if(bID != null) {
