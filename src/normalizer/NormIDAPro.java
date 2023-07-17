@@ -57,6 +57,7 @@ public class NormIDAPro implements Normalizer {
 	
 	Pattern textSecStartPat = Pattern.compile("^.text:[0-9a-fA-F]+ ");
 	Pattern subtractHexPat = Pattern.compile("-[0-9a-fA-F]+h");
+	Pattern specVarEndPat = Pattern.compile(",[0-9]+$");
 
 	String[] nonInstPrefix = new String[]{"dd ", "dw ", "db ", "dq ", "dt ", "text ", "align", "start", "type"};
 	String[] offsetSpecPrefix = new String[]{"off_", "loc_", "byte_", "stru_", "dword_", "qword_", "unk_", "sub_", "asc_", "def_", "xmmword_", "word_"};
@@ -223,18 +224,18 @@ public class NormIDAPro implements Normalizer {
             		globalJPTEntriesMap.put(jptStartAddr, jtpEntryList);
             	}
             	else {
-//            		.text:00402D34                 dd offset loc_403675
+            		// line: .text:00402D34                 dd offset loc_403675
             		String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 2);
             		if(lineSplit.length > 1 && lineSplit[1].strip() != "")
             			readJPTEntryAddr(lineSplit[1].strip(), jtpEntryList);
             	}
             }
-//            .text:004031FC jpt_4031F2      dd offset loc_403274
+            // line: .text:004031FC jpt_4031F2      dd offset loc_403274
             if(jptStartPat.matcher(line).find()) {
             	jptInfoStart = true;
             	jtpEntryList = new ArrayList<>();
             	String[] lineSplit = Utils.remove_multiple_spaces(line).split(" ", 3);
-            	jptStartAddr = Long.valueOf(lineSplit[0].split(":", 2)[1].strip(), 16);
+            	jptStartAddr = Long.valueOf(lineSplit[0].split(":", 2)[1].strip(), 16); //0x4031FC
             	readJPTEntryAddr(lineSplit[2].strip(), jtpEntryList);
             }
 		}
@@ -824,16 +825,20 @@ public class NormIDAPro implements Normalizer {
 			varValueMap.put(varName, Utils.imm_str_to_int(varValue));
     	}
         else {
-	    	if(secName.equals(".bss") && varValue.equals("?"))
-	    		varValueMap.put(varName, (long) 0);
-	    	else if(varValue.startsWith("offset ")) {
+//	    	if(secName.equals(".bss") && varValue.equals("?"))
+//	    		varValueMap.put(varName, (long) 0);
+//	    	else
+	    	if(varValue.startsWith("offset ") && !varName.startsWith("jpt_")) {
 	    		String tmp = varValue.split(" ", 2)[1].strip();
 	    		if(varOffsetMap.containsKey(tmp)) {
 	    			varValueMap.put(varName, varOffsetMap.get(tmp));
 	    		}
 	    		else
-		    		// In doubt, could be modified later
 		    		varValueMap.put(varName, address);
+	    	}
+	    	else if(specVarEndPat.matcher(varValue).find()) {
+	    		varValue = Utils.rsplit(varValue, ",")[1].strip();
+	    		varValueMap.put(varName, Utils.imm_str_to_int(varValue));
 	    	}
 	    	else
 	    		// In doubt, could be modified later

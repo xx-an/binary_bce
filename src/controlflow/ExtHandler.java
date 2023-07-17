@@ -183,11 +183,18 @@ public class ExtHandler {
 
 	static boolean ext_free_mem_call(Store store, long rip, int block_id) {
 	    boolean succeed = true;
-	    BitVecExpr mem_addr = SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id);
-	    if(store.containsKey(mem_addr))
-	        SymHelper.remove_memory_content(store, mem_addr);
-	    else if(Helper.is_bit_vec_num(mem_addr)) {
-	        succeed = false;
+	    BitVecExpr memAddr = SymEngine.get_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rdi":"edi", block_id);
+	    if(store.containsKey(memAddr))
+	        SymHelper.remove_memory_content(store, memAddr);
+	    else {
+		    long stackTop = SymHelper.top_stack_addr(store);
+	    	memAddr = Helper.gen_bv_num(stackTop, Config.MEM_ADDR_SIZE);
+	    	if(store.containsKey(memAddr))
+		        SymHelper.remove_memory_content(store, memAddr);
+	    	else if(Helper.is_bit_vec_num(memAddr)) {
+		    	store.g_PointerRelatedError = Lib.MEMORY_RELATED_ERROR_TYPE.FREE_AFTER_FREE;
+		        succeed = false;
+		    }
 	    }
 	    return succeed;
 	}

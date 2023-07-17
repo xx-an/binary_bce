@@ -38,7 +38,7 @@ public class ControlFlow {
     HashMap<Long, String> addrSymMap;
     HashMap<Long, String> addrInstMap;
     HashMap<Long, Long> addrNextMap;
-    HashMap<Tuple<Long, Long>, Integer> loopTraceCounter;
+    HashMap<Long, HashMap<Long, Integer>> loopTraceCounter;
     HashMap<String, ArrayList<String>> gPreConstraint;
     HashSet<Long> funcEndAddressSet;
     ArrayList<Long> extFuncCallAddr;
@@ -103,8 +103,9 @@ public class ControlFlow {
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.num_to_hex_string(curr.address) + ": " + curr.inst);
-//            Utils.logger.info(curr.store.pp_reg_store());
-//            Utils.logger.info(curr.store.pp_mem_store());
+            Utils.logger.info("Block " + Integer.toString(curr.block_id));
+            Utils.logger.info(curr.store.pp_reg_store());
+            Utils.logger.info(curr.store.pp_mem_store());
             long address = curr.address;
             if(address == 0x403da7) {
             	System.exit(1);
@@ -151,22 +152,33 @@ public class ControlFlow {
 
     void construct_conditional_jump_block(Block block, long address, String inst, long newAddress, Store store, Constraint constraint, boolean val, boolean need_new_constraint) {
         if(addrBlockMap.containsKey(address)) {
-        	Tuple<Long, Long> traceKey = new Tuple<>(address, newAddress);
-            if(loopTraceCounter.containsKey(traceKey)) {
-                int counter = loopTraceCounter.get(traceKey);
-                if(counter < Utils.MAX_LOOP_COUNT) {
-                    loopTraceCounter.put(traceKey, counter + 1);
+        	if(loopTraceCounter.containsKey(address)) {
+        		HashMap<Long, Integer> loopInfo = loopTraceCounter.get(address);
+        		if(loopInfo.containsKey(newAddress)) {
+        			int counter = loopInfo.get(newAddress);
+        			if(counter < Utils.MAX_LOOP_COUNT) {
+        				loopInfo.put(newAddress, counter + 1);
+                        jump_to_block_w_new_constraint(block, inst, newAddress, store, constraint, val, need_new_constraint);
+                    }
+                    else {
+                        Utils.logger.info("The path is terminated since the loop upperbound is hit\n");
+                        handle_cmc_path_termination(store);
+                    }
+        		}
+        		else {
+        			boolean exists_loop = CFHelper.detect_loop(block, address, newAddress, blockMap);
+                    if(exists_loop) {
+                    	loopInfo.put(newAddress, 1);
+                    }
                     jump_to_block_w_new_constraint(block, inst, newAddress, store, constraint, val, need_new_constraint);
                 }
-                else {
-                    Utils.logger.info("The path is terminated since the loop upperbound is hit\n");
-                    handle_cmc_path_termination(store);
-                }
-            }
+        	}
             else {
                 boolean exists_loop = CFHelper.detect_loop(block, address, newAddress, blockMap);
                 if(exists_loop) {
-                    loopTraceCounter.put(traceKey, 1);
+                	HashMap<Long, Integer> loopInfo = new HashMap<>();
+                	loopInfo.put(newAddress, 1);
+                	loopTraceCounter.put(address, loopInfo);
                 }
                 jump_to_block_w_new_constraint(block, inst, newAddress, store, constraint, val, need_new_constraint);
             }
@@ -279,8 +291,8 @@ public class ControlFlow {
                 newConstraint = CFHelper.insert_new_constraints(store, rip, block.block_id, extFuncName, preConstraint, constraint);
             }
             else if(extFuncName.startsWith("free")) {
-                boolean succeed = ExtHandler.ext_free_mem_call(store, rip, block.block_id);
-                if(!succeed) return;
+                ExtHandler.ext_free_mem_call(store, rip, block.block_id);
+//                if(!succeed) return;
             }
             else {
                 ExtHandler.ext_func_call(store, rip, block.block_id);

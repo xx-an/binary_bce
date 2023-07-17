@@ -181,26 +181,29 @@ public class CFHelper {
     
 
 
-	static boolean detect_loop(Block block, Long address, Long new_address, HashMap<Integer, Block> block_set) {
-	    boolean exists_loop = false;
+	static ArrayList<Long> detect_loop(Block block, Long address, Long new_address, HashMap<Integer, Block> block_set) {
+	    ArrayList<Long> loopList = new ArrayList<>();
+		boolean existsLoop = false;
 	    Integer parent_id = block.parent_id;
 	    Long prev_address = null;
 	    while(parent_id != null) {
 	        if(block_set.containsKey(parent_id)) {
 	            Block parent_blk = block_set.get(parent_id);
-	            Long p_address = parent_blk.address;
-	            if(p_address == address) {
+	            Long currAddr = parent_blk.address;
+	            loopList.add(currAddr);
+	            if(currAddr == address) {
 	                if(prev_address != -1 && prev_address == new_address) {
-	                    exists_loop = true;
+	                	existsLoop = true;
 	                    break;
 	                }
 	            }
 	            parent_id = parent_blk.parent_id;
-	            prev_address = p_address;
+	            prev_address = currAddr;
 	        }
 	        else break;
 	    }
-	    return exists_loop;
+	    if(!existsLoop) loopList = null;
+	    return loopList;
 	}
 
 
@@ -233,28 +236,6 @@ public class CFHelper {
 	    if(!Lib.REG_NAMES.contains(arg))
 	        length = memLenMap.get(arg);
 	    return length;
-	}
-
-	Tuple<String, ArrayList<String>> construct_print_info(int parent_id, Store parent_store, long parent_rip, Store new_store, long rip, ArrayList<String> invariant_arguments) {
-	    ArrayList<String> p_info = new ArrayList<String>();
-	    ArrayList<String> stack_addr = new ArrayList<String>();
-	    long stack_top = SymHelper.top_stack_addr(new_store);
-	    for(String inv_arg : invariant_arguments) {
-	        if(Lib.REG_NAMES.contains(inv_arg))
-	            p_info.add("register " + inv_arg);
-	        else {
-	            p_info.add("memory address " + inv_arg);
-	            if(Utils.imm_start_pat.matcher(inv_arg).matches()) {
-	                long mem_addr = Utils.imm_str_to_int(inv_arg);
-	                if(mem_addr >= stack_top)
-	                    stack_addr.add(inv_arg);
-	            }
-	        }
-	        BitVecExpr prev_val = SymEngine.get_sym(parent_store, parent_rip, inv_arg, parent_id);
-	        SymEngine.set_sym(new_store, rip, inv_arg, prev_val, parent_id);
-	    }
-	    String print_info = String.join(", ", p_info);
-	    return new Tuple<String, ArrayList<String>>(print_info, stack_addr);
 	}
 
 
