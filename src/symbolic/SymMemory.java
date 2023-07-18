@@ -160,7 +160,7 @@ public class SymMemory {
 	            res = Helper.gen_bv_num(addr, length);
 	        }
 	        else if(content.contains("rip")) {  // "rip+0x2009a6"
-	        	content = content.replace("rip", Utils.num_to_hex_string(rip));
+	        	content = content.replace("rip", Utils.toHexString(rip));
 	            long addr = (long) Utils.eval(content);
 	            if(Config.MEM_ADDR_SIZE == 64)
 	            	res = Helper.gen_bv_num(addr, length);
@@ -323,7 +323,7 @@ public class SymMemory {
 	        if(val != null)
 	        	res = Helper.gen_bv_num(val, length);
 	        else {
-	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.num_to_hex_string(intAddr), length);
+	            res = Helper.gen_spec_sym(Utils.MEM_DATA_SEC_SUFFIX + Utils.toHexString(intAddr), length);
 	        }
 	        store.set_mem_val(address, res, Utils.INIT_BLOCK_NO);
 	    }

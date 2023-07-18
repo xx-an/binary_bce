@@ -7,7 +7,7 @@ import java.util.List;
 public class Config {
 	public static int MEM_ADDR_SIZE = 32;
 	
-	public static final int MAX_LOOP_COUNT = 5;
+	public static final int MAX_CYCLE_COUNT = 5;
 	public static final int MAX_VISIT_COUNT = 25;
 
 	public static final int MAX_TRACEBACK_COUNT = 15;

@@ -71,7 +71,13 @@ public class NormHelper {
 
 	public static String convertImmEndHToHex(String imm) {
 	    String tmp = Utils.rsplit(imm, "h")[0].strip();
-	    String res = Utils.num_to_hex_string(Long.valueOf(tmp, 16));
+	    String res = Utils.toHexString(Long.parseLong(tmp, 16));
+	    return res;
+	}
+	
+	public static long convertImmToLong(String imm) {
+		String tmp = Utils.rsplit(imm, "h")[0].strip();
+	    long res = Long.parseLong(tmp, 16);
 	    return res;
 	}
 	
@@ -130,7 +136,7 @@ public class NormHelper {
 	
 	String to_hex(int num, int bits) {
 		int res = (num + (1 << bits)) % (1 << bits);
-		return Utils.num_to_hex_string(res);
+		return Utils.toHexString(res);
 	}
 	
 	public static String getIdaPtrRepFromItemType(String itemType) {
@@ -145,7 +151,7 @@ public class NormHelper {
 	public static String convertToHexRep(String arg) {
 	    String res = arg;
 	    if(arg.matches("^[0-9a-f]+$|^-[0-9a-f]+$"))
-	        res = Utils.num_to_hex_string(Long.valueOf(arg, 16));
+	        res = Utils.toHexString(Long.valueOf(arg, 16));
 	    return res;
 	}
 	
@@ -237,7 +243,7 @@ public class NormHelper {
 	        }
 	    }
 	    else if(Pattern.matches("^0x[0-9a-f]+$|^-0x[0-9a-f]+$", arg)) {
-	    	res = Utils.num_to_hex_string(Utils.imm_str_to_int(arg));
+	    	res = Utils.toHexString(Utils.imm_str_to_int(arg));
 	    }
 	    return res;
 	}
@@ -246,7 +252,7 @@ public class NormHelper {
 	public static String convert_to_hex_rep(String arg) {
 	    String res = arg;
 	    if(Pattern.matches("^[0-9a-f]+$|^-[0-9a-f]+$", arg))
-	        res = Utils.num_to_hex_string(Integer.decode(arg));
+	        res = Utils.toHexString(Integer.decode(arg));
 	    return res;
 	}
 
@@ -349,9 +355,9 @@ public class NormHelper {
 	    	}
 	    }
 	    if(res != "")
-	        res += "+" + Utils.num_to_hex_string(immVal);
+	        res += "+" + Utils.toHexString(immVal);
 	    else
-	        res = Utils.num_to_hex_string(immVal);
+	        res = Utils.toHexString(immVal);
 	    res = res.replace("+-", "-");
 	    return res;
 	}
@@ -366,7 +372,7 @@ public class NormHelper {
 	            String op = opStack.get(idx - 1);
 	            res += op;
 	            if((op.equals("+") || op.equals("-")) && Utils.imm_start_pat.matcher(val).matches())
-	                res += Utils.num_to_hex_string(Utils.imm_str_to_int(val));
+	                res += Utils.toHexString(Utils.imm_str_to_int(val));
 	            else
 	                res += val;
 	        }

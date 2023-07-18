@@ -17,6 +17,8 @@
 ./src/controlflow/BlockNode.java
 ./src/controlflow/ControlFlow.java
 ./src/controlflow/ExtHandler.java
+./src/graph/GraphBuilder.java
+./src/graph/Graph.java
 ./src/block/Block.java
 ./src/block/Store.java
 ./src/block/Constraint.java

@@ -40,7 +40,7 @@ public class NormIDAPro implements Normalizer {
 	HashMap<String, Long> varValueMap;
 	HashMap<String, Long> procValueMap;
 	HashMap<String, String> varPtrRepMap;
-	HashMap<Long, Boolean> addedPtrRepMap;
+	HashSet<Long> addedPtrRepMap;
 	HashMap<String, String> varIdaStructTypeMap;
 	ArrayList<String> idaStructTypes;
 	HashSet<String> globalDataName;
@@ -55,9 +55,7 @@ public class NormIDAPro implements Normalizer {
 	Pattern jptEndPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} ; [-]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} ; [-]+");
 	Pattern idaWordRepPat = Pattern.compile("^byte_[0-9a-fA-F]+$|^word_[0-9a-fA-F]+$|^dword_[0-9a-fA-F]+$|^qword_[0-9a-fA-F]+$|^tbyte_[0-9a-fA-F]+$|^xmmword_[0-9a-fA-F]+$");
 	
-	Pattern textSecStartPat = Pattern.compile("^.text:[0-9a-fA-F]+ ");
 	Pattern subtractHexPat = Pattern.compile("-[0-9a-fA-F]+h");
-	Pattern specVarEndPat = Pattern.compile(",[0-9]+$");
 
 	String[] nonInstPrefix = new String[]{"dd ", "dw ", "db ", "dq ", "dt ", "text ", "align", "start", "type"};
 	String[] offsetSpecPrefix = new String[]{"off_", "loc_", "byte_", "stru_", "dword_", "qword_", "unk_", "sub_", "asc_", "def_", "xmmword_", "word_"};
@@ -82,7 +80,7 @@ public class NormIDAPro implements Normalizer {
         varPtrRepMap = new HashMap<>();
         currPtrRep = null;
         globalDataName = new HashSet<>();
-        addedPtrRepMap = new HashMap<>();
+        addedPtrRepMap = new HashSet<>();
         idaStructTable = NormHelper.init_ida_struct_info();
         varIdaStructTypeMap = new HashMap<>();
         idaStructTypes = new ArrayList<>();
@@ -351,7 +349,7 @@ public class NormIDAPro implements Normalizer {
         String instName = instElem.inst_name;
         for(String arg : instElem.inst_args) {
         	// Replace symbolic operand with local concrete value
-        	instArgs.add(replaceSymbolwValue(address, instName, arg, 1));
+        	instArgs.add(replaceSymbolWValue(address, instName, arg, 1));
         }
         String result = instName + " " + String.join(",", instArgs);
         result = preprocessFormatInst(result);
@@ -385,14 +383,18 @@ public class NormIDAPro implements Normalizer {
     }
 
 
-    String replaceSymbol(String instName, String arg) {
-        String symbol = arg.strip();
+    String replaceSymbol(long address, String instName, String arg) {
+    	String symbol = arg.strip();
         String res = symbol;
+        // symbol is IDA struct type
+        // symbol: offset stru_4012EF._base
         if(symbol.contains(".")) {
+        	// (offset stru_4012EF._base+1)
         	if(arg.startsWith("(") && arg.endsWith(")")) {
             	res = Utils.extract_content(symbol, "(");
             	res = handleOffsetOperation(res);
             }
+        	// offset stru_4012EF
             else if(arg.startsWith("offset ")) {
             	res = handleOffsetOperation(symbol);
             }
@@ -400,50 +402,56 @@ public class NormIDAPro implements Normalizer {
             	res = replaceIdaStructItemSymbol(symbol);
             }
         }
-        else if(this.idaImmPat.matcher(symbol).matches()) {
+        // symbol: 38h
+        else if(idaImmPat.matcher(symbol).matches()) {
             res = NormHelper.convertImmEndHToHex(symbol);
+        }
+        // symbol: offset dword_406140
+        else if(arg.startsWith("offset ")) {
+        	res = handleOffsetOperation(symbol);
         }
         else if(Utils.check_jmp_with_address(instName)) {
         	// The symbol represents an internal function name
             if(procValueMap.containsKey(symbol))
-                res = Utils.num_to_hex_string(procValueMap.get(symbol)); //Replace the symbol with the function address
+                res = Utils.toHexString(procValueMap.get(symbol)); //Replace the symbol with the function address
+            // The symbol is parsed and stored in varValueMap
             else if(varValueMap.containsKey(symbol)) {
-                res = Utils.num_to_hex_string(varValueMap.get(symbol));
+                res = Utils.toHexString(varValueMap.get(symbol));
                 if(varPtrRepMap.containsKey(symbol))
                     currPtrRep = varPtrRepMap.get(symbol);
             }
             else if(symbol.startsWith("loc_")) {
                 String remaining = symbol.split("loc_", 2)[1].strip();
                 if(immPat.matcher(remaining).matches()) {
-                    res = Utils.num_to_hex_string(Long.valueOf(remaining, 16));
+                    res = Utils.toHexString(Long.valueOf(remaining, 16));
                 }
             }
         }
         else if(varValueMap.containsKey(symbol)) {
-            res = Utils.num_to_hex_string(varValueMap.get(symbol));
+            res = Utils.toHexString(varValueMap.get(symbol));
             if(varPtrRepMap.containsKey(symbol))
                 currPtrRep = varPtrRepMap.get(symbol);
         }
         else if(symbol.startsWith("loc_")) {
         	String remaining = symbol.split("loc_", 2)[1].strip();
             if(immPat.matcher(remaining).matches()) {
-                res = Utils.num_to_hex_string(Long.decode(remaining));
+                res = Utils.toHexString(Long.decode(remaining));
             }
         }
         else if(symbol.equals("$")) {
-        	res = "0x24";
+        	res = "0x" + Long.toHexString(address);
         }
         return res;
     }
 
 
-    String replaceEachSymbol(String instName, ArrayList<String> stack, ArrayList<String> opStack) {
+    String replaceEachSymbol(long address, String instName, ArrayList<String> stack, ArrayList<String> opStack) {
         String res = "";
         int stackSize = stack.size();
         for(int idx = 0; idx < stackSize; idx++) {
         	String lsi = stack.get(idx);
             if(!(Lib.REG_NAMES.contains(lsi) || Utils.imm_pat.matcher(lsi).matches())) {
-            	stack.set(idx, replaceSymbol(instName, lsi));
+            	stack.set(idx, replaceSymbol(address, instName, lsi));
             }
         }
         res = NormHelper.reconstructFormula(stack, opStack);
@@ -451,7 +459,7 @@ public class NormIDAPro implements Normalizer {
     }
 
 
-    String replaceEachExpr(String instName, String content) {
+    String replaceEachExpr(long address, String instName, String content) {
         ArrayList<String> stack = new ArrayList<>();
         ArrayList<String> opStack = new ArrayList<>();
         String line = Utils.rmUnusedSpaces(content);
@@ -463,45 +471,61 @@ public class NormIDAPro implements Normalizer {
             else
                 stack.add(lsi);
         }
-        String res = replaceEachSymbol(instName, stack, opStack);
+        String res = replaceEachSymbol(address, instName, stack, opStack);
         return res;
     }
 
 
-    String replaceSymbolwValue(long address, String instName, String arg, int count) {
+    /***
+     * Replace some of the symbols with concrete values
+     * @param address: the address of the instruction
+     * @param instName: instruction operator
+     * @param arg: the operand of the instruction that needs to be handled
+     * @param count: a counter that indicates the time that the instruction is processed (pre- or post- processed)
+     * @return the handled instruction operand
+     */
+    String replaceSymbolWValue(long address, String instName, String arg, int count) {
         String res = arg;
         currPtrRep = null;
         if(arg.endsWith("]")) {
             String[] argSplit = arg.split("\\[", 2);
             String prefix = argSplit[0].strip();
             String memAddrStr = Utils.rsplit(argSplit[1].strip(), "]")[0].strip();
-            String memAddr = replaceEachExpr(instName, memAddrStr);
+            String memAddr = replaceEachExpr(address, instName, memAddrStr);
+            // arg: byte ptr [edi]
             if(prefix.contains("ptr") && !prefix.contains("s:"))
                 res = prefix + " [" + memAddr + "]";
+            // arg: byte ptr gs:[esi]
             else if(prefix.contains("ptr") && prefix.contains("s:"))
                 res = prefix + "[" + memAddr + "]";
+            // arg: ds:jpt_402D2D[edx*4]
             else if(prefix.contains("s:")) {
                 String[] prefixSplit = prefix.split(":", 2);
                 if(prefixSplit.length == 2) {
                     String prefixSuffix = prefixSplit[1].strip();
+                    // prefixSuffix: 314320,
                     if(Utils.imm_pat.matcher(prefixSuffix).matches()) {
                         res = "[" + memAddr + "+" + prefixSuffix + "]";
                     }
                     else {
+                    	// prefixSuffix: (n - _GLOBAL_OFFSET_TABLE_)
                         if(prefixSuffix.startsWith("(") && prefixSuffix.endsWith(")")) {
                             res = "[" + memAddr + "+" + Utils.extract_content(prefixSuffix, "(") + "]";
                         }
+                        // prefixSuffix: jpt_402D2D
                         else if(prefixSuffix != null && prefixSuffix != "")
                             res = "[" + memAddr + "+" + prefixSuffix + "]";
                         else
                             res = "[" + memAddr + "]";
                     }
                 }
+                // arg: fs:[ecx+ebp*2+6Fh]
                 else
                     res = "[" + memAddr + "]";
             }
+            // The value of currPtrRep will be set when replaceSymbol function (the same instruction) is called
             else if(currPtrRep != null && currPtrRep != "") {
-                addedPtrRepMap.put(address, true);
+                addedPtrRepMap.add(address);
                 res = currPtrRep + " [" + memAddr + "]";
             }
             else if(Utils.startsWith(prefix, offsetSpecPrefix)) {
@@ -514,23 +538,23 @@ public class NormIDAPro implements Normalizer {
         }
         else if(globalDataName.contains(arg)) {
             if(count == 2)
-                res = "[" + Utils.num_to_hex_string(varValueMap.get(arg)) + "]";
+                res = "[" + Utils.toHexString(varValueMap.get(arg)) + "]";
         }
         else if(arg.contains(" near ptr ")) {
         	String[] argSplit = arg.split(" ptr ", 2);
-        	res = replaceEachExpr(instName, argSplit[1].strip());
+        	res = replaceEachExpr(address, instName, argSplit[1].strip());
         }
         else if(arg.contains(" ptr ")) {
             String[] argSplit = arg.split(" ptr ", 2);
             String ptrRep = argSplit[0] + " ptr ";
-            res = ptrRep + "[" + replaceEachExpr(instName, argSplit[1].strip()) + "]";
+            res = ptrRep + "[" + replaceEachExpr(address, instName, argSplit[1].strip()) + "]";
         }
         else if(arg.startsWith("(") && arg.endsWith(")")) {
         	String argContent = Utils.extract_content(arg, "(");
-        	res = replaceEachExpr(instName, argContent);
+        	res = replaceEachExpr(address, instName, argContent);
         }
         else
-            res = replaceEachExpr(instName, arg);
+            res = replaceEachExpr(address, instName, arg);
         return res;
     }
     
@@ -643,10 +667,10 @@ public class NormIDAPro implements Normalizer {
     String rewriteSpecJumpInst(String instName, long address, String arg) {
         String res = arg.strip();
         if(Utils.check_jmp_with_address(instName)) {
-            if(res.startsWith("$")) {
+            if(res.startsWith("$+")) {
                 res = res.split("$", 2)[1].strip();
                 long newAddr = address + Long.decode(res);
-                res = Utils.num_to_hex_string(newAddr);
+                res = Utils.toHexString(newAddr);
             }
         }
         return res;
@@ -693,7 +717,7 @@ public class NormIDAPro implements Normalizer {
     String formatArg(long address, String instName, String arg) {
         String res = removeUnusedSegReg(address, arg);
         res = rewriteSpecJumpInst(instName, address, res);
-        res = replaceSymbolwValue(address, instName, res, 2);
+        res = replaceSymbolWValue(address, instName, res, 2);
         res = res.replace("+-", "-");
         res = movSegmentRep(res);
         res = execEval(res);
@@ -752,10 +776,10 @@ public class NormIDAPro implements Normalizer {
 
 
     void handleIdaPtrRep(long address, String inst, int length, String instName, ArrayList<String> instArgs, int idx, String arg) {
-        if(!arg.contains(" ptr ") || addedPtrRepMap.containsKey(address)) {
+        if(!arg.contains(" ptr ") || addedPtrRepMap.contains(address)) {
             String ptrRep = NormHelper.generateIdaPtrRep(instName, inst, length);
             if(ptrRep == null) {
-                if(!instName.equals("lea") && !addedPtrRepMap.containsKey(address)) {
+                if(!instName.equals("lea") && !addedPtrRepMap.contains(address)) {
                     if((arg.endsWith("]") || arg.contains("s:")) && !arg.contains(" ptr ")) {
                         if(length != 0)
                             ptrRep = NormHelper.BYTELEN_REP_MAP.get(length);
@@ -793,7 +817,7 @@ public class NormIDAPro implements Normalizer {
                 	Tuple<Integer, String> idaOffType = retrieveIdaTypeOffsetType(symbolType, itemEntry);
                 	int offset = idaOffType.x;
                 	String itemType  = idaOffType.y;
-                    res = Utils.num_to_hex_string(varValueMap.get(symbolName) + offset);
+                    res = Utils.toHexString(varValueMap.get(symbolName) + offset);
                     String ptrRep = NormHelper.getIdaPtrRepFromItemType(itemType);
                     if(ptrRep != null)
                         currPtrRep = ptrRep;
@@ -814,10 +838,29 @@ public class NormIDAPro implements Normalizer {
     	String[] varInfoSplit = varInfo.strip().split(" ", 2);
     	String varType = varInfoSplit[0].strip();
         String varValue = varInfoSplit[1].strip();
+        if(varValue.contains(",")) {
+        	String[] varValueSplit = varValue.split(",");
+        	varValue = varValueSplit[0];
+        }
         varOffsetMap.put(varName, address);
         // varValue: 0
-        if(Utils.imm_start_pat.matcher(varValue).find())
-        	varValueMap.put(varName, Utils.imm_str_to_int(varValue));
+        // varInfo: dd 0FA0h
+        if(idaImmPat.matcher(varValue).find())
+        	varValueMap.put(varName, NormHelper.convertImmToLong(varValue));
+        // line: .text:00401290 off_401290      dd offset dword_401280
+        else if(varValue.startsWith("offset ") && !varName.startsWith("jpt_")) {
+    		String tmp = varValue.split(" ", 2)[1].strip();
+    		if(varOffsetMap.containsKey(tmp)) {
+    			varValueMap.put(varName, varOffsetMap.get(tmp));
+    		}
+    		else
+	    		varValueMap.put(varName, address);
+    	}
+        else if(varValue.startsWith("'") && varValue.endsWith("'")) {
+        	varValueMap.put(varName, (long) varValue.charAt(0));
+        }
+        else if(secName.equals(".bss") && varValue.equals("?"))
+    		varValueMap.put(varName, (long) 0);
         // varName: xmmword_24F9E
         else if(idaWordRepPat.matcher(varName).find()) {
     		String[] varNameSplit = Utils.rsplit(varName, "_");
@@ -825,22 +868,6 @@ public class NormIDAPro implements Normalizer {
 			varValueMap.put(varName, Utils.imm_str_to_int(varValue));
     	}
         else {
-//	    	if(secName.equals(".bss") && varValue.equals("?"))
-//	    		varValueMap.put(varName, (long) 0);
-//	    	else
-	    	if(varValue.startsWith("offset ") && !varName.startsWith("jpt_")) {
-	    		String tmp = varValue.split(" ", 2)[1].strip();
-	    		if(varOffsetMap.containsKey(tmp)) {
-	    			varValueMap.put(varName, varOffsetMap.get(tmp));
-	    		}
-	    		else
-		    		varValueMap.put(varName, address);
-	    	}
-	    	else if(specVarEndPat.matcher(varValue).find()) {
-	    		varValue = Utils.rsplit(varValue, ",")[1].strip();
-	    		varValueMap.put(varName, Utils.imm_str_to_int(varValue));
-	    	}
-	    	else
 	    		// In doubt, could be modified later
 	    		varValueMap.put(varName, address);
     	}
@@ -893,11 +920,13 @@ public class NormIDAPro implements Normalizer {
     }
 
     
+    // Replace the offset of a symbol with the concrete offset value
     String handleOffsetOperation(String arg) {
         String content = arg;
         if(content.contains("offset ")) {
             String original = null;
             String newVar = null;
+            // Split the content according to specific operators, such as +, -, *
             String[] contentSplit = content.split("((?<=[^a-zA-Z0-9_.@?$]+)|(?=[^a-zA-Z0-9_.@?$]+))");
             int cNum = contentSplit.length;
             String variable, var;
@@ -908,13 +937,15 @@ public class NormIDAPro implements Normalizer {
                         variable = contentSplit[idx + 2];
                         original = "offset " + variable;
                         if(varOffsetMap.containsKey(variable))
-                            newVar = Utils.num_to_hex_string(varOffsetMap.get(variable));
+                            newVar = Utils.toHexString(varOffsetMap.get(variable));
+                        // variable: stru_4012EF._base
                         else if(variable.contains("."))
                             newVar = replaceIdaStructItemSymbol(variable);
+                        // variable: off_40502C
                         else if(Utils.startsWith(variable, offsetSpecPrefix)) {
                             var = variable.split("_", 2)[1];
                             if(Utils.imm_start_pat.matcher(var).matches()) {
-                                newVar = Utils.num_to_hex_string(Long.decode(var));
+                                newVar = Utils.toHexString(Long.decode(var));
                             }
                         }
                     }

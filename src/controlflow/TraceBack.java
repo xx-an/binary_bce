@@ -16,7 +16,7 @@ public class TraceBack {
 	static String pp_tb_debug_info(TRACE_BACK_RET_TYPE retType, long address, String inst) {
 	    String res = "The path is unsound due to ";
 	    res += retType.toString().toLowerCase();
-	    res += " at " + Utils.num_to_hex_string(address) + ": " + inst + "\n";
+	    res += " at " + Utils.toHexString(address) + ": " + inst + "\n";
 	    return res;
 	}
 
@@ -39,7 +39,7 @@ public class TraceBack {
 	
 	static Tuple<Integer, Integer> tracebackSymAddr(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, Block blk, ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList, HashMap<String, Integer> memLenMap, ArrayList<String> symNames) {
         Utils.logger.info("\nTrace back for symbolized memory address");
-        Utils.logger.info(Utils.num_to_hex_string(blk.address) + ": " + blk.inst);
+        Utils.logger.info(Utils.toHexString(blk.address) + ": " + blk.inst);
         Store store = blk.store;
         long rip = store.rip;
         int haltPoint = -1;
@@ -67,7 +67,7 @@ public class TraceBack {
                 srcNames = tbInfo.y;
                 HashMap<String, Integer> mLenMap = tbInfo.z;
                 memLenMap.putAll(mLenMap);
-                Utils.logger.info("Block " + Integer.toString(currBlockID) + " at address " + Utils.num_to_hex_string(currBlk.address) + " with instruction " + currBlk.inst);
+                Utils.logger.info("Block " + Integer.toString(currBlockID) + " at address " + Utils.toHexString(currBlk.address) + " with instruction " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
                 if(haltPoint >= 0) {
                 	traceBIDSymList.add(bIDSymMap);
@@ -109,8 +109,8 @@ public class TraceBack {
     
     static void locatePointerRelatedError(HashMap<Integer, Block> blockMap, HashMap<Long, String> addressExtFuncMap, HashMap<Long, String> addressInstMap, HashMap<Long, String> addressSymTable, Block block, Store initStore, long address, String inst, ArrayList<String> symNames) {
         Utils.logger.info("Trace back for pointer-related error");
-        Utils.logger.info(Utils.num_to_hex_string(address) + ": " + block.inst);
-        Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Utils.num_to_hex_string(block.address) + ": " + block.inst);
+        Utils.logger.info(Utils.toHexString(address) + ": " + block.inst);
+        Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Utils.toHexString(block.address) + ": " + block.inst);
         ArrayList<BlockNode> nodeStack = new ArrayList<>();
         ArrayList<String> srcNames = null;
         HashMap<Integer, ArrayList<String>> bIDSymMap = CFHelper.retrieveBIDSymInfo(initStore, initStore.rip, symNames);
@@ -136,9 +136,9 @@ public class TraceBack {
             	Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currStore.rip, inst, tmpNames);
             	int haltPoint = tbInfo.x;
             	srcNames = tbInfo.y;
-                Utils.logger.info(Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
+                Utils.logger.info(Utils.toHexString(currBlk.address) + ": " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
-                Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.num_to_hex_string(currBlk.address) + ": " + currBlk.inst);
+                Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.toHexString(currBlk.address) + ": " + currBlk.inst);
                 bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, pBlock.store.rip, srcNames);
                 if(haltPoint >= 0) continue;
                 else {

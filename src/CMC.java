@@ -12,9 +12,11 @@ import binary.BinaryContent;
 
 import org.apache.commons.cli.*;
 
+import common.Config;
 import common.Helper;
 import common.Utils;
 import controlflow.ControlFlow;
+import graph.GraphBuilder;
 import normalizer.NormFactory;
 import normalizer.NormHelper;
 import normalizer.Normalizer;
@@ -22,14 +24,13 @@ import normalizer.Normalizer;
 public class CMC {
 	
 
-	static ControlFlow constructCF(String execPath) {
+	static ControlFlow constructCF(String execPath, GraphBuilder graphBuilder) {
 		Normalizer norm = NormFactory.norm;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
-	    ControlFlow cfg = new ControlFlow(preConstraint, norm);
+	    ControlFlow cfg = new ControlFlow(preConstraint, norm, graphBuilder);
 	    return cfg;
 	}
-	
     
 
 	static void set_logger(String normPath, String normType, boolean verbose) throws SecurityException, IOException {
@@ -66,8 +67,9 @@ public class CMC {
 	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
 	    NormFactory.setDisasm(disasmPath, disasmType);
 	    BinaryContent.readBinaryContent(execPath);
+	    GraphBuilder graphBuilder = new GraphBuilder(NormFactory.norm);
 		long startTime = System.nanoTime();
-	    ControlFlow cfg = constructCF(execPath);
+	    ControlFlow cfg = constructCF(execPath, graphBuilder);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
 	    write_results(cfg);
 	    Utils.output_logger.info("Execution time (s) : " + Long.toString(duration));
@@ -150,6 +152,12 @@ public class CMC {
                 .hasArg()
                 .desc("The default value of the CMC bound")
                 .build();
+        
+        Option memAddrSizeOpt = Option.builder("m").longOpt("addr_size")
+                .argName("addr_size")
+                .hasArg()
+                .desc("The size of the memory address")
+                .build();
 	    
 
         options.addOption(batchOpt);
@@ -159,11 +167,14 @@ public class CMC {
         options.addOption(execDirOpt);
         options.addOption(fileNameOpt);
         options.addOption(cmcBoundOpt);
+        options.addOption(memAddrSizeOpt);
+        
         
         CommandLineParser parser = new DefaultParser();
         CommandLine line = parser.parse(options, args);
         
         Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
+        Config.MEM_ADDR_SIZE = Integer.decode(line.getOptionValue("addr_size", "32"));
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name", "basename.exe");
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();

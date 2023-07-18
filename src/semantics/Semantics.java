@@ -191,13 +191,13 @@ public class Semantics {
 
 	public static void call(Store store, ArrayList<String> arg) {
 		store.g_FuncCallStack.add(rip);
-	    push(store, Utils.num_to_hex_string(rip));
+	    push(store, Utils.toHexString(rip));
 	}
 
 
 	public static void call_op(Store store, long rip, int block_id) {
 		store.g_FuncCallStack.add(rip);
-		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Utils.num_to_hex_string(rip), block_id);
+		BitVecExpr sym_src = SymEngine.get_sym(store, rip, Utils.toHexString(rip), block_id);
 	    SMTHelper.push_val(store, rip, sym_src, block_id);
 	}
 	
@@ -426,12 +426,13 @@ public class Semantics {
 
 
 	static void rep(Store store, String inst_name, String inst) {
-		BitVecExpr sym_rcx = SymEngine.get_sym(store, rip, "rcx", block_id);
+		String cxReg = (Config.MEM_ADDR_SIZE == 64) ? "rcx" : "ecx";
+		BitVecExpr sym_rcx = SymEngine.get_sym(store, rip, cxReg, block_id);
 	    BoolExpr rcx_is_0 = Helper.is_equal(sym_rcx, 0);
 	    while(rcx_is_0.equals(Helper.SymFalse)) {
 	        int res = parse_semantics(store, rip, inst, block_id);
 	        if(res == -1) break;
-	        sym_rcx = SMTHelper.sym_bin_op_na_flags(store, rip, "-", "rcx", "1", block_id);
+	        sym_rcx = SMTHelper.sym_bin_op_na_flags(store, rip, "-", cxReg, "1", block_id);
 	        rcx_is_0 = Helper.is_equal(sym_rcx, 0);
 	        if(rcx_is_0.equals(Helper.SymTrue))
 	            break;

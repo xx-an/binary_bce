@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Stack;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,8 +21,10 @@ import block.Node;
 import block.Store;
 import common.Config;
 import common.Lib;
+import common.Triplet;
 import common.Lib.MEMORY_RELATED_ERROR_TYPE;
 import common.Utils;
+import graph.GraphBuilder;
 import semantics.SMTHelper;
 import symbolic.SymEngine;
 import symbolic.SymHelper;
@@ -89,55 +92,49 @@ public class CFHelper {
 	    return next_address;
 	}
 	
-	static Tuple<String, ArrayList<Long>> readJPTTargets(String instArg, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
+	static Tuple<String, ArrayList<Long>> readJPTEntries(String instArg, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
 		ArrayList<Long> targetAddrs = null;
 		String jptIdxRegName = "";
-		if(instArg.endsWith("]") && !(instArg.contains("rip")) && instArg.contains("*") && (instArg.contains("+"))) {
-			String arg = Utils.extract_content(instArg, "[");
-			String[] argSplit = arg.split("\\+");
-			for(String as : argSplit) {
-				as = as.strip();
-				if(as.startsWith("0x")) {
-					long addr = Long.decode(as);
-		    		targetAddrs = globalJPTEntriesMap.get(addr);
-				}
-				else if(as.contains("*")) {
-					String[] asSplit = as.split("\\*");
-					jptIdxRegName = asSplit[0].strip();
-				}
+		String arg = Utils.extract_content(instArg, "[");
+		String[] argSplit = arg.split("\\+");
+		for(String as : argSplit) {
+			as = as.strip();
+			if(as.startsWith("0x")) {
+				long addr = Long.decode(as);
+	    		targetAddrs = globalJPTEntriesMap.get(addr);
 			}
-	    }
+			else if(as.contains("*")) {
+				String[] asSplit = as.split("\\*");
+				jptIdxRegName = asSplit[0].strip();
+			}
+		}
 	    return new Tuple<>(jptIdxRegName, targetAddrs);
 	}
 	
-	static Tuple<String, ArrayList<Long>> readJPTTargetAddrs(ArrayList<Block> trace_list, int idx, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
-		ArrayList<Long> targetAddrs = null;
-		String jptIdxRegName = "";
-		int aIdx = 0;
-		for(aIdx = 0; aIdx < idx; aIdx++) {
-	        Block blk = trace_list.get(aIdx);
-	        String inst = blk.inst;
-	        String instArg = inst.strip().split(" ", 2)[1].strip();
-	        if(inst.startsWith("mov")) {
-	        	String[] instArgs = instArg.split(",", 2);
-			    if(instArgs.length == 2) {
-			        String instArg0 = instArgs[0].strip();
-			        String instArg1 = instArgs[1].strip();
-			        if(Lib.REG_NAMES.contains(instArg0)) {
-			        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTTargets(instArg1, globalJPTEntriesMap);
-			        	jptIdxRegName = jptTargetInfo.x;
-			        	targetAddrs = jptTargetInfo.y;
-			        }
-			    }
-	        }
-	        else if(inst.startsWith("jmp")) {
-	        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTTargets(instArg, globalJPTEntriesMap);
-	        	jptIdxRegName = jptTargetInfo.x;
-	        	targetAddrs = jptTargetInfo.y;
-	        }
-	        if(targetAddrs != null) break;
-	    }
-		return new Tuple<>(jptIdxRegName, targetAddrs);
+	static Tuple<String, ArrayList<Long>> readJPTTargetAddrs(HashMap<Integer, Block> blockMap, Block block, HashMap<Long, ArrayList<Long>> globalJPTEntriesMap) {
+		String inst = block.inst;
+        if(inst.startsWith("jmp ")) {
+        	if(inst.endsWith("]") && !inst.contains("rip") && inst.contains("*") && inst.contains("+")) {
+        		String instArg = inst.strip().split(" ", 2)[1].strip();
+	        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTEntries(instArg, globalJPTEntriesMap);
+	        	return jptTargetInfo;
+        	}
+        	else {
+        		Block parentBlk = blockMap.get(block.parentID);
+        		String pInst = parentBlk.inst;
+        		if(pInst.startsWith("mov") && pInst.endsWith("]") && !pInst.contains("rip") && pInst.contains("*") && pInst.contains("+")) {
+        			String pInstArg = pInst.strip().split(" ", 2)[1].strip();
+                	String[] pInstArgs = pInstArg.split(",", 2);
+    		        String instArg0 = pInstArgs[0].strip();
+    		        String instArg1 = pInstArgs[1].strip();
+    		        if(Lib.REG_NAMES.contains(instArg0)) {
+    		        	Tuple<String, ArrayList<Long>> jptTargetInfo = readJPTEntries(instArg1, globalJPTEntriesMap);
+    		        	return jptTargetInfo;
+    		        }
+                }
+        	}
+        }
+		return new Tuple<>("", null);
 	}
 	
 	
@@ -178,44 +175,62 @@ public class CFHelper {
     	}
     	return new Tuple<>(constraintList, unifiedTargetAddrs);
     }
+	
+	
+    static void substituteSymVal(Store store, long rip, BitVecExpr symArg, BitVecExpr symNewVal, int blockID, ArrayList<String> symNames) {
+        for(String symName : symNames) {
+            String tmpName = symName;
+            if(Utils.imm_start_pat.matcher(symName).matches()) {
+            	tmpName = "[" + symName + "]";
+            }
+            BitVecExpr prevVal = SymEngine.get_sym(store, rip, tmpName, blockID);
+            SymEngine.set_sym(store, rip, tmpName, Helper.substitute_sym_val(prevVal, symArg, symNewVal), blockID);
+        }
+    }
     
+    
+    static boolean isDirectOrJPTJmpAddr(HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap, long addr, String jmpAddrStr) {
+    	boolean res = false;
+    	if(Utils.imm_start_pat.matcher(jmpAddrStr).find()) res = true;
+    	else if(addrJPTEntriesMap.containsKey(addr)) res = true;
+    	return res;
+    }
 
 
-	static ArrayList<Long> detect_loop(Block block, Long address, Long new_address, HashMap<Integer, Block> block_set) {
-	    ArrayList<Long> loopList = new ArrayList<>();
-		boolean existsLoop = false;
-	    Integer parent_id = block.parent_id;
-	    Long prev_address = null;
-	    while(parent_id != null) {
-	        if(block_set.containsKey(parent_id)) {
-	            Block parent_blk = block_set.get(parent_id);
-	            Long currAddr = parent_blk.address;
-	            loopList.add(currAddr);
-	            if(currAddr == address) {
-	                if(prev_address != -1 && prev_address == new_address) {
-	                	existsLoop = true;
-	                    break;
-	                }
+	static Stack<Long> detectCycle(Block block, Long newAddr, String newInst, HashMap<Integer, Block> blockMap, GraphBuilder graphBuilder) {
+		long address = block.address;
+		boolean exists = false;
+	    int idx = 0, parentID = block.parentID, lengthLimit = graphBuilder.longestCycleLength(newAddr);
+	    Stack<Long> cycle = new Stack<>();
+	    cycle.push(address);
+	    while(parentID != -1 && idx < lengthLimit) {
+	        if(blockMap.containsKey(parentID)) {
+	            Block parentBlk = blockMap.get(parentID);
+	            Long curr = parentBlk.address;
+	            cycle.push(curr);
+	            if(curr == newAddr) {
+                	exists = true;
+                    break;
 	            }
-	            parent_id = parent_blk.parent_id;
-	            prev_address = currAddr;
+	            parentID = parentBlk.parentID;
 	        }
 	        else break;
+	        idx += 1;
 	    }
-	    if(!existsLoop) loopList = null;
-	    return loopList;
+	    if(!exists) cycle = null;
+	    return cycle;
 	}
 
 
 	ArrayList<Long> backtrack_to_start(Block block, Long address, HashMap<Integer, Block> block_set) {
 		ArrayList<Long> trace_list = new ArrayList<Long>();
 		trace_list.add(address);
-	    int parent_id = block.parent_id;
-	    while(parent_id != -1) {
-	        Block parent_blk = block_set.get(parent_id);
+	    int parentID = block.parentID;
+	    while(parentID != -1) {
+	        Block parent_blk = block_set.get(parentID);
 	        long p_address = parent_blk.address;
 	        trace_list.add(p_address);
-	        parent_id = parent_blk.parent_id;
+	        parentID = parent_blk.parentID;
 	    }
 	    return trace_list;
 	}
@@ -250,8 +265,8 @@ public class CFHelper {
 
     static Store getParentStore(HashMap<Integer, Block> blockSet, Block blk) {
         Store store = null;
-        if(blockSet.containsKey(blk.parent_id)) {
-        	Block parentBlock = blockSet.get(blk.parent_id);
+        if(blockSet.containsKey(blk.parentID)) {
+        	Block parentBlock = blockSet.get(blk.parentID);
             store = parentBlock.store;
         }
         else {
@@ -367,8 +382,7 @@ public class CFHelper {
 	        }
 	    }
 	}
-
-	            
+	
 
 	static HashMap<BitVecExpr, ArrayList<BitVecExpr>> concretizeSymArg(Store store, ArrayList<BitVecExpr> symValues, ArrayList<Integer> symLengths, Constraint constraint, int haltPoint) {
 		HashMap<BitVecExpr, ArrayList<BitVecExpr>> conc_res = new HashMap<BitVecExpr, ArrayList<BitVecExpr>>();
@@ -417,7 +431,7 @@ public class CFHelper {
 	    }
 	}
 	
-	static ArrayList<String> detect_reg_in_memaddr_rep(String arg) {
+	static ArrayList<String> regsInMemAddrRep(String arg) {
 		String reg = "(\\W+)";
 		String[] argSplit = arg.split(reg);
 		ArrayList<String> res = new ArrayList<String>();
@@ -430,7 +444,7 @@ public class CFHelper {
 	}
 	
 	
-	static ArrayList<String> retrieve_source_for_memaddr(String inst, boolean common) {
+	static ArrayList<String> retrieveSymSources(String inst, boolean common) {
 		ArrayList<String> symNames = new ArrayList<String>();
 	    if(common) {
 	        String[] instSplit = inst.strip().split(" ", 2);
@@ -438,7 +452,7 @@ public class CFHelper {
 	        for(String arg : instArgs) {
 	            if(arg.endsWith("]")) {
 	                String ar = Utils.extract_content(arg, "[");
-	                symNames = detect_reg_in_memaddr_rep(ar);
+	                symNames = regsInMemAddrRep(ar);
 	                break;
 	            }
 	        }
@@ -486,7 +500,7 @@ public class CFHelper {
 	}
 
 
-	void substitute_sym_arg_for_all(Store store, BitVecExpr sym_arg, BitVecExpr sym_new) {
+	void substituteAllSymVal(Store store, BitVecExpr sym_arg, BitVecExpr sym_new) {
 		HashMap<BitVecExpr, Node> mem_store = store.g_MemStore;
 		for(BitVecExpr k : mem_store.keySet()) {
 			Node v = mem_store.get(k);
@@ -525,8 +539,8 @@ public class CFHelper {
 	
 	static Block getParentBlockInfo(HashMap<Integer, Block> blockMap, Block blk) {
 		Block pBlock = null;
-		if(blockMap.containsKey(blk.parent_id)) {
-			pBlock = blockMap.get(blk.parent_id);
+		if(blockMap.containsKey(blk.parentID)) {
+			pBlock = blockMap.get(blk.parentID);
 		}
 	    return pBlock;
 	}

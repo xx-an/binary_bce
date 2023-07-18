@@ -113,15 +113,22 @@ public class Utils {
 	    Matcher matcher = pattern.matcher(imm_str);
 	    if(imm_str.startsWith("0x") || imm_str.startsWith("-0x"))
 	        res = Long.decode(imm_str);
-	    else if(matcher.find())
-	        res = Long.valueOf(imm_str, 16);
+	    else if(matcher.find()) {
+	    	if(imm_str.endsWith("h")) {
+	    		String tmp = imm_str.substring(0, imm_str.length() - 1);
+	    		res = Long.valueOf(tmp, 16);
+	    	}
+	    	else {
+	    		res = Long.valueOf(imm_str, 16);
+	    	}
+	    }
 	    else 
 	        res = Long.parseLong(imm_str, 16);
 	    return res;
 	}
 	
 	
-	public static String num_to_hex_string(long imm) {
+	public static String toHexString(long imm) {
 		String res = Long.toString(imm, 16);
 		if(res.startsWith("-")) {
 			res = res.split("-", 2)[1].strip();
@@ -132,7 +139,7 @@ public class Utils {
 	    return res;
 	}
 	
-	public static String num_to_hex_string(int imm) {
+	public static String toHexString(int imm) {
 		String res = Integer.toString(imm, 16);
 		if(res.startsWith("-")) {
 			res = res.split("-", 2)[1].strip();

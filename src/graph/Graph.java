@@ -4,23 +4,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Stack;
 
 import common.Tuple;
 
 public class Graph {
 	
-	HashMap<Long, ArrayList<Long>> graphMap;
-	ArrayList<ArrayList<Long>> cycleList = new ArrayList<>();
-	HashMap<Long, ArrayList<ArrayList<Long>>> cyclesMap = new HashMap<>();
-	HashMap<ArrayList<Long>, Integer> cyclesInfo = new HashMap<>();
+	HashMap<Long, HashSet<Long>> graphMap;
+	HashMap<Long, ArrayList<Stack<Long>>> cyclesMap = new HashMap<>();
+	HashMap<Stack<Long>, Integer> cyclesInfo = new HashMap<>();
 	
-	int cycleNum;
 	long startVertex;
 	
 	
-	public Graph(long startVertex) {
+	public Graph(long sVertex) {
 		graphMap = new HashMap<>();
-		this.startVertex = startVertex;
+		startVertex = sVertex;
+		addVertex(startVertex);
 	}
 	
 	
@@ -30,7 +30,7 @@ public class Graph {
 	
 	void addVertex(long vertex) {
 		if(!graphMap.containsKey(vertex)) {
-			graphMap.put(vertex, new ArrayList<Long>());
+			graphMap.put(vertex, new HashSet<Long>());
 		}
 	}
 	
@@ -38,41 +38,40 @@ public class Graph {
 	public HashSet<Long> getEdges(long vertex) {
 		HashSet<Long> edges = null;
 		if(graphMap.containsKey(vertex)) {
-			ArrayList<Long> neighbours = graphMap.get(vertex);
-			edges = new HashSet<>(neighbours);
+			edges = graphMap.get(vertex);
 		}
 		return edges;
 	}
 	
 	
-	public HashMap<Long, ArrayList<Long>> getGraphMap() {
+	public HashMap<Long, HashSet<Long>> getGraphMap() {
 		return graphMap;
 	}
 
-    ArrayList<Tuple<Long, ArrayList<Long>>> getAllEdges() { 
+    ArrayList<Tuple<Long, HashSet<Long>>> getAllEdges() { 
         return genEdges();
     }
 
     public void addEdge(long vertex1, long vertex2) {
-    	ArrayList<Long> neighbours = null;
-    	if(graphMap.containsKey(vertex1)) {
-    		neighbours = graphMap.get(vertex1);
-    		if(!neighbours.contains(vertex2))
-    			neighbours.add(vertex2);
-    	}
-    	else {
-    		neighbours = new ArrayList<>();
-    		neighbours.add(vertex2);
-    		graphMap.put(vertex1, neighbours);
-    	}
+    	HashSet<Long> neighbours = graphMap.getOrDefault(vertex1, new HashSet<>());
+		if(!neighbours.contains(vertex2))
+			neighbours.add(vertex2);
+    	if(!graphMap.containsKey(vertex2)) addVertex(vertex2);
+    }
+    
+    boolean containsEdge(long vertex1, long vertex2) {
+    	if(!graphMap.containsKey(vertex1)) return false;
+    	HashSet<Long> neighbours = graphMap.get(vertex1);
+    	if(!neighbours.contains(vertex2)) return false;
+    	return true;
     }
     
 
-    public ArrayList<Tuple<Long, ArrayList<Long>>> genEdges() {
-    	ArrayList<Tuple<Long, ArrayList<Long>>> edges = new ArrayList<>();
+    public ArrayList<Tuple<Long, HashSet<Long>>> genEdges() {
+    	ArrayList<Tuple<Long, HashSet<Long>>> edges = new ArrayList<>();
     	for(Long vertex : graphMap.keySet()) {
-    		ArrayList<Long> neighbours = graphMap.get(vertex);
-    		Tuple<Long, ArrayList<Long>> edge = new Tuple<>(vertex, neighbours);
+    		HashSet<Long> neighbours = graphMap.get(vertex);
+    		Tuple<Long, HashSet<Long>> edge = new Tuple<>(vertex, neighbours);
     		if(!edges.contains(edge)) {;
     			edges.add(edge);
     		}
@@ -154,7 +153,7 @@ public class Graph {
     }
 
     int vertexDegree(long vertex) {
-        ArrayList<Long> neighbours = graphMap.get(vertex);
+    	HashSet<Long> neighbours = graphMap.get(vertex);
         int degree = (int) (neighbours.size() + neighbours.stream().filter(e -> e == vertex).count());
         return degree;
     }
@@ -164,7 +163,7 @@ public class Graph {
     ArrayList<Long> findIsolatedVertices() {
     	ArrayList<Long> isolated = new ArrayList<>();
     	for(long vertex : graphMap.keySet()) {
-    		ArrayList<Long> neighbours = graphMap.get(vertex);
+    		HashSet<Long> neighbours = graphMap.get(vertex);
     		if(neighbours == null || neighbours.size() == 0) {
     			isolated.add(vertex);
     		}
@@ -193,78 +192,164 @@ public class Graph {
     	return res;
     }
     
-    void detectCycle(long vertex, long parent, HashMap<Long, Integer> colorMap, HashMap<Long, Long> parentMap) {
-    	if(colorMap.get(vertex) == 2) return;
-    	if(colorMap.get(vertex) == 1) {
-    		ArrayList<Long> vList = new ArrayList<>();
-    		long curr = parent;
-    		vList.add(curr);
-    		while(curr != vertex) {
-    			curr = parentMap.get(curr);
-    			vList.add(curr);
-    		}
-    		cycleList.add(vList);
-    		cycleNum++;
+    
+    boolean containsCycle(Stack<Long> cycle, ArrayList<Stack<Long>> cycleList) {
+    	for(Stack<Long> c : cycleList) {
+    		if(cycle.equals(c)) return true;
     	}
-    	parentMap.put(vertex, parent);
-    	colorMap.put(vertex, 1);
-    	for(long v : graphMap.get(vertex)) {
-    		if(v == parentMap.get(vertex)) continue;
-    		detectCycle(v, vertex, colorMap, parentMap);
-    	}
-    	colorMap.put(vertex, 2);
+    	return false;
     }
     
     
-    void detectAllCycles() {
-    	HashMap<Long, Integer> colorMap = new HashMap<>();
-    	HashMap<Long, Long> parentMap = new HashMap<>();
-    	for(long vertex : graphMap.keySet()) {
-    		colorMap.put(vertex, 0);
-    		parentMap.put(vertex, (long) 0);
+    void buildCycle(Stack<Long> stack, long v, ArrayList<Stack<Long>> cycleList) {
+    	Stack<Long> cycle = new Stack<>();
+    	int idx = stack.size() - 1;
+    	long curr = stack.get(idx);
+    	cycle.push(curr);
+    	while(idx > 0 && curr != v) {
+    		idx -= 1;
+    		curr = stack.get(idx);
+    		cycle.push(curr);
     	}
+		cycleList.add(cycle);
+    }
+    
+    
+    void processDFSTree(Stack<Long> stack, HashMap<Long, Boolean> visited, ArrayList<Stack<Long>> cycleList) {
+    	HashSet<Long> neighbours = graphMap.get(stack.peek());
+    	for(long v : neighbours) {
+    		if(visited.get(v)) {
+    			buildCycle(stack, v, cycleList);
+    		}
+    		else {
+    			stack.push(v);
+    			visited.put(v, true);
+    			processDFSTree(stack, visited, cycleList);
+    		}
+    	}	    	
+    	visited.put(stack.peek(), false);
+	    stack.pop();
+    }
+    
+    void processDFSTree(Stack<Long> stack, HashSet<Long> neighbours, HashMap<Long, Boolean> visited, ArrayList<Stack<Long>> cycleList) {
+    	for(long v : neighbours) {
+    		if(visited.get(v)) {
+    			buildCycle(stack, v, cycleList);
+    		}
+    		else {
+    			stack.push(v);
+    			visited.put(v, true);
+    			processDFSTree(stack, graphMap.get(stack.peek()), visited, cycleList);
+    		}
+    	}	    	
+    	visited.put(stack.peek(), false);
+	    stack.pop();
+    }
+    
+    
+    // Detect all the cycles in a directed graph
+    void detectAllCycles() {
+    	HashMap<Long, Boolean> visited = new HashMap<>();
+    	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
     	
-    	cycleNum = 0;
-    	ArrayList<Long> vList = graphMap.get(startVertex);
+    	for(long vertex : graphMap.keySet()) {
+    		visited.put(vertex, false);
+    	}
+
+    	Stack<Long> stack = new Stack<>();
+		stack.push(startVertex);
+		visited.put(startVertex, true);
+		processDFSTree(stack, visited, cycleList);
     	
-    	detectCycle(vList.get(0), startVertex, colorMap, parentMap);
-    	
-    	for(ArrayList<Long> cycle : cycleList) {
-    		long start = cycle.get(0);
-    		ArrayList<ArrayList<Long>> curr = cyclesMap.getOrDefault(start, new ArrayList<>());
+    	for(Stack<Long> cycle : cycleList) {
+    		System.out.println(cycle.toString());
+    		long start = cycle.peek();
+    		ArrayList<Stack<Long>> curr = cyclesMap.getOrDefault(start, new ArrayList<>());
     		curr.add(cycle);
     		cyclesInfo.put(cycle, 0);
     	}
     }
     
-    public boolean existsCycle(long start) {
+    
+    void updateDynCycle(long vertex1, long vertex2) {
+    	addEdge(vertex1, vertex2);
+    	
+    	HashMap<Long, Boolean> visited = new HashMap<>();
+    	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
+    	
+    	for(long vertex : graphMap.keySet()) {
+    		visited.put(vertex, false);
+    	}
+
+    	Stack<Long> stack = new Stack<>();
+		stack.push(vertex1);
+		visited.put(vertex1, true);
+		HashSet<Long> neighbours = new HashSet<>();
+		neighbours.add(vertex2);
+		processDFSTree(stack, neighbours, visited, cycleList);
+    	
+    	for(Stack<Long> cycle : cycleList) {
+    		System.out.println(cycle.toString());
+    		boolean exists = false;
+    		for(long vertex : cycle) {
+    			if(cyclesMap.containsKey(vertex)) {
+    				ArrayList<Stack<Long>> curr = cyclesMap.getOrDefault(vertex, new ArrayList<>());
+    				int idx = cycle.indexOf(vertex);
+    				Collections.rotate(cycle, cycle.size() - idx - 1);
+    				if(!containsCycle(cycle, curr)) {
+    					curr.add(cycle);
+    					cyclesInfo.put(cycle, 0);
+    				}
+    				exists = true;
+    				break;
+    			}
+    		}
+    		if(!exists) {
+    			long vertex = cycle.peek();
+    			ArrayList<Stack<Long>> curr = cyclesMap.getOrDefault(vertex, new ArrayList<>());
+				curr.add(cycle);
+				cyclesInfo.put(cycle, 0);
+    		}
+    	}
+    }
+
+    
+    public boolean mayExistCycle(long start) {
     	return cyclesMap.containsKey(start);
     }
     
     
-    public int updateCycleCount(long addr, ArrayList<Long> cycle) {
+    public int updateCycleCount(long addr, Stack<Long> cycle) {
     	int count = 0;
+    	boolean exists = false;
     	if(cyclesMap.containsKey(addr)) {
-	    	ArrayList<ArrayList<Long>> addrCycles = cyclesMap.get(addr);
-	    	for(ArrayList<Long> curr : addrCycles) {
-	    		if(cycle.size() == curr.size()) {
-	    			boolean eq = true;
-	    			for(int idx = 0; idx < cycle.size(); idx++) {
-	    				if(cycle.get(idx) != curr.get(idx)) {
-	    					eq = false;
-	    					break;
-	    				}
-	    			}
-	    			if(eq) {
-	    				count = cyclesInfo.get(curr);
-	    				count += 1;
-	    				cyclesInfo.put(curr, count);
-	    				break;
-	    			}
+	    	ArrayList<Stack<Long>> cycles = cyclesMap.get(addr);
+	    	for(Stack<Long> curr : cycles) {
+	    		if(cycle.equals(curr)) {
+	    			count = cyclesInfo.get(curr);
+    				count += 1;
+    				cyclesInfo.put(curr, count);
+    				exists = true;
+    				break;
 	    		}
+	    	}
+	    	if(!exists) {
+	    		cycles.add(cycle);
+	    		count += 1;
+	    		cyclesInfo.put(cycle, count);
 	    	}
     	}
     	return count;
+    }
+    
+    
+    int longestCycleLength(long vertex) {
+    	int res = 0;
+    	ArrayList<Stack<Long>> cycles = cyclesMap.get(vertex);
+    	for(Stack<Long> cycle : cycles) {
+    		res = Math.max(res, cycle.size());
+    	}
+    	return res;
     }
     
     
@@ -276,8 +361,8 @@ public class Graph {
     		sb.append(Long.toHexString(v) + " ");
     	}
     	sb.append("\nedges: ");
-    	ArrayList<Tuple<Long, ArrayList<Long>>> edges = genEdges();
-    	for(Tuple<Long, ArrayList<Long>> edge : edges) {
+    	ArrayList<Tuple<Long, HashSet<Long>>> edges = genEdges();
+    	for(Tuple<Long, HashSet<Long>> edge : edges) {
     		sb.append(edge.toString() + " ");
     	}
     	return sb.toString();

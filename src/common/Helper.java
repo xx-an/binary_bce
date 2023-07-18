@@ -447,7 +447,7 @@ public class Helper {
 	String string_of_address(BitVecExpr address) {
 	    String res = null;
 	    if(is_bit_vec_num(address)) {
-	        res = Utils.num_to_hex_string(((BitVecNum) address).getLong());
+	        res = Utils.toHexString(((BitVecNum) address).getLong());
 	    }
 	    else
 	    	res = address.toString();

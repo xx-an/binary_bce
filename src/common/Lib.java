@@ -40,6 +40,9 @@ public class Lib {
 	public static final String TEXTSEC = ".text";
 	public static final String DATASEC = ".data";
 	public static final String RODATASEC = ".idata";
+	
+	public static final String EXECUTABLE = "Executable";
+	public static final String RELOCATABLE = "Relocatable";
 			
 			
 	public static final HashSet<String> GENERAL_INSTRUCTIONS;

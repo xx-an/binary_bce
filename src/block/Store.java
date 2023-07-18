@@ -215,7 +215,7 @@ public class Store {
     public String pp_store() {
         StringBuilder sb = new StringBuilder();
         if(rip != -1) {
-        	sb.append("rip {" + Utils.num_to_hex_string(rip) + "\n");
+        	sb.append("rip {" + Utils.toHexString(rip) + "\n");
         }
         sb.append(pp_reg_store());
         sb.append(pp_mem_store());
