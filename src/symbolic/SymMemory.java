@@ -213,20 +213,7 @@ public class SymMemory {
 	static void set_mem_sym_val(Store store, BitVecExpr address,BitVecExpr sym, int block_id, int length, String store_key) { 
 	    int byte_len = length / 8;
 	    if(check_mem_addr_overlapping(store, address, byte_len, store_key)) return;
-	    if(store.containsKey(address)) {
-	    	BitVecExpr prev_sym = store.get_val(address);
-	        int prev_len = prev_sym.getSortSize() / 8;
-	        if(byte_len < prev_len) {
-	        	BitVecExpr rest_sym = Helper.extract_bytes(prev_len, byte_len, prev_sym);
-	        	BitVecExpr curr_sym = Helper.concat(rest_sym, sym);
-	        	store.set_mem_val(address, curr_sym, block_id);
-	        }
-	        else
-	        	store.set_mem_val(address, sym, block_id);
-	    }
-	    else {
-	    	store.set_mem_val(address, sym, block_id);
-	    }
+	    store.set_mem_val(address, sym, block_id);
 	}
 
 	static BitVecExpr is_mem_addr_in_stdout(Store store, BitVecExpr address) {

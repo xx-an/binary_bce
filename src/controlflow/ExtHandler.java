@@ -82,6 +82,7 @@ public class ExtHandler {
 	    SymEngine.set_sym(store, rip, (Config.MEM_ADDR_SIZE==64)?"rbp":"ebp", SymEngine.get_sym(store, main_address, (Config.MEM_ADDR_SIZE==64)?"rcx":"ecx", block_id), block_id);
 	    clear_flags(store);
 	    insert_termination_symbol(store, rip, block_id);
+	    insert_termination_symbol(store, rip, block_id);
 	}
 	    
 

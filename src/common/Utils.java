@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
 import java.util.logging.Formatter;
@@ -178,6 +179,13 @@ public class Utils {
 	    int sign_bit = 1 << (bits - 1);
 	    return (value & (sign_bit - 1)) - (value & sign_bit);
 	}
+	
+	
+	public static String ppCycle(Stack<Long> cycle) {
+		String res = "[" + String.join(", ", cycle.stream().map(i -> Long.toHexString(i)).toList()) + "]";
+		return res;
+    }
+	
 	
 	public static String[] rsplit(String arg, String regex) {
 		String[] args = arg.split(regex);

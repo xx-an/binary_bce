@@ -43,8 +43,8 @@ public class GraphBuilder {
 		return graph.updateCycleCount(addr, cycle);
 	}
 	
-	public int longestCycleLength(long vertex) {
-		return graph.longestCycleLength(vertex);
+	public int longestCycleLength() {
+		return graph.longestCycleLength();
 	}
 	
 	
@@ -65,8 +65,8 @@ public class GraphBuilder {
 	}
 
 	
-	public void updateDynCycle(long vertex1, long vertex2) {
-		graph.updateDynCycle(vertex1, vertex2);
+	public void updateCycleInfo(long vertex1, long vertex2) {
+		graph.updateCycleInfo(vertex1, vertex2);
 	}
 	
 	

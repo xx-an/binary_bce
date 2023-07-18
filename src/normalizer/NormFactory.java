@@ -11,9 +11,6 @@ public class NormFactory {
         if(disasmType.equals("idapro")) {
         	norm = new NormIDAPro(asmPath);
         }
-        else if(disasmType.equals("objdump")) {
-        	norm = new NormObjdump(asmPath);
-        }
     }
 
 }

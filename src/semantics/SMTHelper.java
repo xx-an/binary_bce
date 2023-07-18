@@ -185,8 +185,8 @@ public class SMTHelper {
 	        return null;
 	    else if(!val)
 	    	res = Helper.bv_not(res);
-//	    System.out.println(inst);
-//	    System.out.println(res);
+//	    Utils.logger.info(expr);
+//	    Utils.logger.info(res.toString());
 	    return res;
 	}
 

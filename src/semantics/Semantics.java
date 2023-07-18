@@ -98,8 +98,8 @@ public class Semantics {
 	
 	static void mov_op(Store store, String dest, String src) {
 	    int destLen = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
-	    BitVecExpr sym_src = SymEngine.get_sym(store, rip, src, block_id, destLen);
-	    SymEngine.set_sym(store, rip, dest, sym_src, block_id);
+	    BitVecExpr symSrc = SymEngine.get_sym(store, rip, src, block_id, destLen);
+	    SymEngine.set_sym(store, rip, dest, symSrc, block_id);
 	}
 
 
@@ -449,21 +449,10 @@ public class Semantics {
 		String dest = arg.get(0);
 		String src = arg.get(1);
 		int destLen = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
-//		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
-//		BitVecExpr sym_dest = dest_src_sym.x;
-//		BitVecExpr sym_src = dest_src_sym.y;
 		BitVecExpr res = SymEngine.sym_bin_op(store, rip, "-", dest, src, block_id);
-	    // if(isinstance(res, BitVecNumRef) {
-	    //     if(not isinstance(sym_dest, BitVecNumRef) && not isinstance(sym_src, BitVecNumRef) {
-	    //         tmp = res.as_long()
-	    //         if(tmp != 0:
-	    //             res = SymHelper.gen_sym()
-	    //             SymEngine.set_sym(store, rip, src, SymHelper.gen_sym())
 	    SMTHelper.modify_status_flags(store, res, destLen);
 	    SMTHelper.set_CF_flag(store, rip, dest, src, block_id, "-");
 	    SMTHelper.set_OF_flag(store, rip, dest, src, res, block_id, "-");
-	    // Utils.logger.debug("cmp_op")
-	    // SMTHelper.pp_flags(store)
 	}
 
 

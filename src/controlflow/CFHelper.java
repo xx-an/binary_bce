@@ -200,23 +200,24 @@ public class CFHelper {
 	static Stack<Long> detectCycle(Block block, Long newAddr, String newInst, HashMap<Integer, Block> blockMap, GraphBuilder graphBuilder) {
 		long address = block.address;
 		boolean exists = false;
-	    int idx = 0, parentID = block.parentID, lengthLimit = graphBuilder.longestCycleLength(newAddr);
+	    int idx = 0, parentID = block.parentID, length = graphBuilder.longestCycleLength();
 	    Stack<Long> cycle = new Stack<>();
 	    cycle.push(address);
-	    while(parentID != -1 && idx < lengthLimit) {
+	    while(parentID != -1 && idx < length) {
 	        if(blockMap.containsKey(parentID)) {
 	            Block parentBlk = blockMap.get(parentID);
 	            Long curr = parentBlk.address;
-	            cycle.push(curr);
-	            if(curr == newAddr) {
+	            if(curr == address) {
                 	exists = true;
                     break;
 	            }
+	            cycle.push(curr);
 	            parentID = parentBlk.parentID;
 	        }
 	        else break;
 	        idx += 1;
 	    }
+//	    Utils.ppCycle(cycle);
 	    if(!exists) cycle = null;
 	    return cycle;
 	}

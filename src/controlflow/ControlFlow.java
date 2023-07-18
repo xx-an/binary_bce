@@ -42,11 +42,11 @@ public class ControlFlow {
     HashMap<Long, Long> addrNextMap;
     HashMap<String, ArrayList<String>> gPreConstraint;
     HashSet<Long> funcEndAddrSet;
-    ArrayList<Long> extFuncCallAddr;
+    HashSet<Long> extFuncCallAddr;
     Block dummyBlock;
     public int[] cmcExecInfo;
-    final Long startAddress;
-    final Long mainAddress;
+    Long startAddress;
+    Long mainAddress;
     HashMap<Long, Long> retCallAddrMap;
     HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap;
     HashMap<Long, ArrayList<Long>> globalJPTEntriesMap;
@@ -72,7 +72,7 @@ public class ControlFlow {
         this.mainAddress = norm.getMainAddress();
         this.gPreConstraint = gPreConstraint;
         retCallAddrMap = new HashMap<>();
-        extFuncCallAddr = new ArrayList<>();
+        extFuncCallAddr = new HashSet<>();
         addrJPTEntriesMap = new HashMap<>();
         symAddrValuesetMap = new HashMap<>();
         extLibAssumptions = new HashMap<>();
@@ -101,9 +101,9 @@ public class ControlFlow {
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.toHexString(curr.address) + ": " + curr.inst);
-//            Utils.logger.info("Block " + Integer.toString(curr.blockID));
-//            Utils.logger.info(curr.store.pp_reg_store());
-//            Utils.logger.info(curr.store.pp_mem_store());
+            Utils.logger.info("Block " + Integer.toString(curr.blockID));
+            Utils.logger.info(curr.store.pp_reg_store());
+            Utils.logger.info(curr.store.pp_mem_store());
             long address = curr.address;
             String inst = curr.inst;
             Store store = curr.store;
@@ -125,58 +125,42 @@ public class ControlFlow {
     void constructBranch(Block block, long address, String inst, Store store, Constraint constraint) {
         if(inst.startsWith("ret") || inst.endsWith(" ret")) {
         	buildRetBranch(block, address, inst, store, constraint);
+        	return;
         }
-        else {
-            String jumpAddrStr = inst.split(" ", 2)[1].strip();
-            BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr, addrExtFuncMap);
-//            Utils.logger.info(Long.toHexString(address) + ": " + inst + " :: " + nAddress.toString());
-            Long newAddress = null;
-	        if(Helper.is_bit_vec_num(nAddress)) {
-	        	newAddress = Helper.long_of_sym(nAddress);
-	        }
-            if(addrInstMap.containsKey(newAddress)) {
-            	// If the jump address is resolved from indirect jump instructions (not jumptable-related ones)
-            	if(!CFHelper.isDirectOrJPTJmpAddr(addrJPTEntriesMap, address, jumpAddrStr)) {
-            		if(!graphBuilder.containsEdge(address, newAddress)) {
-                    	graphBuilder.updateDynCycle(address, newAddress);
-//                    	graphBuilder.detectAllCycles();
-//                    	Utils.logger.info("Update the cycle information according to the new resolved jump address");
-                    }
-            	}
-                if(addrExtFuncMap.containsKey(newAddress)) {
-                    if(!extFuncCallAddr.contains(address)) {
-                        extFuncCallAddr.add(address);
-                    }
-                    String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
-                    handleExtJumps(extFuncName, block, address, inst, store, constraint);
+        String jumpAddrStr = inst.split(" ", 2)[1].strip();
+        BitVecExpr nAddress = SMTHelper.get_jump_address(store, store.rip, jumpAddrStr, addrExtFuncMap);
+        Long newAddress = null;
+        if(Helper.is_bit_vec_num(nAddress)) {
+        	newAddress = Helper.long_of_sym(nAddress);
+        }
+        if(addrInstMap.containsKey(newAddress)) {
+        	// If the jump address is resolved from indirect jump instructions (not jumptable-related ones)
+        	if(!CFHelper.isDirectOrJPTJmpAddr(addrJPTEntriesMap, address, jumpAddrStr)) {
+        		if(!graphBuilder.containsEdge(address, newAddress)) {
+                	graphBuilder.updateCycleInfo(address, newAddress);
                 }
-                else {
-                    handleInternalJumps(block, address, inst, store, constraint, newAddress);
-                }
-            }
-            else if(addrSymMap.containsKey(newAddress)) {
+        	}
+            if(addrExtFuncMap.containsKey(newAddress)) {
             	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
-            	if(!extFuncCallAddr.contains(address)) {
-                    extFuncCallAddr.add(address);
-                }
                 handleExtJumps(extFuncName, block, address, inst, store, constraint);
-            }
-            else if(addrExtFuncMap.containsKey(newAddress)) {
-                String extFuncName = addrExtFuncMap.get(newAddress);
-                if(!extFuncCallAddr.contains(address))
-                    extFuncCallAddr.add(address);
-                handleExtJumps(extFuncName, block, address, inst, store, constraint);
-            }
-            else if(Helper.is_bit_vec_num(nAddress) || nAddress.toString().startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
-            	String extFuncName = nAddress.toString();
-                if(!extFuncCallAddr.contains(address))
-                    extFuncCallAddr.add(address);
-                handleExtJumps(extFuncName, block, address, inst, store, constraint);
-                // Utils.logger.debug("Jump to an undefined external address " + str(newAddress) + " at address " + hex(address))
             }
             else
-                handleUnresolvedIndirectJumps(block, address, nAddress, inst, constraint);
+                handleInternalJumps(block, address, inst, store, constraint, newAddress);
         }
+        else if(addrSymMap.containsKey(newAddress)) {
+        	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
+            handleExtJumps(extFuncName, block, address, inst, store, constraint);
+        }
+        else if(addrExtFuncMap.containsKey(newAddress)) {
+            String extFuncName = addrExtFuncMap.get(newAddress);
+            handleExtJumps(extFuncName, block, address, inst, store, constraint);
+        }
+        else if(Helper.is_bit_vec_num(nAddress) || nAddress.toString().startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {
+        	String extFuncName = "mem@" + nAddress.toString();
+            handleExtJumps(extFuncName, block, address, inst, store, constraint);
+        }
+        else
+            handleUnresolvedIndirectJumps(block, address, nAddress, inst, constraint);
     }
 
 
@@ -215,9 +199,8 @@ public class ControlFlow {
     
     void handleInternalJumps(Block block, long address, String inst, Store store, Constraint constraint, long newAddress) {
         Utils.logger.info(Utils.toHexString(address) + ": jump address is " + Utils.toHexString(newAddress));
-        if(Utils.check_not_single_branch_inst(inst)) {    // je xxx
+        if(Utils.check_not_single_branch_inst(inst))   // je xxx
             constructCondBranches(block, address, inst, newAddress, store, constraint);
-        }
         else {
             if(addrBlockMap.containsKey(newAddress) && retCallAddrMap.containsValue(newAddress)) {
                 if(isFuncBlockExplored(store, newAddress)) {
@@ -242,6 +225,7 @@ public class ControlFlow {
     void handleExtJumps(String extFuncName, Block block, long address, String inst, Store store, Constraint constraint) {
         long rip = store.rip;
         Constraint newConstraint = constraint;
+        extFuncCallAddr.add(address);
         String extName = extFuncName.split("@", 2)[0].strip();
         Utils.logger.info("Call the external function " + extName + " at address " + Long.toHexString(address));
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
@@ -259,7 +243,6 @@ public class ControlFlow {
             }
             else if(extFuncName.startsWith("free")) {
                 ExtHandler.ext_free_mem_call(store, rip, block.blockID);
-//                if(!succeed) return;
             }
             else {
                 ExtHandler.ext_func_call(store, rip, block.blockID);
@@ -356,14 +339,10 @@ public class ControlFlow {
             }
             // Take care of the execution time
             if(!graphBuilder.containsEdge(address, newAddress)) {
-            	graphBuilder.updateDynCycle(address, newAddress);
-            	// graphBuilder.detectAllCycles();
-//            	Utils.logger.info("Update the cycle information based on the return operaion");
+            	graphBuilder.updateCycleInfo(address, newAddress);
             }
             blockID = add_new_block(block, newAddress, store, constraint);
         }
-        else
-            jump_to_dummy(block);
         return blockID;
     }
 
@@ -383,18 +362,14 @@ public class ControlFlow {
         	alter_address = addrInfo.y;
         }
         if(newAddress != null) {
-            if(Helper.is_bit_vec_num(newAddress)) {
+            if(Helper.is_bit_vec_num(newAddress))
             	blockID = exec_ret_operation(block, address, store, constraint, Helper.long_of_sym(newAddress));
-            }
-            else if(Helper.is_term_address(newAddress)) {
-                jump_to_dummy(block);
+            else if(Helper.is_term_address(newAddress))
                 handle_cmc_path_termination(store);
-            }
             // Return address is symbolic
             else {
-                if(alter_address != null) {
+                if(alter_address != null)
                     blockID = exec_ret_operation(block, address, store, constraint, alter_address);
-                }
                 else if(constraint != null) {
                     boolean isPathReachable = CFHelper.check_path_reachability(constraint);
                     if(isPathReachable == false) return null;
@@ -519,11 +494,6 @@ public class ControlFlow {
         }
         return TRACE_BACK_RET_TYPE.SYMADDR_SUCCEED;
     }
-
-
-    void jump_to_dummy(Block block) {
-        block.add_to_children_list(dummyBlock.blockID);
-    }
         
 
     Integer add_new_block(Block parentBlk, long address, Store store, Constraint constraint) {
@@ -533,8 +503,10 @@ public class ControlFlow {
         if(inst.startsWith("bnd ")) {
             inst = inst.strip().split(" ", 2)[1];
         }
-    	int cycleCount = checkBlockCycleCount(parentBlk, address, inst);
-    	if(cycleCount == 0 || cycleCount <= Config.MAX_CYCLE_COUNT) {
+    	Tuple<Integer, Stack<Long>> res = checkBlockCycleCount(parentBlk, address, inst);
+    	int cycleCount = res.x;
+    	Stack<Long> cycle = res.y;
+    	if(cycleCount <= Config.MAX_CYCLE_COUNT) {
     		if(inst.startsWith("cmov")) {
                 blockID = addNewBlockWCMovInst(parentBlk, address, inst, store, constraint, rip);
             }
@@ -543,6 +515,9 @@ public class ControlFlow {
                 blockID = addNewBlock(parentBlk, address, inst, newStore, constraint, true);
             }
         }
+    	else {
+    		Utils.logger.info("The cycle " + Utils.ppCycle(cycle) + " is visited more than the maximum limitation");
+    	}
         return blockID;
     }
 
@@ -573,15 +548,8 @@ public class ControlFlow {
                 // number of negative paths with uninitialized content
                 cmcExecInfo[3] += 1;
             }
-            if(parentBlk != null)
-            	parentBlk.add_to_children_list(blockID);
-            if(addrBlockMap.containsKey(address)) {
-            	int cnt = addrBlockCntMap.get(address);
-            	addrBlockCntMap.put(address, cnt + 1);
-            }
-            else {
-            	addrBlockCntMap.put(address, 1);
-            }
+            int count = addrBlockCntMap.getOrDefault(address, 0);
+            addrBlockCntMap.put(address, count + 1);
             addrBlockMap.put(address, block);
             blockStack.add(block);
         }
@@ -687,13 +655,13 @@ public class ControlFlow {
     }
 
 
-    boolean isFuncBlockExplored(Store store, long newAddress) {
-    	Block blk = addrBlockMap.get(newAddress);
-    	int cnt = addrBlockCntMap.get(newAddress);
+    boolean isFuncBlockExplored(Store store, long newAddr) {
+    	Block blk = addrBlockMap.get(newAddr);
+    	int cnt = addrBlockCntMap.get(newAddr);
         if(cnt > Utils.MAX_VISIT_COUNT) return true;
         else if(cnt == 0) return false;
         Store preStore = blk.store;
-        String newInst = addrInstMap.get(newAddress);
+        String newInst = addrInstMap.get(newAddr);
         Store newStore = new Store(store, preStore.rip);
         if(!Utils.check_branch_inst_wo_call(newInst) && !newInst.startsWith("cmov"))
         	Semantics.parse_semantics(newStore, newStore.rip, newInst, -1);
@@ -710,17 +678,18 @@ public class ControlFlow {
     }
 
 
-    int checkBlockCycleCount(Block block, long newAddress, String newInst) {
+    Tuple<Integer, Stack<Long>> checkBlockCycleCount(Block block, long newAddress, String newInst) {
     	int res = 0;
+    	Stack<Long> cycle = null;
         if(addrBlockMap.containsKey(newAddress)) {
         	if(graphBuilder.mayExistCycle(newAddress)) {
-        		Stack<Long> cycle = CFHelper.detectCycle(block, newAddress, newInst, blockMap, graphBuilder);
+        		cycle = CFHelper.detectCycle(block, newAddress, newInst, blockMap, graphBuilder);
         		if(cycle != null) {
         			res = graphBuilder.updateCycleCount(newAddress, cycle);
         		}
         	}
         }
-        return res;
+        return new Tuple<>(res, cycle);
     }
 
 

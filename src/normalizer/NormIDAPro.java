@@ -57,7 +57,7 @@ public class NormIDAPro implements Normalizer {
 	
 	Pattern subtractHexPat = Pattern.compile("-[0-9a-fA-F]+h");
 
-	String[] nonInstPrefix = new String[]{"dd ", "dw ", "db ", "dq ", "dt ", "text ", "align", "start", "type"};
+	String[] nonInstPrefix = new String[]{"dd ", "dw ", "db ", "dq ", "dt ", "text ", "align", "_start", "start", "type"};
 	String[] offsetSpecPrefix = new String[]{"off_", "loc_", "byte_", "stru_", "dword_", "qword_", "unk_", "sub_", "asc_", "def_", "xmmword_", "word_"};
 	String[] nonValidInstInfo = new String[]{"UnwindMapEntry", " assume ", " public "};	
 	String[] preProcKeyword = new String[] {" extrn ", " proc "};
@@ -163,7 +163,10 @@ public class NormIDAPro implements Normalizer {
 
 
 	void readBinaryInfo() {
-    	if(procValueMap.containsKey("start")) {
+		if(procValueMap.containsKey("_start")) {
+    		entryAddress = procValueMap.get("_start");
+        }
+		else if(procValueMap.containsKey("start")) {
     		entryAddress = procValueMap.get("start");
         }
         if(procValueMap.containsKey("main")) {
@@ -204,9 +207,7 @@ public class NormIDAPro implements Normalizer {
     	String inst = lineInfo.y;
         if(inst != null && !Utils.startsWith(inst, nonInstPrefix)) {
             inst = replaceInstVarArg(address, inst, line);
-            if(!inst.equals("nop")) {
-                addressInstMap.put(address, inst);
-            }
+            addressInstMap.put(address, inst);
         }
 	}
     
@@ -277,7 +278,7 @@ public class NormIDAPro implements Normalizer {
         String varStr = lineSplit[1].strip();		//_GLOBAL_OFFSET_TABLE_ dd 0
         String[] varSplit = varStr.split(" ", 2);
         String varName = varSplit[0];
-        if(varName.equals("LOAD")) {}
+        if(varName.equals("LOAD") || varStr.contains("segment dword ")) {}
         // line: .got:0800026C _GLOBAL_OFFSET_TABLE_ dd 0
         // line: .bss:08000144 g               dd ?
         else if(Utils.contains(varStr, NormHelper.IDAWordTypes))
@@ -859,8 +860,6 @@ public class NormIDAPro implements Normalizer {
         else if(varValue.startsWith("'") && varValue.endsWith("'")) {
         	varValueMap.put(varName, (long) varValue.charAt(0));
         }
-        else if(secName.equals(".bss") && varValue.equals("?"))
-    		varValueMap.put(varName, (long) 0);
         // varName: xmmword_24F9E
         else if(idaWordRepPat.matcher(varName).find()) {
     		String[] varNameSplit = Utils.rsplit(varName, "_");

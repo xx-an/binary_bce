@@ -4,8 +4,8 @@
 *.id2
 *.nam
 *.til
-*.log
 *.output
 *.objdump
 src/check/
 *.class
+*.lck
