@@ -21,7 +21,7 @@ import normalizer.NormFactory;
 import normalizer.NormHelper;
 import normalizer.Normalizer;
 
-public class CMC {
+public class WinCheck {
 	
 
 	static ControlFlow constructCF(String execPath, GraphBuilder graphBuilder) {
