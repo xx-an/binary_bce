@@ -1,8 +1,8 @@
-/controlflow/
-/block/
-/normalizer/
 /binary/
+/block/
 /common/
+/controlflow/
 /graph/
+/normalizer/
 /semantics/
 /symbolic/

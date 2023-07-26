@@ -9,3 +9,4 @@
 src/check/
 *.class
 *.lck
+lib/
