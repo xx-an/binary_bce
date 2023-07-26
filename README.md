@@ -24,10 +24,10 @@ Prerequisites:
     
 Environment setup:
 
-    Download pre-built z3 binaries from [here](https://github.com/Z3Prover/z3/releases) according to the operating system and ISA.
-    Download Apache commons cli from [here](https://commons.apache.org/proper/commons-cli/download_cli.cgi).
+    Download pre-built z3 binaries from <a href="https://github.com/Z3Prover/z3/releases">here</a> according to the operating system and ISA.
+    Download Apache commons cli from <a href="https://commons.apache.org/proper/commons-cli/download_cli.cgi">here</a>.
     Add /path/to/commons-cli-1.5.0.jar and /path/to/com.microsoft.z3.jar to CLASSPATH environment variable.
-    Add /path/to/z3/ to LD\_LIBRARY\_PATH environment variable.
+    Add /path/to/z3/ to LD\\_LIBRARY\\_PATH environment variable.
     
     
 # IDA Pro results
