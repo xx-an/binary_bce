@@ -36,8 +36,8 @@ public class SMTHelper {
 	}
 
 
-	static void set_OF_flag(Store store, long rip, String dest, String src, BitVecExpr res, int block_id, String op) {
-		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
+	static void set_OF_flag(Store store, String dest, String src, BitVecExpr res, int block_id, String op) {
+		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, dest, src, block_id);
 		BitVecExpr dest_sym = dest_src_sym.x;
 		BitVecExpr src_sym = dest_src_sym.y;
 	    if(op.equals("+")) {
@@ -55,11 +55,11 @@ public class SMTHelper {
 	}
 
 
-	static void set_CF_flag(Store store, long rip, String dest, String src, int block_id, String op) {
+	static void set_CF_flag(Store store, String dest, String src, int block_id, String op) {
 	    if(op.equals("+"))
-	        _set_add_CF_flag(store, rip, dest, src, block_id);
+	        _set_add_CF_flag(store, dest, src, block_id);
 	    else if(op.equals("-"))
-	        _set_sub_CF_flag(store, rip, dest, src, block_id);
+	        _set_sub_CF_flag(store, dest, src, block_id);
 	    else
 	    	store.set_flag_val("CF", Helper.SymFalse);
 	}
@@ -81,8 +81,8 @@ public class SMTHelper {
 	}
 	        
 
-	static void _set_sub_CF_flag(Store store, long rip, String dest, String src, int block_id) {
-		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
+	static void _set_sub_CF_flag(Store store, String dest, String src, int block_id) {
+		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, dest, src, block_id);
 		BitVecExpr dest_sym = dest_src_sym.x;
 		BitVecExpr src_sym = dest_src_sym.y;
 	    BoolExpr res = Helper.is_less(dest_sym, src_sym);
@@ -90,8 +90,8 @@ public class SMTHelper {
 	}
 
 
-	static void _set_add_CF_flag(Store store, long rip, String dest, String src, int block_id) {
-		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, rip, dest, src, block_id);
+	static void _set_add_CF_flag(Store store, String dest, String src, int block_id) {
+		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = SymEngine.get_dest_src_sym(store, dest, src, block_id);
 		BitVecExpr dest_sym = dest_src_sym.x;
 		BitVecExpr src_sym = dest_src_sym.y;
 		int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
@@ -191,47 +191,36 @@ public class SMTHelper {
 	}
 
 
-	Long top_stack(Store store, long rip) {
-		Long result = null;
-		String spName = Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE);
-	    BitVecExpr symSP = SymEngine.get_sym(store, rip, spName, Utils.INIT_BLOCK_NO);
-	    BitVecExpr res = SymEngine.get_mem_sym(store, symSP);
-	    if(res != null && Helper.is_bit_vec_num(res))
-	    	result = Helper.long_of_sym(res);
-	    return result;
-	}
-
-
-	boolean is_inst_aff_flag(Store store, long rip, String inst) {
+	boolean is_inst_aff_flag(Store store, String inst) {
 	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(Lib.INSTS_AFF_FLAGS_WO_CMP_TEST.contains(inst_name))
 	        return true;
 	    else if(inst_name.equals("cmp") ||  inst_name.equals("test")) {
 	        ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
-	        _add_aux_memory(store, rip, inst_args);
+	        _add_aux_memory(store, inst_args);
 	    }
 	    return false;
 	}
 
 
-	void add_aux_memory(Store store, long rip, String inst) {
+	void add_aux_memory(Store store, String inst) {
 	    String[] inst_split = inst.strip().split(" ", 2);
 	    String inst_name = inst_split[0];
 	    if(Lib.INSTS_AFF_FLAGS_WO_CMP_TEST.contains(inst_name)) {
 	    	ArrayList<String> inst_args = Utils.parse_inst_args(inst_split);
-	        _add_aux_memory(store, rip, inst_args);
+	        _add_aux_memory(store, inst_args);
 	    }
 	}
 
 
-	void _add_aux_memory(Store store, long rip, ArrayList<String> inst_args) {
+	void _add_aux_memory(Store store, ArrayList<String> inst_args) {
 	    for(String arg : inst_args) {
 	        if(arg.endsWith("]")) {
-	            BitVecExpr address = SymEngine.get_effective_address(store, rip, arg);
+	            BitVecExpr address = SymEngine.get_effective_address(store, arg);
 	            if(store.containsKey(address) && !store.contains_aux_mem(address)) {
 	            	int block_id = store.get_block_id(address);
-	                BitVecExpr sym_arg = SymEngine.get_sym(store, rip, address.toString(), block_id);
+	                BitVecExpr sym_arg = SymEngine.get_sym(store, address.toString(), block_id);
 	                if(Helper.is_bit_vec_num(sym_arg)) {
 	                	store.add_aux_mem(address);
 	                }
@@ -242,24 +231,24 @@ public class SMTHelper {
 	}
 
 
-	public static BitVecExpr get_jump_address(Store store, long rip, String operand, HashMap<Long, String> extFuncInfo) {
+	public static BitVecExpr get_jump_address(Store store, String operand, HashMap<Long, String> extFuncInfo) {
 	    int length = Utils.getSymLength(operand, Config.MEM_ADDR_SIZE);
 	    if(operand.endsWith("]")) {
-	        BitVecExpr address = SymMemory.get_effective_address(store, rip, operand, Config.MEM_ADDR_SIZE);
+	        BitVecExpr address = SymMemory.get_effective_address(store, operand, Config.MEM_ADDR_SIZE);
 	        if(Helper.is_bit_vec_num(address)) {
 	        	long intAddr = Helper.long_of_sym(address);
 	        	if(extFuncInfo.containsKey(intAddr)) return address;
 	        }
 	    }
-	    BitVecExpr result = SymEngine.get_sym(store, rip, operand, Utils.INIT_BLOCK_NO, length);
+	    BitVecExpr result = SymEngine.get_sym(store, operand, Utils.INIT_BLOCK_NO, length);
 	    return result;
 	}
 	
 	
-	public static Long get_long_jump_address(Store store, long rip, String operand) {
+	public static Long get_long_jump_address(Store store, String operand) {
 	    Long res = null;
 	    int length = Utils.getSymLength(operand, Config.MEM_ADDR_SIZE);
-	    BitVecExpr result = SymEngine.get_sym(store, rip, operand, Utils.INIT_BLOCK_NO, length);
+	    BitVecExpr result = SymEngine.get_sym(store, operand, Utils.INIT_BLOCK_NO, length);
 	    if(Helper.is_bit_vec_num(result)) {
 	    	res = Helper.long_of_sym(result);
 	    }
@@ -270,14 +259,14 @@ public class SMTHelper {
 	// line: "rax + rbx * 1 + 0"
 	// line: "rbp - 0x14"
 	// line: "rax"
-	public static Tuple<ArrayList<String>, Boolean> get_bottom_source(String line, Store store, long rip, HashMap<String, Integer> mem_len_map) {
+	public static Tuple<ArrayList<String>, Boolean> get_bottom_source(String line, Store store, HashMap<String, Integer> mem_len_map) {
 	    String[] line_split = line.split("(\\W+)");
 	    ArrayList<String> res = new ArrayList<String>();
 	    boolean is_reg_bottom = false;
 	    for(String lsi : line_split) {
 	        String ls = lsi.strip();
 	        if(Lib.REG_NAMES.contains(ls)) {
-	            BitVecExpr val = SymEngine.get_sym(store, rip, ls, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
+	            BitVecExpr val = SymEngine.get_sym(store, ls, Utils.INIT_BLOCK_NO, Config.MEM_ADDR_SIZE);
 	            if(!Helper.is_bit_vec_num(val)) {
 	            	String root_reg = SymHelper.getRootReg(ls);
 	                res.add(root_reg);
@@ -286,7 +275,7 @@ public class SMTHelper {
 	        }
 	    }
 	    if(!is_reg_bottom) {
-	        BitVecExpr addr = SymEngine.get_effective_address(store, rip, line);
+	        BitVecExpr addr = SymEngine.get_effective_address(store, line);
 	        res.add(addr.toString());
 	        int length = Utils.getSymLength(line, Config.MEM_ADDR_SIZE);
 	        mem_len_map.put(addr.toString(), length);
@@ -309,7 +298,7 @@ public class SMTHelper {
 	}
 
 
-	static boolean srcIsSymbolic(Store store, long rip, String src, ArrayList<String> syms) {
+	static boolean srcIsSymbolic(Store store, String src, ArrayList<String> syms) {
 	    boolean res = false;
 	    if(Lib.REG_INFO_DICT.containsKey(src)) {
 	    	String rootReg = SymHelper.getRootReg(src);
@@ -319,10 +308,10 @@ public class SMTHelper {
 	        res = syms.contains(src);
 	    else if(src.contains(":")) {
 	        String[] src_split = src.split(":");
-	        res = srcIsSymbolic(store, rip, src_split[0], syms) || srcIsSymbolic(store, rip, src_split[1], syms);
+	        res = srcIsSymbolic(store, src_split[0], syms) || srcIsSymbolic(store, src_split[1], syms);
 	    }
 	    else if(src.endsWith("]")) {
-	        BitVecExpr addr = SymEngine.get_effective_address(store, rip, src);
+	        BitVecExpr addr = SymEngine.get_effective_address(store, src);
 	        res = syms.contains(addr.toString());
 	    }
 	    return res;
@@ -340,13 +329,13 @@ public class SMTHelper {
 	}
 
 
-	static boolean check_cmp_dest_is_sym(Store store, long rip, String dest, ArrayList<String> sym_names, HashMap<String, Integer> mem_len_map) {
+	static boolean check_cmp_dest_is_sym(Store store, String dest, ArrayList<String> sym_names, HashMap<String, Integer> mem_len_map) {
 		boolean res = false;
 	    if(sym_names.size() == 1) {
 	    	if(Lib.REG_NAMES.contains(dest))
-	    		res = srcIsSymbolic(store, rip, dest, sym_names);
+	    		res = srcIsSymbolic(store, dest, sym_names);
 	        else if(dest.endsWith("]")) {
-	        	Tuple<ArrayList<String>, Boolean> tmp = get_bottom_source(dest, store, rip, mem_len_map);
+	        	Tuple<ArrayList<String>, Boolean> tmp = get_bottom_source(dest, store, mem_len_map);
 	        	ArrayList<String> newSrcs = tmp.x;
 	            boolean is_reg_bottom = tmp.y;
 	            if(is_reg_bottom) {
@@ -354,7 +343,7 @@ public class SMTHelper {
 	                    res = newSrcs.get(0).equals(sym_names.get(0));
 	            }
 	            else {
-	                BitVecExpr addr = SymEngine.get_effective_address(store, rip, dest);
+	                BitVecExpr addr = SymEngine.get_effective_address(store, dest);
 	                res = addr.toString().equals(sym_names.get(0));
 	            }
 	        }
@@ -389,22 +378,17 @@ public class SMTHelper {
 	}
 
 
-	public static BitVecExpr sym_bin_op_na_flags(Store store, long rip, String op, String dest, String src, int block_id) {
-		BitVecExpr res = SymEngine.sym_bin_op(store, rip, op, dest, src, block_id);
-	    SymEngine.set_sym(store, rip, dest, res, block_id);
+	public static BitVecExpr sym_bin_op_na_flags(Store store, String op, String dest, String src, int block_id) {
+		BitVecExpr res = SymEngine.sym_bin_op(store, op, dest, src, block_id);
+	    SymEngine.set_sym(store, dest, res, block_id);
 	    return res;
 	}
 
 
-	public static void push_val(Store store, long rip, BitVecExpr sym_val, int block_id) {
+	public static void push_val(Store store, BitVecExpr sym_val, int block_id) {
 		int operand_size = sym_val.getSortSize();
-		BitVecExpr symSP = sym_bin_op_na_flags(store, rip, "-", Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), String.valueOf(operand_size/8), block_id);
+		BitVecExpr symSP = sym_bin_op_na_flags(store, "-", Config.SP_NAME, String.valueOf(operand_size/8), block_id);
 		SymEngine.set_mem_sym(store, symSP, sym_val, block_id);
-	}
-	
-	public static BitVecExpr get_sym_rsp(Store store, long rip) {
-		BitVecExpr sym_rsp = SymEngine.get_sym(store, rip, Config.ADDR_SIZE_SP_MAP.get(Config.MEM_ADDR_SIZE), Config.MEM_ADDR_SIZE);
-		return sym_rsp;
 	}
 
 }

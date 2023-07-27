@@ -41,12 +41,11 @@ public class TraceBack {
         Utils.logger.info("\nTrace back for symbolized memory address");
         Utils.logger.info(Utils.toHexString(blk.address) + ": " + blk.inst);
         Store store = blk.store;
-        long rip = store.rip;
         int haltPoint = -1;
         int tbCount = 0;
         ArrayList<String> srcNames = null;
         HashMap<Integer, ArrayList<String>> bIDSymMap = new HashMap<Integer, ArrayList<String>>();
-        bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, store, rip, symNames);
+        bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, store, symNames);
         ArrayList<Integer> bIDList = null;
         ArrayList<String> symList = null;
         while(bIDSymMap != null && bIDSymMap.size() > 0 && tbCount < Utils.MAX_TRACEBACK_COUNT) {
@@ -62,7 +61,7 @@ public class TraceBack {
                 	return new Tuple<>(-1, 0);
                 ArrayList<String> tmpSymNames = new ArrayList<>();
                 tmpSymNames.add(currSymName);
-                Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currBlk.store.rip, currBlk.inst, tmpSymNames);
+                Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currBlk.inst, tmpSymNames);
                 haltPoint = tbInfo.x;
                 srcNames = tbInfo.y;
                 HashMap<String, Integer> mLenMap = tbInfo.z;
@@ -79,7 +78,7 @@ public class TraceBack {
                 	break;
                 }
                 else {
-                	bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, pBlock.store, currBlk.store.rip, srcNames);
+                	bIDSymMap = CFHelper.updateBIDSymInfo(bIDSymMap, pBlock.store, srcNames);
                 }
             }
             symList.remove(0);
@@ -113,7 +112,7 @@ public class TraceBack {
         Utils.output_logger.info("Trace back to " + symNames.toString() + " after " + Utils.toHexString(block.address) + ": " + block.inst);
         ArrayList<BlockNode> nodeStack = new ArrayList<>();
         ArrayList<String> srcNames = null;
-        HashMap<Integer, ArrayList<String>> bIDSymMap = CFHelper.retrieveBIDSymInfo(initStore, initStore.rip, symNames);
+        HashMap<Integer, ArrayList<String>> bIDSymMap = CFHelper.retrieveBIDSymInfo(initStore, symNames);
         ArrayList<String> symList = null;
         for(Integer currBlockID : bIDSymMap.keySet()) {
         	symList = bIDSymMap.get(currBlockID);
@@ -127,19 +126,18 @@ public class TraceBack {
         while(nodeStack.size() > 0) {
         	BlockNode node = nodeStack.remove(nodeStack.size() - 1);
         	Block currBlk = node.block;
-        	Store currStore = currBlk.store;
             Block pBlock = CFHelper.getParentBlockInfo(blockMap, currBlk);
             if(pBlock == null) return;
             for(String symName : symNames) {
             	ArrayList<String> tmpNames = new ArrayList<>();
             	tmpNames.add(symName);
-            	Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, currStore.rip, inst, tmpNames);
+            	Triplet<Integer, ArrayList<String>, HashMap<String, Integer>> tbInfo = SemanticsTB.parse_sym_src(addressExtFuncMap, addressInstMap, pBlock.store, inst, tmpNames);
             	int haltPoint = tbInfo.x;
             	srcNames = tbInfo.y;
                 Utils.logger.info(Utils.toHexString(currBlk.address) + ": " + currBlk.inst);
                 Utils.logger.info(srcNames.toString());
                 Utils.output_logger.info("Trace back to " + srcNames.toString() + " after " + Utils.toHexString(currBlk.address) + ": " + currBlk.inst);
-                bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, pBlock.store.rip, srcNames);
+                bIDSymMap = CFHelper.retrieveBIDSymInfo(pBlock.store, srcNames);
                 if(haltPoint >= 0) continue;
                 else {
                 	for(Integer bID : bIDSymMap.keySet()) {

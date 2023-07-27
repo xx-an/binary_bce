@@ -41,12 +41,12 @@ public class SymEngine {
 		SYM_BIN_OP_MAP.put("umod", operand -> Helper.extract(operand.z / 2 - 1, 0, Helper.bv_umod(operand.x, Helper.zero_ext(operand.z / 2, operand.y))));
 	}
 	
-	public static BitVecExpr get_sym(Store store, long rip, String src, int block_id) {
-		return get_sym(store, rip, src, block_id, Config.MEM_ADDR_SIZE);
+	public static BitVecExpr get_sym(Store store, String src, int block_id) {
+		return get_sym(store, src, block_id, Config.MEM_ADDR_SIZE);
 	}
 	
 
-	public static BitVecExpr get_sym(Store store, long rip, String src, int block_id, int length) {
+	public static BitVecExpr get_sym(Store store, String src, int block_id, int length) {
 	    BitVecExpr res = null;
 	    if(Lib.REG_NAMES.contains(src)) // rax
 	        res = SymRegister.get_register_sym(store, src);
@@ -60,15 +60,15 @@ public class SymEngine {
 	        String addrRep = srcSplit[1].strip();
 	        BitVecExpr val = null;
 	        if(addrRep.endsWith("]")) {
-	            val = SymMemory.get_effective_address(store, rip, addrRep, Config.MEM_ADDR_SIZE);
+	            val = SymMemory.get_effective_address(store, addrRep, Config.MEM_ADDR_SIZE);
 	        }
 	        else
-	            val = get_sym(store, rip, addrRep, block_id, Config.MEM_ADDR_SIZE);
+	            val = get_sym(store, addrRep, block_id, Config.MEM_ADDR_SIZE);
 	        BitVecExpr address = val;
 	        res = SymMemory.get_seg_memory_val(store, address, segReg, length);
 	    }
 	    else if(src.endsWith("]")) { // byte ptr [rbx+rax*1]
-	        BitVecExpr address = SymMemory.get_effective_address(store, rip, src, Config.MEM_ADDR_SIZE);
+	        BitVecExpr address = SymMemory.get_effective_address(store, src, Config.MEM_ADDR_SIZE);
 	        res = SymMemory.get_memory_val(store, address, block_id, length);
 	    }
 	    else if(src.contains(":")) {     // rdx:rax
@@ -81,14 +81,14 @@ public class SymEngine {
 	}
 
 
-	public static Integer get_sym_block_id(Store store, long rip, String src) {
+	public static Integer get_sym_block_id(Store store, String src) {
 	    Integer res = null;
 	    if(Lib.REG_NAMES.contains(src)) // rax
 	        res = SymRegister.get_reg_sym_block_id(store, src);
 	    else if(Utils.imm_pat.matcher(src).matches()) {}  // 0x123
 	    else if(src.contains("s:")) {}       //fs:rax
 	    else if(src.endsWith("]")) { // byte ptr [rbx+rax*1]
-	        BitVecExpr address = SymMemory.get_effective_address(store, rip, src, Config.MEM_ADDR_SIZE);
+	        BitVecExpr address = SymMemory.get_effective_address(store, src, Config.MEM_ADDR_SIZE);
 	        res = SymMemory.get_mem_sym_block_id(store, address);
 	    }
 	    else if(src.contains(":")) {    // rdx:rax
@@ -109,7 +109,7 @@ public class SymEngine {
 	    return SymMemory.get_memory_val(store, address, block_id, length);
 	}
 
-	public static void set_sym(Store store, long rip, String dest, BitVecExpr sym, int block_id) {
+	public static void set_sym(Store store, String dest, BitVecExpr sym, int block_id) {
 	    if(Lib.REG_NAMES.contains(dest)) {        // rax
 	        int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
 	        if(sym.getSortSize() > dest_len)
@@ -123,17 +123,17 @@ public class SymEngine {
 	        String dest_rest = destSplit[1].strip();
 	        BitVecExpr val = null;
 	        if(dest_rest.endsWith("]"))
-	            val = SymMemory.get_effective_address(store, rip, dest_rest, Config.MEM_ADDR_SIZE);
+	            val = SymMemory.get_effective_address(store, dest_rest, Config.MEM_ADDR_SIZE);
 	        else {
 	            int rest_len = Utils.getSymLength(dest_rest, Config.MEM_ADDR_SIZE);
-	            val = get_sym(store, rip, dest_rest, block_id, rest_len);
+	            val = get_sym(store, dest_rest, block_id, rest_len);
 	        }
 	        BitVecExpr address = val;
 	        store.set_seg_val(seg_reg, address, sym);
 	    }
 	    else if(dest.endsWith("]")) {
 	        int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
-	        BitVecExpr address = SymMemory.get_effective_address(store, rip, dest, Config.MEM_ADDR_SIZE);
+	        BitVecExpr address = SymMemory.get_effective_address(store, dest, Config.MEM_ADDR_SIZE);
 	        SymMemory.set_mem_sym(store, address, sym, block_id, dest_len);
 	    }
 	    else if(dest.contains(":")) {     // rax:rdx
@@ -147,8 +147,8 @@ public class SymEngine {
 	}
 	    
 
-	public static BitVecExpr get_effective_address(Store store, long rip, String operand) {
-	    return SymMemory.get_effective_address(store, rip, operand, Config.MEM_ADDR_SIZE);
+	public static BitVecExpr get_effective_address(Store store, String operand) {
+	    return SymMemory.get_effective_address(store, operand, Config.MEM_ADDR_SIZE);
 	}
 
 
@@ -175,12 +175,12 @@ public class SymEngine {
 	}
 
 
-	public static BitVecExpr sym_bin_op(Store store, long rip, String op, String dest, String src, int block_id) {
+	public static BitVecExpr sym_bin_op(Store store, String op, String dest, String src, int block_id) {
 		Function<Triplet<BitVecExpr, BitVecExpr, Integer>, BitVecExpr> func = SYM_BIN_OP_MAP.get(op);
-		Tuple<Integer, Integer> dest_src_len = get_dest_src_length(store, rip, dest, src);
+		Tuple<Integer, Integer> dest_src_len = get_dest_src_length(store, dest, src);
 		int dest_len = dest_src_len.x;
 		int src_len = dest_src_len.y;
-		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = get_dest_src_sym(store, rip, dest, src, block_id);
+		Tuple<BitVecExpr, BitVecExpr> dest_src_sym = get_dest_src_sym(store, dest, src, block_id);
 		BitVecExpr sym_dest = dest_src_sym.x;
 		BitVecExpr sym_src = dest_src_sym.y;
 	    if(OPS_NEED_EXTENSION.contains(op) && dest_len != src_len)
@@ -191,9 +191,9 @@ public class SymEngine {
 	}
 
 
-	public static BitVecExpr extension(Store store, long rip, String src, int block_id, int dest_len, boolean sign) {
+	public static BitVecExpr extension(Store store, String src, int block_id, int dest_len, boolean sign) {
 	    int src_len = Utils.getSymLength(src, Config.MEM_ADDR_SIZE);
-	    BitVecExpr sym_src = get_sym(store, rip, src, block_id, src_len);
+	    BitVecExpr sym_src = get_sym(store, src, block_id, src_len);
 	    BitVecExpr res = extension_sym(sym_src, dest_len, src_len, sign);
 	    return res;
 	}
@@ -212,27 +212,27 @@ public class SymEngine {
 	}
 
 
-	public static void undefined(Store store, long rip, int block_id, ArrayList<String> args) {
+	public static void undefined(Store store, int block_id, ArrayList<String> args) {
 	    if(args.size() > 0) {
 	        String dest = args.get(0);
 	        int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
-	        set_sym(store, rip, dest, Helper.bottom(dest_len), block_id);
+	        set_sym(store, dest, Helper.bottom(dest_len), block_id);
 	    }
 	}
 
 	
-	public static Tuple<Integer, Integer> get_dest_src_length(Store store, long rip, String dest, String src) {
+	public static Tuple<Integer, Integer> get_dest_src_length(Store store, String dest, String src) {
 	    int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
 	    int src_len = Utils.getSymLength(src, dest_len);
 	    return new Tuple<Integer, Integer>(dest_len, src_len);
 	}
 	
 
-	public static Tuple<BitVecExpr, BitVecExpr> get_dest_src_sym(Store store, long rip, String dest, String src, int block_id) {
+	public static Tuple<BitVecExpr, BitVecExpr> get_dest_src_sym(Store store, String dest, String src, int block_id) {
 		int dest_len = Utils.getSymLength(dest, Config.MEM_ADDR_SIZE);
 		int src_len = Utils.getSymLength(src, dest_len);
-	    BitVecExpr sym_src = get_sym(store, rip, src, block_id, src_len);
-	    BitVecExpr sym_dest = get_sym(store, rip, dest, block_id, dest_len);
+	    BitVecExpr sym_src = get_sym(store, src, block_id, src_len);
+	    BitVecExpr sym_dest = get_sym(store, dest, block_id, dest_len);
 	    return new Tuple<BitVecExpr, BitVecExpr>(sym_dest, sym_src);
 	}
 

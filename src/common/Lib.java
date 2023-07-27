@@ -23,8 +23,6 @@ public class Lib {
 	public static final HashSet<String> JMP_INST_WITHOUT_CALL;
 	public static final HashSet<String> JMP_INST_WITH_ADDRESS;
 	public static final HashSet<String> JMP_INST_WITH_JUMP;
-
-	public static final HashMap<Integer, List<String>> CALLEE_NOT_SAVED_REGS;
 	
 	public static final String[] RFlags = new String[] {"CF", "ZF", "OF", "SF"};
 	public static final HashSet<String> SEG_REGS = new HashSet<>(Arrays.asList("ss", "cs", "ds", "es", "fs", "gs"));
@@ -87,7 +85,7 @@ public class Lib {
 		NONE,
 	    NULL_POINTER_DEREFERENCE,
 	    USE_AFTER_FREE,
-	    FREE_AFTER_FREE,
+	    FREE_AT_INVALID_ADDR,
 	    BUFFER_OVERFLOW,
 	    UNINITIALIZED_CONTENT
 	}
@@ -247,10 +245,6 @@ public class Lib {
 			CONDITIONAL_SET_INST.add("set" + x);
 		}
 		
-		CALLEE_NOT_SAVED_REGS = new HashMap<>();
-		CALLEE_NOT_SAVED_REGS.put(64, Arrays.asList("rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"));
-		CALLEE_NOT_SAVED_REGS.put(32, Arrays.asList("eax", "ecx", "edx", "esi", "edi"));
-		
 		
 		String[] t_functions = {
 			    "__stack_chk_fail",
@@ -269,7 +263,6 @@ public class Lib {
 			    "g_abort",
 			    "obstack_alloc_failed_handler",
 			    "pthread_exit"
-//			    "__imp_exit"
 			};
 		TERMINATION_FUNCTIONS = Arrays.asList(t_functions);
 		

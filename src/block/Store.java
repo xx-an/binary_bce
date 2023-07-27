@@ -23,7 +23,7 @@ public class Store {
 	public ArrayList<Long> g_FuncCallStack;
 	public Lib.MEMORY_RELATED_ERROR_TYPE g_PointerRelatedError;
 	public long g_PRErrorAddress;
-	public long g_HeapAddr;
+	long g_HeapAddr;
 	public BitVecExpr g_StdoutAddress;
 	public BitVecExpr g_StdoutHandler;
 	public BitVecExpr g_StdinAddress;
@@ -73,7 +73,7 @@ public class Store {
 			g_FlagStore = new HashMap<String, BoolExpr>();
 			g_AuxMemStore = new HashSet<BitVecExpr>();
 			g_FuncCallStack = new ArrayList<Long>();
-			g_HeapAddr = Config.MIN_HEAP_ADDR;
+			g_HeapAddr = Config.INIT_HEAP_ADDR;
 			g_StdoutHandler = null;
 			g_MemPolluted = null;
 			g_NeedTraceBack = false;
@@ -133,6 +133,10 @@ public class Store {
 	
 	public void remove_mem_val(BitVecExpr addr) {
 		g_MemStore.remove(addr);
+	}
+	
+	public boolean contains_mem_val(BitVecExpr addr) {
+		return g_MemStore.containsKey(addr);
 	}
 	
 	public int get_block_id(String reg_name) {

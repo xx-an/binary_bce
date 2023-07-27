@@ -17,6 +17,7 @@ import common.Lib;
 import common.Utils;
 import normalizer.NormHelper;
 
+
 public class SymMemory {
 
 	static Pattern letter_num_neg_pat = Pattern.compile("\\w+");
@@ -31,7 +32,7 @@ public class SymMemory {
 	    	res = Helper.gen_bv_num(Utils.imm_str_to_int(arg), length);
 	    else if(arg.contains(":")) {
 	    	String[] s_split = arg.split(":", 2);
-	    	BitVecExpr new_addr = get_effective_address(store, store.rip, s_split[1].strip(), length);
+	    	BitVecExpr new_addr = get_effective_address(store, s_split[1].strip(), length);
 	    	res = store.get_seg_val(s_split[0], new_addr);
 	    }
 	    else
@@ -151,7 +152,7 @@ public class SymMemory {
 	}
 
 
-	public static BitVecExpr get_effective_address(Store store, long rip, String src, int length) {
+	public static BitVecExpr get_effective_address(Store store, String src, int length) {
 	    BitVecExpr res = null;
 	    if(src.endsWith("]")) {
 	        String content = Utils.extract_content(src, "[");
@@ -160,7 +161,7 @@ public class SymMemory {
 	            res = Helper.gen_bv_num(addr, length);
 	        }
 	        else if(content.contains("rip")) {  // "rip+0x2009a6"
-	        	content = content.replace("rip", Utils.toHexString(rip));
+	        	content = content.replace("rip", Utils.toHexString(store.rip));
 	            long addr = (long) Utils.eval(content);
 	            if(Config.MEM_ADDR_SIZE == 64)
 	            	res = Helper.gen_bv_num(addr, length);
@@ -176,7 +177,7 @@ public class SymMemory {
 	    else if(src.contains("s:")) {
 	        String[] src_split = src.split(":", 2);
 	        BitVecExpr seg_addr = get_sym_val(src_split[0].strip(), store, length);
-	        BitVecExpr new_addr = get_effective_address(store, rip, src_split[1].strip(), length);
+	        BitVecExpr new_addr = get_effective_address(store, src_split[1].strip(), length);
 	        res = Helper.bv_add(seg_addr, new_addr);
 	    }
 	    else if(Utils.imm_pat.matcher(src).matches()) {
@@ -248,7 +249,7 @@ public class SymMemory {
 	    // If the memory address is not a concrete value
 	    if(!Helper.is_bit_vec_num(address)) {
 	    	BitVecExpr tmp = is_mem_addr_in_stdout(store, address);
-	        if(tmp !=  null)
+	        if(tmp != null)
 	            set_mem_sym_val(store, tmp, sym, block_id, length, Lib.STDOUT);
 	        else {
 	        	store.set_mem_val(address, sym, block_id);
@@ -284,12 +285,12 @@ public class SymMemory {
 	}
 
 
-	static void read_mem_error_report(Store store, long int_address) {
-	    Long stack_top = SymHelper.top_stack_addr(store);
-	    if(SymHelper.addr_in_heap(int_address)) {
+	static void read_mem_error_report(Store store, long addr) {
+	    Long stAddr = SymHelper.stackTopAddr(store);
+	    if(SymHelper.addrInHeap(addr)) {
 	    	store.g_PointerRelatedError = Lib.MEMORY_RELATED_ERROR_TYPE.USE_AFTER_FREE;
 	    }
-	    else if(Config.MAX_HEAP_ADDR <= int_address && int_address < stack_top) {
+	    else if(Config.MAX_HEAP_ADDR <= addr && addr < stAddr) {
 	    	store.g_PointerRelatedError = Lib.MEMORY_RELATED_ERROR_TYPE.NULL_POINTER_DEREFERENCE;
 	    }
 	}

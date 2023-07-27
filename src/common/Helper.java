@@ -91,15 +91,15 @@ public class Helper {
 		BitVecExpr res = ctx.mkBVConst("Bottom", length);
 		return res;
 	}
+
 	
-	
-	public static BitVecExpr gen_bv_num(int val, int length) {
+	public static BitVecExpr gen_bv_num(long val, int length) {
 		BitVecExpr res = ctx.mkBV(val, length);
 		return res;
 	}
 	
-	public static BitVecExpr gen_bv_num(long val, int length) {
-		BitVecExpr res = ctx.mkBV(val, length);
+	public static BitVecExpr gen_bv_num(long val) {
+		BitVecExpr res = ctx.mkBV(val, Config.MEM_ADDR_SIZE);
 		return res;
 	}
 	
@@ -153,16 +153,26 @@ public class Helper {
 		return (BoolExpr) ctx.mkBVSLT(x, y).simplify();
 	}
 	
-	static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
+	public static boolean isLess(BitVecExpr x, BitVecExpr y) {
+		BoolExpr res = (BoolExpr) ctx.mkBVSLT(x, y).simplify();
+		return res.isTrue();
+	}
+	
+	public static BoolExpr is_greater(BitVecExpr x, BitVecExpr y) {
 		return (BoolExpr) ctx.mkBVSGT(x, y).simplify();
 	}
 	
-	static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
+	public static BoolExpr is_le(BitVecExpr x, BitVecExpr y) {
 		return (BoolExpr) ctx.mkBVSLE(x, y).simplify();
 	}
 	
-	static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
+	public static BoolExpr is_ge(BitVecExpr x, BitVecExpr y) {
 		return (BoolExpr) ctx.mkBVSGE(x, y).simplify();
+	}
+	
+	public static boolean isGE(BitVecExpr x, BitVecExpr y) {
+		BoolExpr res = (BoolExpr) ctx.mkBVSGE(x, y).simplify();
+		return res.isTrue();
 	}
 	
 	public static BitVecExpr bv_add(BitVecExpr x, BitVecExpr y) {

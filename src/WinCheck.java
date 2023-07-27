@@ -189,6 +189,7 @@ public class WinCheck {
         
         Utils.MAX_VISIT_COUNT = Integer.decode(line.getOptionValue("cmc_bound", "25"));
         Config.MEM_ADDR_SIZE = Integer.decode(line.getOptionValue("addr_size", "32"));
+        Config.initConfig();
 	    String disasmType = line.getOptionValue("disasm_type", "idapro");
 	    String fileName = line.getOptionValue("file_name", "basename.exe");
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();

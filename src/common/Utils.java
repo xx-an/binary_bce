@@ -151,7 +151,6 @@ public class Utils {
 	    return res;
 	}
 	
-	
 	public static boolean startsWith(String arg, String[] prefixes) {
 		boolean res = false;
 		for(String prefix : prefixes) {
@@ -183,6 +182,7 @@ public class Utils {
 	
 	public static String ppCycle(Stack<Long> cycle) {
 		String res = "[" + String.join(", ", cycle.stream().map(i -> Long.toHexString(i)).toList()) + "]";
+//		System.out.println(res);
 		return res;
     }
 	
