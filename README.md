@@ -17,6 +17,7 @@ WinCheck structure:
 Prerequisites:
 
     java (>=19.0.2)
+    javac (>=19.0.2)
     GNU objdump (GNU Binutils for Ubuntu) 2.38
     IDA Pro (>= 7.6, not necessary, could be used for testing)
     Z3Prover (>=4.12.0)
