@@ -24,11 +24,11 @@ import normalizer.Normalizer;
 public class WinCheck {
 	
 
-	static ControlFlow constructCF(String execPath, GraphBuilder graphBuilder, boolean verbose) {
+	static ControlFlow constructCF(String execPath, GraphBuilder graphBuilder) {
 		Normalizer norm = NormFactory.norm;
 	    Path constraintConfigPath = Paths.get(Utils.PROJECT_DIR.toString(), Utils.PREDEFINED_CONSTRAINT_FILE);
 	    HashMap<String, ArrayList<String>> preConstraint = Helper.parse_predefined_constraint(constraintConfigPath);
-	    ControlFlow cfg = new ControlFlow(preConstraint, norm, graphBuilder, verbose);
+	    ControlFlow cfg = new ControlFlow(preConstraint, norm, graphBuilder);
 	    return cfg;
 	}
     
@@ -62,14 +62,14 @@ public class WinCheck {
 	}
 	    
 	
-	static void wincheck_main(String execPath, String disasmPath, String disasmType, boolean verbose) throws Exception {
+	static void wincheck_main(String execPath, String disasmPath, String disasmType) throws Exception {
 	    set_logger(disasmPath, disasmType);
 	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
 	    NormFactory.setDisasm(disasmPath, disasmType);
 	    BinaryContent.readBinaryContent(execPath);
 	    GraphBuilder graphBuilder = new GraphBuilder(NormFactory.norm);
 		long startTime = System.nanoTime();
-	    ControlFlow cfg = constructCF(execPath, graphBuilder, verbose);
+	    ControlFlow cfg = constructCF(execPath, graphBuilder);
 	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
 	    write_results(cfg);
 	    Utils.output_logger.info("Execution time (s) : " + Long.toString(duration));
@@ -77,7 +77,7 @@ public class WinCheck {
 	}
 	
 	
-	static void wincheck_batch(String execDir, String disasmDir, String disasmType, boolean verbose) throws Exception {
+	static void wincheck_batch(String execDir, String disasmDir, String disasmType) throws Exception {
 	    ArrayList<String> asmFiles = Utils.getASMFiles(disasmDir, disasmType);
 	    Collections.sort(asmFiles);
 	    for(String asmPath : asmFiles) {
@@ -86,7 +86,7 @@ public class WinCheck {
 	        System.out.println(fileName);
 	        String execPath = Paths.get(execDir, Utils.rsplit(fileName, "\\.")[0]).toString();
 	        try {
-	        	wincheck_main(execPath, asmPath, disasmType, verbose);
+	        	wincheck_main(execPath, asmPath, disasmType);
 	            Thread.sleep(15);
 	        }
 	        catch(InterruptedException e) {
@@ -98,12 +98,12 @@ public class WinCheck {
 	}
 	
 	
-	void wincheck_specified(String[] fileNames, String execDir, String disasmDir, String disasmType, boolean verbose) throws Exception {
+	void wincheck_specified(String[] fileNames, String execDir, String disasmDir, String disasmType) throws Exception {
 	    for(String file_name : fileNames) {
 	        String execPath = Paths.get(execDir, file_name).toString();
 	        String disasmPath = Paths.get(disasmDir, file_name + "." + disasmType).toString();
 	        try {
-	        	wincheck_main(execPath, disasmPath, disasmType, verbose);
+	        	wincheck_main(execPath, disasmPath, disasmType);
 	            Thread.sleep(15);
 	        }
 	        catch(InterruptedException e) {
@@ -181,15 +181,15 @@ public class WinCheck {
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
-	    boolean verbose = (line.hasOption("verbose")) ? true : false;
+	    Config.VERBOSE = (line.hasOption("verbose")) ? true : false;
 	    
 	    if(batch) {
-	    	wincheck_batch(execDir, logDir, disasmType, verbose);
+	    	wincheck_batch(execDir, logDir, disasmType);
 	    }
 	    else {
 	        String disasmPath = Paths.get(logDir, fileName + "." + disasmType).toString();
 	        String execPath = Paths.get(execDir, fileName).toString();
-	        wincheck_main(execPath, disasmPath, disasmType, verbose);
+	        wincheck_main(execPath, disasmPath, disasmType);
 	    }
 	}
 	    

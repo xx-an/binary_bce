@@ -182,7 +182,7 @@ public class Utils {
 	
 	public static String ppCycle(Stack<Long> cycle) {
 		String res = "[" + String.join(", ", cycle.stream().map(i -> Long.toHexString(i)).toList()) + "]";
-//		System.out.println(res);
+		System.out.println(res);
 		return res;
     }
 	

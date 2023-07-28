@@ -21,7 +21,6 @@ import block.Node;
 import block.Store;
 import common.Config;
 import common.Lib;
-import common.Triplet;
 import common.Lib.MEMORY_RELATED_ERROR_TYPE;
 import common.Utils;
 import graph.GraphBuilder;
@@ -189,12 +188,12 @@ public class CFHelper {
     }
     
     
-    static boolean isDirectOrJPTJmpAddr(HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap, long addr, String jmpAddrStr) {
-    	boolean res = false;
-    	if(Utils.imm_start_pat.matcher(jmpAddrStr).find()) res = true;
-    	else if(addrJPTEntriesMap.containsKey(addr)) res = true;
-    	return res;
-    }
+//    static boolean isDirectOrJPTJmpAddr(HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap, long addr, String jmpAddrStr) {
+//    	boolean res = false;
+//    	if(Utils.imm_start_pat.matcher(jmpAddrStr).find()) res = true;
+//    	else if(addrJPTEntriesMap.containsKey(addr)) res = true;
+//    	return res;
+//    }
 
 
 	static Stack<Long> detectCycle(Block block, Long newAddr, String newInst, HashMap<Integer, Block> blockMap, GraphBuilder graphBuilder) {

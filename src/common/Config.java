@@ -25,6 +25,8 @@ public class Config {
 	public static long INIT_HEAP_ADDR;
 	public static long MAX_HEAP_ADDR;
 	
+	public static boolean VERBOSE = false;
+	
 	public static final int CMC_EXEC_RES_COUNT = 8;
 	
 	public static final int MAX_ARGC_NUM = 10;

@@ -33,47 +33,41 @@ public class ControlFlow {
 	HashMap<Integer, Block> blockMap;
 	ArrayList<Block> blockStack;
     HashMap<Long, Block> addrBlockMap;
-    HashMap<Long, Integer> addrBlockCntMap;
     HashMap<Long, String> addrExtFuncMap;
     HashMap<String, Integer> memLenMap;
     HashMap<String, Long> symTable;
     HashMap<Long, String> addrSymMap;
     HashMap<Long, String> addrInstMap;
     HashMap<Long, Long> addrNextMap;
-    HashMap<String, ArrayList<String>> gPreConstraint;
-    HashSet<Long> funcEndAddrSet;
-    HashSet<Long> extFuncCallAddr;
+    HashSet<Long> addrFuncEndSet;
     Block dummyBlock;
     public int[] wincheckExecInfo;
     Long startAddress;
     Long mainAddress;
-    HashMap<Long, Long> retCallAddrMap;
     HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap;
     HashMap<Long, ArrayList<Long>> globalJPTEntriesMap;
+    HashMap<String, ArrayList<String>> gPreConstraint;
     HashMap<String, ArrayList<String>> extLibAssumptions;
     HashMap<BitVecExpr, ArrayList<BitVecExpr>> symAddrValuesetMap;
     HashMap<Long, Integer> gHeapAllocMemInfo;
     GraphBuilder graphBuilder;
 
     
-    public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm, GraphBuilder graphBuilder, boolean verbose) {
+    public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm, GraphBuilder graphBuilder) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayList<>();
         addrBlockMap = new HashMap<>();
-        addrBlockCntMap = new HashMap<>();
         memLenMap = new HashMap<>();
         symTable = norm.getSymTbl();
         addrSymMap = norm.getAddressSymTbl();
         startAddress = norm.getEntryAddress();
         addrInstMap = norm.getAddressInstMap();
         addrNextMap = norm.getAddressNextMap();
-        funcEndAddrSet = norm.getFuncEndAddrSet();
+        addrFuncEndSet = norm.getFuncEndAddrSet();
         this.graphBuilder = graphBuilder;
         dummyBlock = new Block(-1, 0, "", null, null);
         mainAddress = norm.getMainAddress();
         this.gPreConstraint = gPreConstraint;
-        retCallAddrMap = new HashMap<>();
-        extFuncCallAddr = new HashSet<>();
         addrJPTEntriesMap = new HashMap<>();
         symAddrValuesetMap = new HashMap<>();
         extLibAssumptions = new HashMap<>();
@@ -88,17 +82,17 @@ public class ControlFlow {
         CFHelper.cfg_init_parameter(store, symTable);
         CFHelper.start_init(store, Utils.INIT_BLOCK_NO);
         constraint = CFHelper.handlePreConstraint(gHeapAllocMemInfo, store, constraint, Utils.INIT_BLOCK_NO, gPreConstraint, extLibAssumptions);
-        buildCFG(store.rip, store, constraint, verbose);
+        buildCFG(store.rip, store, constraint);
         pp_unreachable_instrs();
     }
 
         
-    void buildCFG(long startAddress, Store startStore, Constraint startConstraint, boolean verbose) {
+    void buildCFG(long startAddress, Store startStore, Constraint startConstraint) {
     	add_new_block(null, startAddress, startStore, startConstraint);
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.toHexString(curr.address) + ": " + curr.inst);
-            if(verbose) {
+            if(Config.VERBOSE) {
                 Utils.logger.info("Block " + Integer.toString(curr.blockID));
 	            Utils.logger.info(curr.store.pp_reg_store());
 	            Utils.logger.info(curr.store.pp_mem_store());
@@ -112,7 +106,7 @@ public class ControlFlow {
             if(Utils.check_branch_inst(inst))
                 constructBranch(curr, address, inst, store, constraint);
             else {
-            	if(!funcEndAddrSet.contains(curr.address))
+            	if(!addrFuncEndSet.contains(curr.address))
             		buildNextBlock(curr, address, store, constraint);
             	else
             		Utils.logger.info("\n");
@@ -133,18 +127,17 @@ public class ControlFlow {
         	newAddress = Helper.long_of_sym(nAddress);
         }
         if(addrInstMap.containsKey(newAddress)) {
+        	if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
+            	graphBuilder.updateCycleInfo(address, newAddress);
+            }
         	// If the jump address is resolved from indirect jump instructions (not jumptable-related ones)
-        	if(!CFHelper.isDirectOrJPTJmpAddr(addrJPTEntriesMap, address, jumpAddrStr)) {
-        		if(!graphBuilder.containsEdge(address, newAddress)) {
-                	graphBuilder.updateCycleInfo(address, newAddress);
-                }
-        	}
             if(addrExtFuncMap.containsKey(newAddress)) {
             	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
                 handleExtJumps(extFuncName, block, address, inst, store, constraint);
             }
-            else
+            else {
                 handleInternalJumps(block, address, inst, store, constraint, newAddress);
+            }
         }
         else if(addrSymMap.containsKey(newAddress)) {
         	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
@@ -200,30 +193,15 @@ public class ControlFlow {
         Utils.logger.info(Utils.toHexString(address) + ": jump address is " + Utils.toHexString(newAddress));
         if(Utils.check_not_single_branch_inst(inst))   // je xxx
             constructCondBranches(block, address, inst, newAddress, store, constraint);
-        else {
-            if(addrBlockMap.containsKey(newAddress) && retCallAddrMap.containsValue(newAddress)) {
-                if(isFuncBlockExplored(store, newAddress)) {
-                    if(!extFuncCallAddr.contains(newAddress))
-                        buildRetBranch(block, newAddress, "retn", store, constraint);
-                    else
-                        add_new_block(block, newAddress, store, constraint);
-                }
-                else
-                    add_new_block(block, newAddress, store, constraint);
-            }
-            else {
-                if(inst.startsWith("jmp "))
-                	addBlockWNewConstr(block, inst, newAddress, store, constraint, true, false);
-                else
-                	add_new_block(block, newAddress, store, constraint);
-            }
-        }
+        else if(inst.startsWith("jmp "))
+        	addBlockWNewConstr(block, inst, newAddress, store, constraint, true, false);
+        else
+        	add_new_block(block, newAddress, store, constraint);
     }
     
 
     void handleExtJumps(String extFuncName, Block block, long address, String inst, Store store, Constraint constraint) {
         Constraint newConstraint = constraint;
-        extFuncCallAddr.add(address);
         String extName = extFuncName.split("@", 2)[0].strip();
         Utils.logger.info("Call the external function " + extName + " at address " + Long.toHexString(address));
         ArrayList<String> preConstraint = gPreConstraint.getOrDefault(extName, null);
@@ -332,16 +310,6 @@ public class ControlFlow {
         Integer blockID = null;
         Utils.logger.info(Utils.toHexString(address) + ": the return address is " + Utils.toHexString(newAddress));
         if(addrInstMap.containsKey(newAddress)) {
-            if(!retCallAddrMap.containsKey(newAddress)) {
-                Long callTarget = getPrevInstTarget(newAddress);
-                if(callTarget != null) {
-                    retCallAddrMap.put(newAddress, callTarget);
-                }
-            }
-            // Take care of the execution time
-            if(!graphBuilder.containsEdge(address, newAddress)) {
-            	graphBuilder.updateCycleInfo(address, newAddress);
-            }
             blockID = add_new_block(block, newAddress, store, constraint);
         }
         return blockID;
@@ -548,8 +516,6 @@ public class ControlFlow {
                 // number of negative paths with uninitialized content
                 wincheckExecInfo[3] += 1;
             }
-            int count = addrBlockCntMap.getOrDefault(address, 0);
-            addrBlockCntMap.put(address, count + 1);
             addrBlockMap.put(address, block);
             blockStack.add(block);
         }
@@ -634,38 +600,6 @@ public class ControlFlow {
         int blockID = addNewBlock(parent_blk, address, inst, newStore, constraint, true);
         Semantics.cmov(newStore, inst, pred, blockID);
         return blockID;
-    }
-
-
-    Long getPrevInstTarget(long address) {
-    	Long target = null;
-        Long prevAddr = CFHelper.get_prev_address(address, addrInstMap);
-        if(prevAddr != null) {
-            String prevInst = addrInstMap.get(prevAddr);
-            if(prevInst.startsWith("call")) {
-                Block blk = addrBlockMap.get(prevAddr);
-                BitVecExpr jmpTarget = SMTHelper.get_jump_address(blk.store, prevInst.split(" ", 2)[1].strip(), addrExtFuncMap);
-                if(Helper.is_bit_vec_num(jmpTarget)) {
-                    target = Helper.long_of_sym(jmpTarget);
-                }
-            }
-        }
-        return target;
-    }
-
-
-    boolean isFuncBlockExplored(Store store, long newAddr) {
-    	Block blk = addrBlockMap.get(newAddr);
-    	int cnt = addrBlockCntMap.get(newAddr);
-        if(cnt > Utils.MAX_VISIT_COUNT) return true;
-        else if(cnt == 0) return false;
-        Store preStore = blk.store;
-        String newInst = addrInstMap.get(newAddr);
-        Store newStore = new Store(store, preStore.rip);
-        if(!Utils.check_branch_inst_wo_call(newInst) && !newInst.startsWith("cmov"))
-        	Semantics.parse_semantics(newStore, newInst, -1);
-        boolean res = newStore.state_ith_eq(preStore, addrInstMap, Lib.REG);
-        return res;
     }
 
 

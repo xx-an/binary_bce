@@ -251,11 +251,12 @@ public class Graph {
     		visited.put(vertex, false);
     	}
 
+//    	System.out.println(Utils.toHexString(startVertex));
     	Stack<Long> stack = new Stack<>();
 		stack.push(startVertex);
 		visited.put(startVertex, true);
 		processDFSTree(stack, visited, cycleList);
-    	
+		    	
     	for(Stack<Long> cycle : cycleList) {
     		Utils.ppCycle(cycle);
     		long start = cycle.peek();
@@ -350,12 +351,27 @@ public class Graph {
     }
     
     
+    public void ppEdges() {
+    	StringBuilder sb = new StringBuilder();
+    	sb.append("\nedges: ");
+    	ArrayList<Tuple<Long, HashSet<Long>>> edges = genEdges();
+    	for(Tuple<Long, HashSet<Long>> edge : edges) {
+    		long startVertex = edge.x;
+    		HashSet<Long> toEdge = edge.y;
+    		ArrayList<Long> toEdges = new ArrayList<>();
+    		for(long e : toEdge) toEdges.add(e);
+    		sb.append(Utils.toHexString(startVertex) + ": [" + String.join(", ", toEdges.stream().map(e -> Utils.toHexString(e)).toList()) + "], ");
+    	}
+    	System.out.println(sb.toString());
+    }
+    
+    
     @Override
     public String toString() {
     	StringBuilder sb = new StringBuilder();
     	sb.append("vertices: ");
     	for(long v : graphMap.keySet()) {
-    		sb.append(Long.toHexString(v) + " ");
+    		sb.append(Utils.toHexString(v) + " ");
     	}
     	sb.append("\nedges: ");
     	ArrayList<Tuple<Long, HashSet<Long>>> edges = genEdges();

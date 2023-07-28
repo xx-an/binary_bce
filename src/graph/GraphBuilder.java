@@ -16,6 +16,7 @@ public class GraphBuilder {
 	HashMap<Long, ArrayList<Long>> jptEntriesMap;
 	HashSet<Long> funcEndAddressSet;
 	HashMap<Long, String> addrInstMap;
+	HashMap<Long, String> addressExtFuncMap;
 	ArrayList<Long> instAddrs;
 	
 	
@@ -49,14 +50,16 @@ public class GraphBuilder {
 	
 	
 	void buildGraph(Normalizer norm) {
-		long entryAddr = (norm.getEntryAddress() != null) ? norm.getEntryAddress() : norm.getMainAddress();
+		long entryAddr = norm.getMainAddress();
 		graph = new Graph(entryAddr);
 		jptEntriesMap = norm.readGlobalJPTEntriesMap();
 		funcEndAddressSet = norm.getFuncEndAddrSet();
 		addrInstMap = norm.getAddressInstMap();
+		addressExtFuncMap = norm.getAddressExtFuncMap();
 		instAddrs = new ArrayList<>(addrInstMap.keySet());
 		Collections.sort(instAddrs);
 		constructGraph();
+//		graph.ppEdges();
 	}
 	
 	
@@ -115,7 +118,7 @@ public class GraphBuilder {
         			Long jmpAddr = null;
         			if(Utils.imm_start_pat.matcher(jmpAddrStr).find()) {
         				jmpAddr = Utils.imm_str_to_int(jmpAddrStr);
-        				if(jmpAddr != null) {
+        				if(jmpAddr != null && !addressExtFuncMap.containsKey(jmpAddr)) {
         					graph.addEdge(addr, jmpAddr);
             			}
         			}
@@ -123,7 +126,7 @@ public class GraphBuilder {
         				resolveJPTEdges(idx, addr, inst, jmpAddrStr);
         			}
     			}
-    			if(Utils.check_not_single_branch_inst(inst)) {
+    			if(Utils.check_not_single_branch_inst(inst) || inst.startsWith("call")) {
         			graph.addEdge(addr, nextAddr);
         		}
     		}
