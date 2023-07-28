@@ -40,6 +40,7 @@ public class ControlFlow {
     HashMap<Long, String> addrInstMap;
     HashMap<Long, Long> addrNextMap;
     HashSet<Long> addrFuncEndSet;
+    
     Block dummyBlock;
     public int[] wincheckExecInfo;
     Long startAddress;
@@ -126,25 +127,18 @@ public class ControlFlow {
         if(Helper.is_bit_vec_num(nAddress)) {
         	newAddress = Helper.long_of_sym(nAddress);
         }
-        if(addrInstMap.containsKey(newAddress)) {
+        if(addrExtFuncMap.containsKey(newAddress)) {
+            String extFuncName = addrExtFuncMap.get(newAddress);
+            handleExtJumps(extFuncName, block, address, inst, store, constraint);
+        }
+        else if(addrInstMap.containsKey(newAddress)) {
         	if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
             	graphBuilder.updateCycleInfo(address, newAddress);
             }
-        	// If the jump address is resolved from indirect jump instructions (not jumptable-related ones)
-            if(addrExtFuncMap.containsKey(newAddress)) {
-            	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
-                handleExtJumps(extFuncName, block, address, inst, store, constraint);
-            }
-            else {
-                handleInternalJumps(block, address, inst, store, constraint, newAddress);
-            }
+            handleInternalJumps(block, address, inst, store, constraint, newAddress);
         }
         else if(addrSymMap.containsKey(newAddress)) {
         	String extFuncName = CFHelper.readFuncName(addrSymMap, newAddress);
-            handleExtJumps(extFuncName, block, address, inst, store, constraint);
-        }
-        else if(addrExtFuncMap.containsKey(newAddress)) {
-            String extFuncName = addrExtFuncMap.get(newAddress);
             handleExtJumps(extFuncName, block, address, inst, store, constraint);
         }
         else if(Helper.is_bit_vec_num(nAddress) || nAddress.toString().startsWith(Utils.MEM_DATA_SEC_SUFFIX)) {

@@ -253,11 +253,6 @@ public class NormIDAPro implements Normalizer {
         	varName = Utils.rsplit(varName, ":")[0].strip();
         	addressExtFuncMap.put(address, varName);
         }
-        else if(line.startsWith(".plt")) {
-        	//arg: .plt:00001060 _malloc         proc near
-        	varName = lineSplit[1].strip().split(" ", 2)[0].strip();
-        	addressExtFuncMap.put(address, varName);
-        }
         else {
         	//arg: .text:0000000000012720 rpl_fts_open    proc near
         	varName = lineSplit[1].strip().split(" ", 2)[0].strip();
