@@ -44,7 +44,7 @@ public class ControlFlow {
     HashSet<Long> funcEndAddrSet;
     HashSet<Long> extFuncCallAddr;
     Block dummyBlock;
-    public int[] cmcExecInfo;
+    public int[] wincheckExecInfo;
     Long startAddress;
     Long mainAddress;
     HashMap<Long, Long> retCallAddrMap;
@@ -56,7 +56,7 @@ public class ControlFlow {
     GraphBuilder graphBuilder;
 
     
-    public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm, GraphBuilder graphBuilder) {
+    public ControlFlow(HashMap<String, ArrayList<String>> gPreConstraint, Normalizer norm, GraphBuilder graphBuilder, boolean verbose) {
     	blockMap = new HashMap<>();
     	blockStack = new ArrayList<>();
         addrBlockMap = new HashMap<>();
@@ -82,25 +82,27 @@ public class ControlFlow {
         gHeapAllocMemInfo = new HashMap<>();
         Store store = new Store(null);
         store.rip = (startAddress == null) ? mainAddress : startAddress;
-        cmcExecInfo = new int[Utils.CMC_EXEC_RES_COUNT];
+        wincheckExecInfo = new int[Utils.WINCHECK_EXEC_RES_COUNT];
         Constraint constraint = null;
         SymHelper.cnt_init();
         CFHelper.cfg_init_parameter(store, symTable);
         CFHelper.start_init(store, Utils.INIT_BLOCK_NO);
         constraint = CFHelper.handlePreConstraint(gHeapAllocMemInfo, store, constraint, Utils.INIT_BLOCK_NO, gPreConstraint, extLibAssumptions);
-        build_cfg(store.rip, store, constraint);
+        buildCFG(store.rip, store, constraint, verbose);
         pp_unreachable_instrs();
     }
 
         
-    void build_cfg(long startAddress, Store startStore, Constraint startConstraint) {
+    void buildCFG(long startAddress, Store startStore, Constraint startConstraint, boolean verbose) {
     	add_new_block(null, startAddress, startStore, startConstraint);
         while(blockStack != null && blockStack.size() > 0) {
             Block curr = blockStack.remove(blockStack.size() - 1);
             Utils.logger.info(Utils.toHexString(curr.address) + ": " + curr.inst);
-            Utils.logger.info("Block " + Integer.toString(curr.blockID));
-            Utils.logger.info(curr.store.pp_reg_store());
-            Utils.logger.info(curr.store.pp_mem_store());
+            if(verbose) {
+                Utils.logger.info("Block " + Integer.toString(curr.blockID));
+	            Utils.logger.info(curr.store.pp_reg_store());
+	            Utils.logger.info(curr.store.pp_mem_store());
+            }
             long address = curr.address;
             String inst = curr.inst;
             Store store = curr.store;
@@ -300,7 +302,7 @@ public class ControlFlow {
                     if(isPathReachable == false) return;
                 }
                 // num_of_unresolved_indirects
-                cmcExecInfo[2] += 1;
+                wincheckExecInfo[2] += 1;
                 handle_cmc_path_termination(block.store);
                 Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.toHexString(address));
                 Utils.logger.info(TraceBack.pp_tb_debug_info(res, address, inst));
@@ -318,7 +320,7 @@ public class ControlFlow {
             ArrayList<HashMap<Integer, ArrayList<String>>> traceBIDSymList = new ArrayList<>();
             TraceBack.tracebackSymAddr(blockMap, addrExtFuncMap, addrInstMap, block, traceBIDSymList, memLenMap, newSrcs);
             // num_of_unresolved_indirects
-            cmcExecInfo[2] += 1;
+            wincheckExecInfo[2] += 1;
             Utils.logger.info("Cannot resolve the jump address " + newAddress.toString() + " of " + inst + " at address " + Utils.toHexString(address) + "\n");
             handle_cmc_path_termination(block.store);
             // sys.exit("Cannot resolve the jump address " + SymHelper.string_of_address(newAddress) + " of " + inst + " at address " + hex(address))
@@ -375,7 +377,7 @@ public class ControlFlow {
                 }
                 else {
                     // num_of_unresolved_indirects
-                    cmcExecInfo[2] += 1;
+                    wincheckExecInfo[2] += 1;
                     handle_cmc_path_termination(store);
                     Utils.logger.info("Cannot resolve the return address " + newAddress.toString() + " of " + block.inst + " at address " + Utils.toHexString(address) + "\n");
                     System.exit(1);
@@ -544,7 +546,7 @@ public class ControlFlow {
                 Utils.logger.info(error_msg);
                 store.g_PointerRelatedError = null;
                 // number of negative paths with uninitialized content
-                cmcExecInfo[3] += 1;
+                wincheckExecInfo[3] += 1;
             }
             int count = addrBlockCntMap.getOrDefault(address, 0);
             addrBlockCntMap.put(address, count + 1);
@@ -594,7 +596,7 @@ public class ControlFlow {
             boolean isPathReachable = CFHelper.check_path_reachability(constraint);
             if(!isPathReachable) { 
                 // number of paths
-                cmcExecInfo[0] += 1;
+                wincheckExecInfo[0] += 1;
                 return;
             }
         }
@@ -605,9 +607,9 @@ public class ControlFlow {
         if(symNames != null)
             TraceBack.locatePointerRelatedError(blockMap, addrExtFuncMap, addrInstMap, addrSymMap, block, store, address, inst, symNames);
         // number of paths
-        cmcExecInfo[0] += 1;
+        wincheckExecInfo[0] += 1;
         // number of negative paths
-        cmcExecInfo[1] += 1;
+        wincheckExecInfo[1] += 1;
     }
         
 
@@ -692,11 +694,7 @@ public class ControlFlow {
 
     void handle_cmc_path_termination(Store store) {
         // NUM_OF_PATHS
-        cmcExecInfo[0] += 1;
-        // if(store[Lib.POINTER_RELATED_ERROR] && store[Lib.POINTER_RELATED_ERROR][0] != MEMORY_RELATED_ERROR_TYPE.UNINITIALIZED_CONTENT) {
-        //     // NUM_OF_NEGATIVES
-        //     cmcExecInfo[1] += 1
-        //     Utils.logger.info("The symbolic execution has been terminated at the path with pointer-related error\n")
+        wincheckExecInfo[0] += 1;
     }
 
     public int reachable_addresses_num() {

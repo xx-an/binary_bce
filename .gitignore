@@ -4,6 +4,7 @@
 *.id2
 *.nam
 *.til
+*.c
 *.output
 *.objdump
 src/check/

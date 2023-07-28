@@ -46,7 +46,7 @@ public class Utils {
 	public static int MAX_VISIT_COUNT = 25;
 	public static int INIT_BLOCK_NO = -1;
 	public static int TB_DEFAULT_BLOCK_NO = -2;
-	public final static int CMC_EXEC_RES_COUNT = 4;
+	public final static int WINCHECK_EXEC_RES_COUNT = 4;
 	
 	public static final String MEM_DATA_SEC_SUFFIX = "mem@";   
 	public static final String LOG_UNREACHABLE_INDICATOR = "Unreachable instructions:";
@@ -75,7 +75,7 @@ public class Utils {
 	public static Logger logger = Logger.getLogger(LOG_NAMES[0]);
 	public static Logger output_logger = Logger.getLogger(LOG_NAMES[1]);
 	
-	public static void setup_logger(String logName, String log_path, boolean verbose, Level level) throws SecurityException, IOException {
+	public static void setup_logger(String logName, String log_path, Level level) throws SecurityException, IOException {
 		Handler fh = new FileHandler(log_path);
 		Formatter fmt = new LogFormatter();
 		fh.setFormatter(fmt);
