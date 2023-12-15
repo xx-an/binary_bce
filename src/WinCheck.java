@@ -95,6 +95,15 @@ public class WinCheck {
 		writeInfo += Integer.toString(numUnresolvedIndirects) + ",";
 		writeInfo += Long.toString(execTime);
 		writer.println(writeInfo);
+		if(Utils.verbose) {
+			System.out.println("\\midrule");
+			String latexInfo = writeInfo.replace(",", " & ");
+			if(latexInfo.contains("_")) {
+				latexInfo = latexInfo.replace("_", "\\_");
+			}
+			latexInfo += " \\\\";
+			System.out.println(latexInfo);
+		}
 	}
 	    
 	
@@ -125,9 +134,18 @@ public class WinCheck {
         try (PrintWriter writer = new PrintWriter(new FileWriter(csvPath))) {
             // Writing data to CSV
             writer.println("file name, # of reached instructions,# of paths,# of (possibly) negative paths,# of uninitialized content,# of unresolved indirects,Execution time (ms)");
+			if(Utils.verbose) {
+				System.out.println("\\begin{table*}");
+				System.out.println("\\caption{Testing results for some sv-benchmarks.}");
+				System.out.println("\\label{tab:svbenchmarks}");
+				System.out.println("\\centering");
+				System.out.println("\\begin{tabular}{l|C{1.6cm}|C{1cm}|C{1.5cm}|C{1.4cm}|C{1.5cm}|C{1.5cm}}");
+				System.out.println("\\toprule");
+				System.out.println("File name & \\# of reached instrs & \\# of paths &\\# of (possibly) negative paths & \\# of uninitialized &\\# of unresolved indirects & Exec time (ms) \\\\");
+			}
 			for(String asmPath : asmFiles) {
 				String fileName = Utils.getFileName(asmPath);
-				System.out.println(fileName);
+				// System.out.println(fileName);
 				String execPath = Paths.get(execDir, fileName).toString();
 				try {
 					wincheck_main(fileName, execPath, asmPath, disasmType, toCSV, writer);
@@ -138,6 +156,11 @@ public class WinCheck {
 					Thread.sleep(15);
 					continue;
 				}
+			}
+			if(Utils.verbose) {
+				System.out.println("\\bottomrule");
+				System.out.println("\\end{tabular}");
+				System.out.println("\\end{table*}");
 			}
         } catch (IOException e) {
             e.printStackTrace();
@@ -230,7 +253,7 @@ public class WinCheck {
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
-	    boolean verbose = (line.hasOption("verbose")) ? true : false;
+	    Utils.verbose = (line.hasOption("verbose")) ? true : false;
 		boolean toCSV = (line.hasOption("tocsv")) ? true : false;
 	    
 	    if(batch) {

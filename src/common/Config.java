@@ -8,7 +8,7 @@ public class Config {
 	
 	public static int MEM_ADDR_SIZE = 32;
 	
-	public static final int MAX_CYCLE_COUNT = 5;
+	public static final int MAX_CYCLE_COUNT = 20;
 
 	public static final int MAX_TRACEBACK_COUNT = 15;
 	public static final int MAX_INST_ADDR_GAP = 25;

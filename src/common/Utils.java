@@ -63,6 +63,8 @@ public class Utils {
 	public static int MAX_ARGC_NUM = 10;
 	public static int REBUILD_BRANCHES_NUM = 2;
 
+	public static boolean verbose = false;
+
 	public static final Map<String, String> OPPOSITE_FLAG_MAP = Map.of("b", "ae", "be", "a", "l", "ge", "le", "g");
 
 	public static Function<String, String> id_op;
