@@ -52,7 +52,7 @@ public class NormIDAPro implements Normalizer {
 	Pattern varExprPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-fA-F]{16} [a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-fA-F]{8} [a-zA-Z0-9_@?$]+");
 	Pattern idaImmPat = Pattern.compile("^[0-9A-F]+h$|^[0-9]$");
 	Pattern jptStartPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} jpt_[a-zA-Z0-9_@?$]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} jpt_[a-zA-Z0-9_@?$]+");
-	Pattern jptEndPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} ; [-]+|^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} ; [-]+");
+	Pattern jptEndPat = Pattern.compile("^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{16} ; |^[.a-zA-Z_0-9]+:[0-9a-zA-Z]{8} ; ");
 	Pattern idaWordRepPat = Pattern.compile("^byte_[0-9a-fA-F]+$|^word_[0-9a-fA-F]+$|^dword_[0-9a-fA-F]+$|^qword_[0-9a-fA-F]+$|^tbyte_[0-9a-fA-F]+$|^xmmword_[0-9a-fA-F]+$");
 	
 	Pattern subtractHexPat = Pattern.compile("-[0-9a-fA-F]+h");
@@ -172,6 +172,11 @@ public class NormIDAPro implements Normalizer {
         if(procValueMap.containsKey("main")) {
         	mainAddress = procValueMap.get("main");
         }
+        else if(procValueMap.containsKey("_main")) {
+        	mainAddress = procValueMap.get("_main");
+        }
+        if(mainAddress == null) 
+            mainAddress = entryAddress;
 	}
     
 	// line: .text:00401000 ; Segment type: Pure code

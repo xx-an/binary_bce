@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Stack;
 import java.util.function.Function;
 import java.util.logging.FileHandler;
@@ -182,6 +184,13 @@ public class Utils {
 	
 	public static String ppCycle(Stack<Long> cycle) {
 		String res = "[" + String.join(", ", cycle.stream().map(i -> Long.toHexString(i)).toList()) + "]";
+		// System.out.println(res);
+		return res;
+    }
+
+
+	public static String ppCycle(List<Long> cycle) {
+		String res = "[" + String.join(", ", cycle.stream().map(i -> Long.toHexString(i)).toList()) + "]";
 //		System.out.println(res);
 		return res;
     }
@@ -208,9 +217,15 @@ public class Utils {
 	}
 	
 	
-	public static String get_file_name(String path) {
-		String file_name = rsplit(path, "/")[1].split(".", 2)[0];
-		return file_name;
+	public static String getFileName(String path) {
+		String fileName = null;
+		String[] fileNameSplit = rsplit(path, "/")[1].split("\\.");
+		if(fileNameSplit.length > 2) {
+			fileName = String.join(".", Arrays.copyOf(fileNameSplit, fileNameSplit.length - 1));
+		}
+		else
+			fileName = fileNameSplit[0];
+		return fileName;
 	}
 
 
@@ -269,24 +284,38 @@ public class Utils {
 	    result.add(curr.strip());
 	    return result;
 	}
-	
 
-	public static String execute_command(String cmd) {
-		Runtime rt = Runtime.getRuntime();
-		try {
-			Process pr = rt.exec(cmd);
-			BufferedReader stdInput = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-			String out = "";
-			String tmp = "";
-			while((tmp = stdInput.readLine()) != null) {
-				out += tmp + "\n";
-			}
-			return out.trim();
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
-	}
+
+	public static String execute_command(String command) {
+		String res = "";
+        try {
+            // Create ProcessBuilder
+			ProcessBuilder processBuilder = new ProcessBuilder("/bin/sh", "-c", command);
+			
+            // Redirect error stream to output stream
+            processBuilder.redirectErrorStream(true);
+
+            // Start the process
+            Process process = processBuilder.start();
+
+            // Read the output of the command
+            try (InputStream inputStream = process.getInputStream();
+                 Scanner scanner = new Scanner(inputStream)) {
+
+                while (scanner.hasNextLine()) {
+					String tmp = scanner.nextLine();
+					res += tmp + "\n";
+                    // System.out.println(tmp);
+                }
+            }
+
+            process.waitFor();
+
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+		return res;
+    }
 
 	
 	public static String bytes_to_hex(ArrayList<Byte> bytes) {

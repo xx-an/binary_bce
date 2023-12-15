@@ -132,9 +132,9 @@ public class ControlFlow {
             handleExtJumps(extFuncName, block, address, inst, store, constraint);
         }
         else if(addrInstMap.containsKey(newAddress)) {
-        	if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
-            	graphBuilder.updateCycleInfo(address, newAddress);
-            }
+        	// if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
+            // 	graphBuilder.updateCycleInfo(address, newAddress);
+            // }
             handleInternalJumps(block, address, inst, store, constraint, newAddress);
         }
         else if(addrSymMap.containsKey(newAddress)) {
@@ -173,13 +173,12 @@ public class ControlFlow {
         }
     }
 
-    int addBlockWNewConstr(Block block, String inst, long newAddress, Store store, Constraint constraint, boolean val, boolean needNewConstr) {
+    void addBlockWNewConstr(Block block, String inst, long newAddress, Store store, Constraint constraint, boolean val, boolean needNewConstr) {
         Constraint newConstraint = constraint;
         if(needNewConstr) {
         	newConstraint = addNewConstraint(store, constraint, inst, val, "j");
         }
-        int blockID = add_new_block(block, newAddress, store, newConstraint);
-        return blockID;
+        add_new_block(block, newAddress, store, newConstraint);
     }
         
     
@@ -300,18 +299,15 @@ public class ControlFlow {
     }
 
 
-    Integer exec_ret_operation(Block block, long address, Store store, Constraint constraint, long newAddress) {
-        Integer blockID = null;
+    void exec_ret_operation(Block block, long address, Store store, Constraint constraint, long newAddress) {
         Utils.logger.info(Utils.toHexString(address) + ": the return address is " + Utils.toHexString(newAddress));
         if(addrInstMap.containsKey(newAddress)) {
-            blockID = add_new_block(block, newAddress, store, constraint);
+            add_new_block(block, newAddress, store, constraint);
         }
-        return blockID;
     }
 
 
-    Integer buildRetBranch(Block block, long address, String inst, Store store, Constraint constraint) {
-        Integer blockID = null;
+    void buildRetBranch(Block block, long address, String inst, Store store, Constraint constraint) {
         BitVecExpr newAddress = null;
 		Long alter_address = null;
         if(inst.equals("ret") || inst.equals("retf")) {
@@ -326,28 +322,24 @@ public class ControlFlow {
         }
         if(newAddress != null) {
             if(Helper.is_bit_vec_num(newAddress))
-            	blockID = exec_ret_operation(block, address, store, constraint, Helper.long_of_sym(newAddress));
+            	exec_ret_operation(block, address, store, constraint, Helper.long_of_sym(newAddress));
             else if(Helper.is_term_address(newAddress))
                 handle_cmc_path_termination(store);
             // Return address is symbolic
             else {
                 if(alter_address != null)
-                    blockID = exec_ret_operation(block, address, store, constraint, alter_address);
+                    exec_ret_operation(block, address, store, constraint, alter_address);
                 else if(constraint != null) {
                     boolean isPathReachable = CFHelper.check_path_reachability(constraint);
-                    if(isPathReachable == false) return null;
+                    if(isPathReachable) {
+                        handleUnresolvedReturnAddr(block, store, address, newAddress);
+                    }
                 }
                 else {
-                    // num_of_unresolved_indirects
-                    wincheckExecInfo[2] += 1;
-                    handle_cmc_path_termination(store);
-                    Utils.logger.info("Cannot resolve the return address " + newAddress.toString() + " of " + block.inst + " at address " + Utils.toHexString(address) + "\n");
-                    System.exit(1);
-//                    System.exit("Cannot resolve the return address of " + block.inst + " at address " + Utils.num_to_hex_string(address));
+                    handleUnresolvedReturnAddr(block, store, address, newAddress);
                 }
             }
         }
-        return blockID;
    }
 
 
@@ -458,10 +450,9 @@ public class ControlFlow {
     }
         
 
-    Integer add_new_block(Block parentBlk, long address, Store store, Constraint constraint) {
+    void add_new_block(Block parentBlk, long address, Store store, Constraint constraint) {
     	long rip = CFHelper.get_next_address(address, addrNextMap, addrSymMap);
     	String inst = addrInstMap.get(address);
-        Integer blockID = null;
         if(inst.startsWith("bnd ")) {
             inst = inst.strip().split(" ", 2)[1];
         }
@@ -470,17 +461,16 @@ public class ControlFlow {
     	Stack<Long> cycle = res.y;
     	if(cycleCount <= Config.MAX_CYCLE_COUNT) {
     		if(inst.startsWith("cmov")) {
-                blockID = addNewBlockWCMovInst(parentBlk, address, inst, store, rip, constraint);
+                addNewBlockWCMovInst(parentBlk, address, inst, store, rip, constraint);
             }
             else {
                 Store newStore = new Store(store, rip);
-                blockID = addNewBlock(parentBlk, address, inst, newStore, constraint, true);
+                addNewBlock(parentBlk, address, inst, newStore, constraint, true);
             }
         }
     	else {
     		Utils.logger.info("The cycle " + Utils.ppCycle(cycle) + " is visited more than the maximum limitation");
     	}
-        return blockID;
     }
 
 
@@ -623,6 +613,15 @@ public class ControlFlow {
     void handle_cmc_path_termination(Store store) {
         // NUM_OF_PATHS
         wincheckExecInfo[0] += 1;
+    }
+
+
+    void handleUnresolvedReturnAddr(Block block, Store store, long address, BitVecExpr newAddress) {
+        // num_of_unresolved_indirects
+        wincheckExecInfo[2] += 1;
+        handle_cmc_path_termination(store);
+        Utils.logger.info("Cannot resolve the return address " + newAddress.toString() + " of " + block.inst + " at address " + Utils.toHexString(address) + "\n");
+        System.exit(1);
     }
 
     public int reachable_addresses_num() {

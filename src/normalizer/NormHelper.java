@@ -56,7 +56,6 @@ public class NormHelper {
 		BYTELEN_REP_MAP.put(8, "byte ptr");
 	}
 	
-	
 	public static void disassemble_to_asm(String execPath, String disasmPath, String disasmType) throws Exception {
 		if(Files.exists(Paths.get(disasmPath))) return;
 	    if(disasmType.equals("objdump")) {

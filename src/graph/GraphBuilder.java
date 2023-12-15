@@ -26,12 +26,8 @@ public class GraphBuilder {
 	
 	public GraphBuilder(Normalizer norm) {
 		buildGraph(norm);
-		graph.detectAllCycles();
-	}
-	
-	
-	public void detectAllCycles() {
-		graph.detectAllCycles();
+		graph.findAllCycles();
+		// graph.detectAllCycles();
 	}
 	
 	
@@ -67,11 +63,6 @@ public class GraphBuilder {
 		graph.addEdge(vertex1, vertex2);
 	}
 
-	
-	public void updateCycleInfo(long vertex1, long vertex2) {
-		graph.updateCycleInfo(vertex1, vertex2);
-	}
-	
 	
 	public boolean containsEdge(long vertex1, long vertex2) {
 		return graph.containsEdge(vertex1, vertex2);

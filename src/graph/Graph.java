@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Stack;
 
 import common.Tuple;
@@ -11,12 +14,12 @@ import common.Utils;
 
 public class Graph {
 	
-	HashMap<Long, HashSet<Long>> graphMap;
-	HashMap<Long, HashSet<Stack<Long>>> cyclesMap;
-	HashMap<Stack<Long>, Integer> cyclesCount;
+	static HashMap<Long, HashSet<Long>> graphMap;
+	static HashMap<Long, HashSet<Stack<Long>>> cyclesMap;
+	static HashMap<Stack<Long>, Integer> cyclesCount;
 	
 	long startVertex;
-	int longestLength;
+	static int longestLength;
 	
 	
 	public Graph(long sVertex) {
@@ -210,51 +213,140 @@ public class Graph {
     }
     
     
-    void processDFSTree(Stack<Long> stack, HashMap<Long, Boolean> visited, ArrayList<Stack<Long>> cycleList) {
+    void processDFSTree(Stack<Long> stack, Set<Long> visited, ArrayList<Stack<Long>> cycleList) {
     	HashSet<Long> neighbours = graphMap.get(stack.peek());
     	for(long v : neighbours) {
-    		if(visited.get(v)) {
+    		if(visited.contains(v)) {
     			buildCycle(stack, v, cycleList);
     		}
     		else {
     			stack.push(v);
-    			visited.put(v, true);
+    			visited.add(v);
     			processDFSTree(stack, visited, cycleList);
     		}
-    	}	    	
-    	visited.put(stack.peek(), false);
-	    stack.pop();
+    	}
+		if(!stack.isEmpty()) {
+			long top = stack.pop();
+			if(visited.contains(top))
+				visited.remove(top);
+		}
     }
-    
-    void processDFSTree(Stack<Long> stack, HashSet<Long> neighbours, HashMap<Long, Boolean> visited, ArrayList<Stack<Long>> cycleList) {
-    	for(long v : neighbours) {
-    		if(visited.get(v)) {
-    			buildCycle(stack, v, cycleList);
-    		}
-    		else {
-    			stack.push(v);
-    			visited.put(v, true);
-    			processDFSTree(stack, graphMap.get(stack.peek()), visited, cycleList);
-    		}
-    	}	    	
-    	visited.put(stack.peek(), false);
-	    stack.pop();
+
+	//Find all the cycles using depth-first search
+	private List<Stack<Long>> findCyclesDFS(
+            Long start,
+            Set<Long> visited,
+			Set<Long> inStack
+    ) {
+        List<Stack<Long>> cycles = new ArrayList<>();
+		Stack<Long> stack = new Stack<>();
+		Stack<Long> path = new Stack<>();
+		Stack<Long> branchNodes = new Stack<>();
+        stack.push(start);
+
+        while (!stack.isEmpty()) {
+            long curr = stack.pop();
+			if (!visited.contains(curr)) {
+				visited.add(curr);
+				inStack.add(curr);
+				path.push(curr);
+
+				// System.out.println("bn: " + Utils.ppCycle(branchNodes));
+				// System.out.println("stk: " + Utils.ppCycle(stack));
+				// System.out.println("pt: " + Utils.ppCycle(path));
+
+				if(!graphMap.get(curr).isEmpty()) {
+					if(graphMap.get(curr).size() > 1) {
+						branchNodes.push(curr);
+					}
+					for (long neighbor : graphMap.get(curr)) {
+						if (!visited.contains(neighbor)) {
+							stack.push(neighbor);
+						} 
+						else if (inStack.contains(neighbor)) {
+							// Cycle detected
+							Stack<Long> cycle = new Stack<>();
+							Long tmp = null;
+							while (!path.isEmpty() && !path.peek().equals(neighbor)) {
+								if(!branchNodes.isEmpty() && branchNodes.peek().equals(path.peek()))
+									tmp = path.peek();
+								cycle.push(path.pop());
+							}
+							if(!path.isEmpty() && path.peek().equals(neighbor)) {
+								cycle.add(path.pop());
+								// System.out.println("cycle: " + Utils.ppCycle(cycle));
+								cycles.add(cycle);
+							}
+							if(tmp != null) {
+								branchNodes.pop();
+								if(!branchNodes.isEmpty() && !stack.isEmpty()) {
+									while (!path.isEmpty() && !path.peek().equals(branchNodes.peek())) {
+										path.pop();
+									}
+								}
+							}
+						}
+					}
+				}
+				// If a node has no children, which means the path reaches the termination point
+				else {
+					if(!stack.isEmpty() && !branchNodes.isEmpty()) {
+						while (!path.isEmpty() && !path.peek().equals(branchNodes.peek())) {
+							path.pop();
+						}
+						if(!graphMap.get(branchNodes.peek()).contains(stack.peek())) {
+							branchNodes.pop();
+						}
+						// System.out.println("branchNodes: " + Utils.ppCycle(branchNodes));
+						// System.out.println("stack: " + Utils.ppCycle(stack));
+						// System.out.println("newPath: " + Utils.ppCycle(path));
+					}
+				}
+			}
+			else {
+				inStack.remove(curr);
+				path.remove(curr);
+			}
+        }
+        return cycles;
+    }
+
+
+	// Detect all the cycles in a directed graph
+	public void findAllCycles() {
+		List<Stack<Long>> cycleList = new ArrayList<>();
+
+        Set<Long> visited = new HashSet<>();
+        Set<Long> inStack = new HashSet<>();
+
+        for (Long node : graphMap.keySet()) {
+            if (!visited.contains(node)) {
+                cycleList.addAll(findCyclesDFS(node, visited, inStack));
+            }
+        }
+
+		for(Stack<Long> cycle : cycleList) {
+			// System.out.println(Utils.ppCycle(cycle));
+    		long start = cycle.peek();
+    		HashSet<Stack<Long>> curr = cyclesMap.getOrDefault(start, new HashSet<>());
+    		curr.add(cycle);
+    		cyclesMap.put(start, curr);
+    		cyclesCount.put(cycle, 0);
+    		longestLength = Math.max(longestLength, cycle.size());
+    	}
+		// return cycleList;
     }
     
     
     // Detect all the cycles in a directed graph
     void detectAllCycles() {
-    	HashMap<Long, Boolean> visited = new HashMap<>();
+    	Set<Long> visited = new HashSet<>();
     	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
-    	
-    	for(long vertex : graphMap.keySet()) {
-    		visited.put(vertex, false);
-    	}
 
 //    	System.out.println(Utils.toHexString(startVertex));
     	Stack<Long> stack = new Stack<>();
 		stack.push(startVertex);
-		visited.put(startVertex, true);
+		visited.add(startVertex);
 		processDFSTree(stack, visited, cycleList);
 		    	
     	for(Stack<Long> cycle : cycleList) {
@@ -272,16 +364,12 @@ public class Graph {
     void updateCycleInfo(long vertex1, long vertex2) {
     	addEdge(vertex1, vertex2);
     	
-    	HashMap<Long, Boolean> visited = new HashMap<>();
+    	Set<Long> visited = new HashSet<>();
     	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
-    	
-    	for(long vertex : graphMap.keySet()) {
-    		visited.put(vertex, false);
-    	}
 
     	Stack<Long> stack = new Stack<>();
 		stack.push(vertex1);
-		visited.put(vertex1, true);
+		visited.add(vertex1);
 		HashSet<Long> neighbours = new HashSet<>();
 		neighbours.add(vertex2);
 		processDFSTree(stack, visited, cycleList);
@@ -320,12 +408,6 @@ public class Graph {
     	return cyclesMap.containsKey(start);
     }
     
-    
-    void analyzeCycleInfo(Stack<Long> stack) {
-    	for(int i = stack.size() - 1; i >= 0; i--) {
-    		
-    	}
-    }
     
     public int updateCycleCount(long addr, Stack<Long> cycle) {
     	int count = 0;

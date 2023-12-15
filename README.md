@@ -20,8 +20,8 @@ Prerequisites:
     javac (>=19.0.2)
     GNU objdump (GNU Binutils for Ubuntu) 2.38
     IDA Pro (>= 7.6, not necessary, could be used for testing)
-    Z3Prover (>=4.12.0)
-    apache.commons.cli (>=1.5.0)
+    Z3Prover (>=4.12.2)
+    apache.commons.cli (>=1.6.0)
     
 # Environment
 

@@ -1,4 +1,3 @@
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -8,10 +7,12 @@ import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import binary.BinaryContent;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 
 import org.apache.commons.cli.*;
 
+import binary.BinaryContent;
 import common.Config;
 import common.Helper;
 import common.Utils;
@@ -46,6 +47,24 @@ public class WinCheck {
 	        Utils.close_logger(logName);
 		}
 	}
+
+
+	static void writeToCSV() {
+		String csvFile = "statistics.csv";
+		String csvPath = Paths.get(Utils.PROJECT_DIR.toString(), csvFile).toString();
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvPath))) {
+            // Writing data to CSV
+            writer.println("Name,Age,City");
+
+            writer.println("John Doe,25,New York");
+            writer.println("Jane Smith,30,San Francisco");
+
+            System.out.println("CSV written successfully to " + csvFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+	}
 	
 	
 	static void write_results(ControlFlow cfg) {
@@ -60,9 +79,26 @@ public class WinCheck {
 	    Utils.output_logger.info("# of uninitialized content: " + Integer.toString(numUninitialized));
 	    Utils.output_logger.info("# of unresolved indirects: " + Integer.toString(numUnresolvedIndirects));
 	}
+
+
+	static void writeToCSV(PrintWriter writer, String fileName, ControlFlow cfg, long execTime) {
+		int numPaths = cfg.wincheckExecInfo[0];
+		int numNegPaths = cfg.wincheckExecInfo[1];
+		int numUnresolvedIndirects = cfg.wincheckExecInfo[2];
+		int numUninitialized = cfg.wincheckExecInfo[3];
+	    int numReachableAddrs = cfg.reachable_addresses_num();
+		String writeInfo = fileName + ",";
+		writeInfo += Integer.toString(numReachableAddrs) + ",";
+		writeInfo += Integer.toString(numPaths) + ",";
+		writeInfo += Integer.toString(numNegPaths) + ",";
+		writeInfo += Integer.toString(numUninitialized) + ",";
+		writeInfo += Integer.toString(numUnresolvedIndirects) + ",";
+		writeInfo += Long.toString(execTime);
+		writer.println(writeInfo);
+	}
 	    
 	
-	static void wincheck_main(String execPath, String disasmPath, String disasmType) throws Exception {
+	static void wincheck_main(String fileName, String execPath, String disasmPath, String disasmType, boolean toCSV, PrintWriter writer) throws Exception {
 	    set_logger(disasmPath, disasmType);
 	    NormHelper.disassemble_to_asm(execPath, disasmPath, disasmType);
 	    NormFactory.setDisasm(disasmPath, disasmType);
@@ -70,40 +106,51 @@ public class WinCheck {
 	    GraphBuilder graphBuilder = new GraphBuilder(NormFactory.norm);
 		long startTime = System.nanoTime();
 	    ControlFlow cfg = constructCF(execPath, graphBuilder);
-	    long duration = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime);
+	    long execTime = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime);
 	    write_results(cfg);
-	    Utils.output_logger.info("Execution time (s) : " + Long.toString(duration));
+	    Utils.output_logger.info("Execution time (ms) : " + Long.toString(execTime));
+		if(toCSV) {
+			writeToCSV(writer, fileName, cfg, execTime);
+		}
 	    close_logger();
 	}
 	
 	
-	static void wincheck_batch(String execDir, String disasmDir, String disasmType) throws Exception {
+	static void wincheck_batch(String execDir, String disasmDir, String disasmType, boolean toCSV) throws Exception {
 	    ArrayList<String> asmFiles = Utils.getASMFiles(disasmDir, disasmType);
 	    Collections.sort(asmFiles);
-	    for(String asmPath : asmFiles) {
-	        String fileName = Utils.get_file_name(asmPath);
-	        // if file_name in ["cp.exe", "cut.exe", "dir.exe", "fmt.exe", "grmdir.exe", "gsort.exe", "id.exe", "ls.exe", "md5sum.exe", "mv.exe", "nl.exe", "pathchk.exe", "readlink.exe", "rmdir.exe", "sha1sum.exe", "shred.exe", "sort.exe", "split.exe", "su.exe", "uname.exe", "vdir.exe", "who.exe"]:
-	        System.out.println(fileName);
-	        String execPath = Paths.get(execDir, Utils.rsplit(fileName, "\\.")[0]).toString();
-	        try {
-	        	wincheck_main(execPath, asmPath, disasmType);
-	            Thread.sleep(15);
-	        }
-	        catch(InterruptedException e) {
-	            close_logger();
-	            Thread.sleep(15);
-	            continue;
-	        }
-	    }
+		String csvFile = "statistics.csv";
+		String csvPath = Paths.get(Utils.PROJECT_DIR.toString(), csvFile).toString();
+
+        try (PrintWriter writer = new PrintWriter(new FileWriter(csvPath))) {
+            // Writing data to CSV
+            writer.println("file name, # of reached instructions,# of paths,# of (possibly) negative paths,# of uninitialized content,# of unresolved indirects,Execution time (ms)");
+			for(String asmPath : asmFiles) {
+				String fileName = Utils.getFileName(asmPath);
+				System.out.println(fileName);
+				String execPath = Paths.get(execDir, fileName).toString();
+				try {
+					wincheck_main(fileName, execPath, asmPath, disasmType, toCSV, writer);
+					Thread.sleep(15);
+				}
+				catch(InterruptedException e) {
+					close_logger();
+					Thread.sleep(15);
+					continue;
+				}
+			}
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 	}
 	
 	
-	void wincheck_specified(String[] fileNames, String execDir, String disasmDir, String disasmType) throws Exception {
-	    for(String file_name : fileNames) {
-	        String execPath = Paths.get(execDir, file_name).toString();
-	        String disasmPath = Paths.get(disasmDir, file_name + "." + disasmType).toString();
+	void wincheck_specified(String[] fileNames, String execDir, String disasmDir, String disasmType, boolean toCSV) throws Exception {
+	    for(String fileName : fileNames) {
+	        String execPath = Paths.get(execDir, fileName).toString();
+	        String disasmPath = Paths.get(disasmDir, fileName + "." + disasmType).toString();
 	        try {
-	        	wincheck_main(execPath, disasmPath, disasmType);
+	        	wincheck_main(fileName, execPath, disasmPath, disasmType, toCSV, null);
 	            Thread.sleep(15);
 	        }
 	        catch(InterruptedException e) {
@@ -123,6 +170,8 @@ public class WinCheck {
         
         Option verboseOpt = new Option("v", "verbose", false, "Whether to print detailed log information");
         
+		Option toCSVOpt = new Option("x", "tocsv", false, "Whether to write all the output information to a CSV file");
+
         Option disasmTypeOpt = Option.builder("t").longOpt("disasmType")
                 .argName("disasmType")
                 .hasArg()
@@ -159,9 +208,9 @@ public class WinCheck {
                 .desc("The size of the memory address")
                 .build();
 	    
-
         options.addOption(batchOpt);
         options.addOption(verboseOpt);
+		options.addOption(toCSVOpt);
         options.addOption(disasmTypeOpt);
         options.addOption(logDirOpt);
         options.addOption(execDirOpt);
@@ -181,15 +230,16 @@ public class WinCheck {
 	    String execDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("exec_dir", "benchmark/coreutils-bin")).toString();
 	    String logDir = Paths.get(Utils.PROJECT_DIR.toString(), line.getOptionValue("log_dir", "benchmark/coreutils-idapro")).toString();
 	    boolean batch = (line.hasOption("batch")) ? true : false;
-	    Config.VERBOSE = (line.hasOption("verbose")) ? true : false;
+	    boolean verbose = (line.hasOption("verbose")) ? true : false;
+		boolean toCSV = (line.hasOption("tocsv")) ? true : false;
 	    
 	    if(batch) {
-	    	wincheck_batch(execDir, logDir, disasmType);
+	    	wincheck_batch(execDir, logDir, disasmType, toCSV);
 	    }
 	    else {
 	        String disasmPath = Paths.get(logDir, fileName + "." + disasmType).toString();
 	        String execPath = Paths.get(execDir, fileName).toString();
-	        wincheck_main(execPath, disasmPath, disasmType);
+	        wincheck_main(fileName, execPath, disasmPath, disasmType, toCSV, null);
 	    }
 	}
 	    
