@@ -211,26 +211,6 @@ public class Graph {
     	}
 		cycleList.add(cycle);
     }
-    
-    
-    void processDFSTree(Stack<Long> stack, Set<Long> visited, ArrayList<Stack<Long>> cycleList) {
-    	HashSet<Long> neighbours = graphMap.get(stack.peek());
-    	for(long v : neighbours) {
-    		if(visited.contains(v)) {
-    			buildCycle(stack, v, cycleList);
-    		}
-    		else {
-    			stack.push(v);
-    			visited.add(v);
-    			processDFSTree(stack, visited, cycleList);
-    		}
-    	}
-		if(!stack.isEmpty()) {
-			long top = stack.pop();
-			if(visited.contains(top))
-				visited.remove(top);
-		}
-    }
 
 	//Find all the cycles using depth-first search
 	private List<Stack<Long>> findCyclesDFS(
@@ -334,45 +314,17 @@ public class Graph {
     		cyclesCount.put(cycle, 0);
     		longestLength = Math.max(longestLength, cycle.size());
     	}
-		// return cycleList;
     }
-    
-    
-    // Detect all the cycles in a directed graph
-    void detectAllCycles() {
-    	Set<Long> visited = new HashSet<>();
-    	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
 
-//    	System.out.println(Utils.toHexString(startVertex));
-    	Stack<Long> stack = new Stack<>();
-		stack.push(startVertex);
-		visited.add(startVertex);
-		processDFSTree(stack, visited, cycleList);
-		    	
-    	for(Stack<Long> cycle : cycleList) {
-    		Utils.ppCycle(cycle);
-    		long start = cycle.peek();
-    		HashSet<Stack<Long>> curr = cyclesMap.getOrDefault(start, new HashSet<>());
-    		curr.add(cycle);
-    		cyclesMap.put(start, curr);
-    		cyclesCount.put(cycle, 0);
-    		longestLength = Math.max(longestLength, cycle.size());
-    	}
-    }
     
-    
-    void updateCycleInfo(long vertex1, long vertex2) {
+    void updateCycleInfo(Long vertex1, Long vertex2) {
     	addEdge(vertex1, vertex2);
     	
-    	Set<Long> visited = new HashSet<>();
-    	ArrayList<Stack<Long>> cycleList = new ArrayList<>();
+    	List<Stack<Long>> cycleList = new ArrayList<>();
 
-    	Stack<Long> stack = new Stack<>();
-		stack.push(vertex1);
-		visited.add(vertex1);
-		HashSet<Long> neighbours = new HashSet<>();
-		neighbours.add(vertex2);
-		processDFSTree(stack, visited, cycleList);
+		Set<Long> visited = new HashSet<>();
+        Set<Long> inStack = new HashSet<>();
+		cycleList = findCyclesDFS(vertex1, visited, inStack);
     	
     	for(Stack<Long> cycle : cycleList) {
     		boolean exists = false;

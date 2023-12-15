@@ -44,7 +44,6 @@ public class Utils {
 	public static final Pattern imm_start_pat = Pattern.compile("^0x[0-9a-fA-F]+|^[0-9]+|^-[0-9]+|^-0x[0-9a-fA-F]+");
 	public static final Pattern imm_pat_wo_prefix = Pattern.compile("^[0-9a-fA-F]+$|^-[0-9a-fA-F]+$");
 	
-	public static int MAX_LOOP_COUNT = 5;
 	public static int MAX_VISIT_COUNT = 25;
 	public static int INIT_BLOCK_NO = -1;
 	public static int TB_DEFAULT_BLOCK_NO = -2;
@@ -62,8 +61,6 @@ public class Utils {
 	
 	public static int MAX_ARGC_NUM = 10;
 	public static int REBUILD_BRANCHES_NUM = 2;
-
-	public static boolean verbose = false;
 
 	public static final Map<String, String> OPPOSITE_FLAG_MAP = Map.of("b", "ae", "be", "a", "l", "ge", "le", "g");
 

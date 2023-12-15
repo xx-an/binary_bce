@@ -22,7 +22,6 @@ public class Helper {
 	
 	public static Context ctx = new Context();
 	public static final BitVecExpr STDOUT_ADDR = ctx.mkBVConst("stdout", Config.MEM_ADDR_SIZE);
-	public static final HashMap<Integer, BitVecExpr> TERMINAL_SYMBOL;
 	
 	public static BoolExpr SymTrue = ctx.mkTrue();
 	public static BoolExpr SymFalse = ctx.mkFalse();
@@ -43,10 +42,6 @@ public class Helper {
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("==", arg -> is_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("<>", arg -> not_equal(arg.x, arg.y));
 		LOGIC_OP_FUNC_MAP_BOOLEXPR.put("!=", arg -> not_equal(arg.x, arg.y));
-		
-		TERMINAL_SYMBOL = new HashMap<>();
-		TERMINAL_SYMBOL.put(32, ctx.mkBVConst("x", 32));
-		TERMINAL_SYMBOL.put(64, ctx.mkBVConst("x", 64));
 			
 	}
 
@@ -499,10 +494,6 @@ public class Helper {
 	    return res;
 	}
 
-	public static boolean is_term_address(BitVecExpr address) {
-	    return address.equals(TERMINAL_SYMBOL.get(Config.MEM_ADDR_SIZE));
-	}
-
 	boolean is_bv_sym_var(BitVecExpr arg) {
 	    return (arg instanceof BitVecExpr && !(arg instanceof BitVecNum));
 	}
@@ -617,7 +608,8 @@ public class Helper {
 	    if((lhs instanceof BitVecNum) && (rhs instanceof BitVecNum)) {
 	        long lhs_num = ((BitVecNum) lhs).getLong();
 	        long rhs_num = ((BitVecNum) rhs).getLong();
-	        if(!address_inst_map.containsKey(rhs_num)) {
+	        // if(!address_inst_map.containsKey(rhs_num)) {
+			if(rhs_num < Config.MIN_VIRTUAL_ADDR) {
 	            if(!bvnum_eq(lhs, rhs)) {
 	            	if(addrAtRODataSection(lhs_num))
 	                    res = gen_sym(rhs.getSortSize());
@@ -628,7 +620,7 @@ public class Helper {
 	    }
 	    else if(rhs instanceof BitVecNum) {
 	    	long rhs_num = ((BitVecNum) rhs).getLong();
-	        if(!address_inst_map.containsKey(rhs_num))
+	        if(rhs_num < Config.MIN_VIRTUAL_ADDR)
 	            res = gen_sym(rhs.getSortSize());
 	    }
 	    return res;

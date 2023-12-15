@@ -8,10 +8,12 @@ public class Config {
 	
 	public static int MEM_ADDR_SIZE = 32;
 	
-	public static final int MAX_CYCLE_COUNT = 20;
+	public static int MAX_CYCLE_COUNT = 10;
 
 	public static final int MAX_TRACEBACK_COUNT = 15;
 	public static final int MAX_INST_ADDR_GAP = 25;
+
+	public static final long MIN_VIRTUAL_ADDR = 0x100;
 	
 	public static String SP_NAME;
 	public static List<String> INIT_REGS_NAMES;

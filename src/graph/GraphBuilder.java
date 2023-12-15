@@ -39,6 +39,10 @@ public class GraphBuilder {
 	public int updateCycleCount(long addr, Stack<Long> cycle) {
 		return graph.updateCycleCount(addr, cycle);
 	}
+
+	public void updateCycleInfo(Long addr, long newAddr) {
+		graph.updateCycleInfo(addr, newAddr);
+	}
 	
 	public int longestCycleLength() {
 		return graph.longestCycleLength();

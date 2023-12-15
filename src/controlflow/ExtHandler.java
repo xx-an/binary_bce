@@ -23,6 +23,9 @@ import common.Helper;
 
 public class ExtHandler {
 
+	static BitVecExpr TERMINAL_ADDRESS = null;
+	static BitVecExpr TERMINAL_SYMBOL = Helper.gen_spec_sym("x", Config.MEM_ADDR_SIZE);
+
 	static ArrayList<String> regs_str_to_list(String regs) {
 		ArrayList<String> res = new ArrayList<String>();
 	    String[] regs_split = regs.split(",");
@@ -67,10 +70,13 @@ public class ExtHandler {
 	    for(String flag : Lib.RFlags)
 	    	store.set_flag_val(flag, null);
 	}
-	    
+
+	public static boolean is_term_address(BitVecExpr address) {
+		return address.equals(TERMINAL_ADDRESS) || address.equals(TERMINAL_SYMBOL);
+	}
 
 	static void insert_termination_symbol(Store store, int block_id) {
-	    BitVecExpr sym_x = Helper.TERMINAL_SYMBOL.get(Config.MEM_ADDR_SIZE);
+	    BitVecExpr sym_x = Helper.gen_spec_sym("x", Config.MEM_ADDR_SIZE);
 	    SMTHelper.push_val(store, sym_x, block_id);
 	};
 
@@ -82,8 +88,7 @@ public class ExtHandler {
 	    set_regs_sym(store, dests, block_id);
 	    SymEngine.set_sym(store, (Config.MEM_ADDR_SIZE==64)?"rbp":"ebp", SymEngine.get_sym(store, (Config.MEM_ADDR_SIZE==64)?"rcx":"ecx", block_id), block_id);
 	    clear_flags(store);
-	    insert_termination_symbol(store, block_id);
-	    insert_termination_symbol(store, block_id);
+	    TERMINAL_ADDRESS = Helper.gen_bv_num(store.rip, Config.MEM_ADDR_SIZE);
 	}
 	    
 

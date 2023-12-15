@@ -186,15 +186,6 @@ public class CFHelper {
             SymEngine.set_sym(store, tmpName, Helper.substitute_sym_val(prevVal, symArg, symNewVal), blockID);
         }
     }
-    
-    
-//    static boolean isDirectOrJPTJmpAddr(HashMap<Long, Triplet<String, String, ArrayList<Long>>> addrJPTEntriesMap, long addr, String jmpAddrStr) {
-//    	boolean res = false;
-//    	if(Utils.imm_start_pat.matcher(jmpAddrStr).find()) res = true;
-//    	else if(addrJPTEntriesMap.containsKey(addr)) res = true;
-//    	return res;
-//    }
-
 
 	static Stack<Long> detectCycle(Block block, Long newAddr, String newInst, HashMap<Integer, Block> blockMap, GraphBuilder graphBuilder) {
 		long address = block.address;
@@ -216,7 +207,6 @@ public class CFHelper {
 	        else break;
 	        idx += 1;
 	    }
-//	    Utils.ppCycle(cycle);
 	    if(!exists) cycle = null;
 	    return cycle;
 	}

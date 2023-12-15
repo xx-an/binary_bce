@@ -132,9 +132,9 @@ public class ControlFlow {
             handleExtJumps(extFuncName, block, address, inst, store, constraint);
         }
         else if(addrInstMap.containsKey(newAddress)) {
-        	// if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
-            // 	graphBuilder.updateCycleInfo(address, newAddress);
-            // }
+        	if(!graphBuilder.containsEdge(address, newAddress) && !inst.startsWith("call")) {
+            	graphBuilder.updateCycleInfo(address, newAddress);
+            }
             handleInternalJumps(block, address, inst, store, constraint, newAddress);
         }
         else if(addrSymMap.containsKey(newAddress)) {
@@ -321,10 +321,10 @@ public class ControlFlow {
         	alter_address = addrInfo.y;
         }
         if(newAddress != null) {
-            if(Helper.is_bit_vec_num(newAddress))
-            	exec_ret_operation(block, address, store, constraint, Helper.long_of_sym(newAddress));
-            else if(Helper.is_term_address(newAddress))
+            if(ExtHandler.is_term_address(newAddress))
                 handle_cmc_path_termination(store);
+            else if(Helper.is_bit_vec_num(newAddress))
+            	exec_ret_operation(block, address, store, constraint, Helper.long_of_sym(newAddress));
             // Return address is symbolic
             else {
                 if(alter_address != null)
@@ -469,7 +469,13 @@ public class ControlFlow {
             }
         }
     	else {
-    		Utils.logger.info("The cycle " + Utils.ppCycle(cycle) + " is visited more than the maximum limitation");
+            Utils.logger.info("The cycle " + Utils.ppCycle(cycle) + " is visited more than the maximum limitation");
+            Block blk = addrBlockMap.get(address);
+            Store prevStore = blk.store;
+            rip = prevStore.rip;
+            Store newStore = new Store(store, rip);
+            newStore.merge_store(prevStore, addrInstMap);
+            addNewBlock(parentBlk, address, inst, newStore, constraint, true);
     	}
     }
 

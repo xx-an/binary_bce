@@ -232,6 +232,42 @@ public class Store {
 		return sb.toString();
     }
 
+	void merge_reg_store(Store old, HashMap<Long, String> address_inst_map) {
+    	HashMap<String, Node> s_old = old.g_RegStore;
+    	for(String ki : g_RegStore.keySet()) {
+    		Node v = g_RegStore.getOrDefault(ki, null);
+    		Node v_old = s_old.getOrDefault(ki, null);
+    		if(v_old != null) {
+    			if(!ki.endsWith("sp") && !ki.endsWith("bp")) {
+                	BitVecExpr new_expr = Helper.merge_sym(v_old.expr, v.expr, address_inst_map);
+                	v.update_expr(new_expr);
+                }
+    		}
+        }
+    }
+    
+    void merge_mem_store(Store old, HashMap<Long, String> address_inst_map) {
+    	HashMap<BitVecExpr, Node> s_old = old.g_MemStore;
+    	for(BitVecExpr ki : g_MemStore.keySet()) {
+    		Node v = g_MemStore.getOrDefault(ki, null);
+    		Node v_old = s_old.getOrDefault(ki, null);
+    		if(v_old != null) {
+	        	BitVecExpr new_expr = Helper.merge_sym(v_old.expr, v.expr, address_inst_map);
+	        	v.update_expr(new_expr);
+    		}
+        }
+    }
+    
+    
+    public void merge_store(Store old, HashMap<Long, String> address_inst_map) {
+        for(String k : Lib.RECORD_STATE_NAMES) {
+        	if(k.equals(Lib.REG))
+        		merge_reg_store(old, address_inst_map);
+        	else if(k.equals(Lib.MEM))
+        		merge_mem_store(old, address_inst_map);
+        }
+    }
+
     boolean reg_state_ith_eq(Store old, HashMap<Long, String> address_inst_map) {
     	HashMap<String, Node> reg_old = old.g_RegStore;
         for(String ki : g_RegStore.keySet()) {
